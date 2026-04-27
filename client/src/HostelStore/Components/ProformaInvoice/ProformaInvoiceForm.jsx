@@ -1,18 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { toast } from "react-toastify";
+import { TextInput, DropdownInput, DateInputNew } from "../../../Inputs";
 import {
-    TextInput,
-    DropdownInput,
-    DateInputNew,
-} from "../../../Inputs";
-import {
-    useAddProformaInvoiceMutation,
-    useUpdateProformaInvoiceMutation,
-    useDeleteProformaInvoiceMutation,
-    useGetProformaInvoiceByIdQuery,
-    useGetProformaInvoiceQuery,
+  useAddProformaInvoiceMutation,
+  useUpdateProformaInvoiceMutation,
+  useDeleteProformaInvoiceMutation,
+  useGetProformaInvoiceByIdQuery,
+  useGetProformaInvoiceQuery,
 } from "../../../redux/uniformService/ProformaInvoiceService";
-import { getCommonParams } from "../../../Utils/helper";
+import { findFromList, getCommonParams, ModeChip } from "../../../Utils/helper";
 import { dropDownListObject } from "../../../Utils/contructObject";
 import ProformaInvoiceItems from "./ProformaInvoiceItems.jsx";
 import moment from "moment";
@@ -21,331 +17,511 @@ import Modal from "../../../UiComponents/Modal";
 import ProformaInvoicePrintFormat from "./ProformaInvoicePrintFormat.jsx";
 import tw from "../../../Utils/tailwind-react-pdf";
 import { IoArrowBackCircleSharp } from "react-icons/io5";
-import { ModeChip } from "../../../Utils/helper";
-import { FiEdit2, FiSave, FiFileText } from "react-icons/fi";
-import { useGetOrderEntryQuery, useLazyGetOrderEntryByIdQuery } from "../../../redux/uniformService/OrderEntryService";
+import { FiEdit2, FiSave, FiPrinter, FiEye } from "react-icons/fi";
+import { HiOutlineRefresh, HiX } from "react-icons/hi";
+import {
+  useGetOrderEntryQuery,
+  useLazyGetOrderEntryByIdQuery,
+} from "../../../redux/uniformService/OrderEntryService";
+import {
+  CommonFormFooter,
+  TransactionActions,
+  TransactionLayout,
+} from "../../../Basic/components/Reuseable";
+import {
+  useGetTaxTemplateQuery,
+  useGetTaxTemplateByIdQuery,
+} from "../../../redux/services/TaxTemplateServices.js";
+import { calculateTaxWithHSNBreakupAndInsertIntoPoItems } from "../../../Utils/taxSummary";
+import PoSummary from "../PurchaseOrder/PoSummary";
+import { useGetPartyByIdQuery } from "../../../redux/services/PartyMasterService";
 
 const ProformaInvoiceForm = ({
-    readOnly,
-    setReadOnly,
-    id,
-    setId,
-    onClose,
-    termsData,
+  readOnly,
+  setReadOnly,
+  id,
+  setId,
+  onClose,
+  termsData,
 }) => {
-    const { branchId, companyId, finYearId, userId } = getCommonParams();
+  const { branchId, companyId, finYearId, userId } = getCommonParams();
 
-    const [docId, setDocId] = useState("New");
-    const [docDate, setDocDate] = useState(moment().format("YYYY-MM-DD"));
-    const [deliveryDate, setDeliveryDate] = useState(moment().format("YYYY-MM-DD"));
-    const [customerId, setCustomerId] = useState("");
-    const [orderEntryId, setOrderEntryId] = useState("");
-    const [remarks, setRemarks] = useState("");
-    const [termsAndCondition, setTermsAndCondition] = useState("");
-    const [termsId, setTermsId] = useState("");
-    const [items, setItems] = useState([]);
-    const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [docId, setDocId] = useState("New");
+  const [docDate, setDocDate] = useState(moment().format("YYYY-MM-DD"));
+  const [customerId, setCustomerId] = useState("");
+  const [orderEntryId, setOrderEntryId] = useState("");
+  const [remarks, setRemarks] = useState("");
+  const [termsAndCondition, setTermsAndCondition] = useState("");
+  const [termsId, setTermsId] = useState("");
+  const [items, setItems] = useState([]);
+  const [taxTemplateId, setTaxTemplateId] = useState("");
+  const [summary, setSummary] = useState(false);
+  const [discountType, setDiscountType] = useState("Percentage");
+  const [discountValue, setDiscountValue] = useState(0);
+  const [printModalOpen, setPrintModalOpen] = useState(false);
 
-    const { data: allData } = useGetProformaInvoiceQuery({ params: { branchId } });
-    const { data: singleData } = useGetProformaInvoiceByIdQuery(id, { skip: !id });
-    const { data: orderList } = useGetOrderEntryQuery({ params: { branchId } });
-    const [triggerGetOrderById] = useLazyGetOrderEntryByIdQuery();
+  const [customerDetails, setCustomerDetails] = useState({
+    name: "",
+    contactPerson: "",
+    phone: "",
+  });
 
-    const [addData] = useAddProformaInvoiceMutation();
-    const [updateData] = useUpdateProformaInvoiceMutation();
-    const [removeData] = useDeleteProformaInvoiceMutation();
+  const { data: allData } = useGetProformaInvoiceQuery({
+    params: { branchId },
+  });
+  const { data: singleData } = useGetProformaInvoiceByIdQuery(id, {
+    skip: !id,
+  });
+  const { data: orderList } = useGetOrderEntryQuery({ params: { branchId } });
+  const { data: taxTypeList } = useGetTaxTemplateQuery({
+    params: { companyId },
+  });
+  const { data: supplierData } = useGetPartyByIdQuery(customerId, {
+    skip: !customerId,
+  });
+  const [triggerGetOrderById] = useLazyGetOrderEntryByIdQuery();
 
-    useEffect(() => {
-        if (!id && allData?.nextDocId) {
-            setDocId(allData.nextDocId);
-        }
-    }, [id, allData]);
+  const [addData] = useAddProformaInvoiceMutation();
+  const [updateData] = useUpdateProformaInvoiceMutation();
+  const [removeData] = useDeleteProformaInvoiceMutation();
 
-    useEffect(() => {
-        if (id && singleData?.data) {
-            const data = singleData.data;
-            setDocId(data.docId);
-            setDocDate(moment(data.docDate).format("YYYY-MM-DD"));
-            setDeliveryDate(moment(data.deliveryDate).format("YYYY-MM-DD"));
-            setCustomerId(data.customerId?.toString());
-            setOrderEntryId(data.orderEntryId?.toString() || "");
-            setRemarks(data.remarks || "");
-            setTermsAndCondition(data.termsAndCondition || "");
-            setTermsId(data.termsId?.toString() || "");
-            setItems(data.items || []);
-        }
-    }, [id, singleData]);
+  useEffect(() => {
+    if (!id && allData?.nextDocId) {
+      setDocId(allData.nextDocId);
+    }
+  }, [id, allData]);
 
-    useEffect(() => {
-        if (orderEntryId && !id) {
-            const fetchOrderDetails = async () => {
-                try {
-                    const res = await triggerGetOrderById(orderEntryId).unwrap();
-                    if (res.data) {
-                        const order = res.data;
-                        setCustomerId(order.customerId?.toString() || "");
-                        setDeliveryDate(order.deliveryDate ? moment(order.deliveryDate).format("YYYY-MM-DD") : moment().format("YYYY-MM-DD"));
-                        setTermsId(order.termsId?.toString() || "");
-                        setTermsAndCondition(order.termsAndCondition || "");
-                        
-                        // Populate items from orderItems
-                        if (order.orderItems && order.orderItems.length > 0) {
-                            const mappedItems = order.orderItems.map(oi => ({
-                                styleItemId: oi.styleItemId?.toString(),
-                                qty: oi.orderQty || 0,
-                                price: 0, // Prices usually entered in Proforma
-                                taxPercent: 0,
-                                discountType: "PERCENTAGE",
-                                discountValue: 0,
-                                amount: 0,
-                                sizeId: oi.sizeId?.toString(),
-                                uomId: oi.uomId?.toString(),
-                                gsmId: oi.gsmId?.toString(),
-                            }));
-                            setItems(mappedItems);
-                        }
-                    }
-                } catch (error) {
-                    console.error("Failed to fetch order details", error);
-                }
-            };
-            fetchOrderDetails();
-        }
-    }, [orderEntryId, triggerGetOrderById, id]);
+  useEffect(() => {
+    if (id && singleData?.data) {
+      const data = singleData.data;
+      setDocId(data.docId);
+      setDocDate(moment(data.docDate).format("YYYY-MM-DD"));
+      setCustomerId(data.customerId);
+      setOrderEntryId(data.orderEntryId || "");
+      setRemarks(data.remarks || "");
+      setTermsAndCondition(data.termsAndCondition || "");
+      setTermsId(data.termsId || "");
+      setTaxTemplateId(data.taxTemplateId || "");
+      setItems(data.items || []);
 
-    const handleSave = async () => {
-        if (!orderEntryId || items.length === 0) {
-            toast.error("Please select an Order and add at least one item.");
-            return;
-        }
+      const cust = data.customer || data.OrderEntry?.customer;
+      if (cust) {
+        setCustomerDetails({
+          name: cust.name || "",
+          contactPerson: cust.contactPersonName || "",
+          phone: cust.contactNumber || "",
+        });
+      }
+    }
+  }, [id, singleData]);
 
-        const payload = {
-            userId,
-            branchId,
-            companyId,
-            finYearId,
-            docDate,
-            deliveryDate,
-            customerId,
-            orderEntryId,
-            remarks,
-            termsAndCondition,
-            termsId,
-            items: JSON.stringify(items),
-        };
-
+  useEffect(() => {
+    if (orderEntryId) {
+      const fetchOrderDetails = async () => {
         try {
-            if (id) {
-                await updateData({ id, body: payload }).unwrap();
-                toast.success("Proforma Invoice updated successfully");
-            } else {
-                const res = await addData(payload).unwrap();
-                setId(res.data.id);
-                toast.success("Proforma Invoice created successfully");
+          const res = await triggerGetOrderById(orderEntryId).unwrap();
+          if (res.data) {
+            const order = res.data;
+            setCustomerId(order.customerId);
+
+            if (!id) {
+              setTermsId(order.termsId || "");
+              setTermsAndCondition(order.termsAndCondition || "");
+              setTaxTemplateId(order.taxTemplateId || "");
+
+              if (order.orderItems && order.orderItems.length > 0) {
+                const mappedItems = order.orderItems.map((oi) => ({
+                  styleItemId: oi.styleItemId,
+                  qty: parseFloat(oi.orderQty) || 0,
+                  price: 0,
+                  taxPercent: parseFloat(oi.Hsn?.tax) || 0,
+                  discountType: "Percentage",
+                  discountValue: 0,
+                  amount: 0,
+                  sizeId: oi.sizeId,
+                  uomId: oi.uomId,
+                  gsmId: oi.gsmId,
+                  hsnId: oi.hsnId,
+                }));
+                setItems(mappedItems);
+              }
             }
-            setReadOnly(true);
+
+            if (order.customer) {
+              setCustomerDetails({
+                name: order.customer.name || "",
+                contactPerson: order.customer.contactPersonName || "",
+                phone: order.customer.contactNumber || "",
+              });
+            }
+          }
         } catch (error) {
-            toast.error(error.data?.message || "Failed to save Proforma Invoice");
+          console.error("Failed to fetch order details", error);
         }
+      };
+      fetchOrderDetails();
+    }
+  }, [orderEntryId, triggerGetOrderById, id]);
+
+  const handleSave = async (pendingAction = null) => {
+    const filteredItems = items.filter((item) => item.styleItemId);
+
+    if (filteredItems.length === 0) {
+      toast.error("Please add at least one item.");
+      return;
+    }
+
+    const payload = {
+      userId,
+      branchId,
+      companyId,
+      finYearId,
+      docDate,
+      deliveryDate: docDate,
+      customerId,
+      orderEntryId,
+      remarks,
+      termsAndCondition,
+      termsId,
+      taxTemplateId,
+      items: JSON.stringify(filteredItems),
     };
 
-    const handleDelete = async () => {
-        if (window.confirm("Are you sure you want to delete this Proforma Invoice?")) {
-            try {
-                await removeData(id).unwrap();
-                toast.success("Deleted successfully");
-                onClose();
-            } catch (error) {
-                toast.error("Failed to delete");
-            }
+    try {
+      let savedId = id;
+      if (id) {
+        await updateData({ id, body: payload }).unwrap();
+        toast.success("Proforma Invoice updated successfully");
+      } else {
+        const res = await addData(payload).unwrap();
+        savedId = res.data.id;
+        setId(savedId);
+        toast.success("Proforma Invoice created successfully");
+      }
+      setReadOnly(true);
+
+      if (pendingAction === "new") {
+        onNew();
+      } else if (pendingAction === "close") {
+        onClose();
+      }
+    } catch (error) {
+      toast.error(error.data?.message || "Failed to save Proforma Invoice");
+    }
+  };
+
+  const handleKeyDown = (event) => {
+    let charCode = String.fromCharCode(event.which).toLowerCase();
+    if ((event.ctrlKey || event.metaKey) && charCode === "s") {
+      event.preventDefault();
+      handleSave();
+    }
+  };
+
+  const onNew = () => {
+    setId("");
+    setReadOnly(false);
+    setDocId("New");
+    setDocDate(moment().format("YYYY-MM-DD"));
+    setCustomerId("");
+    setOrderEntryId("");
+    setRemarks("");
+    setTermsAndCondition("");
+    setTermsId("");
+    setTaxTemplateId("");
+    setItems([]);
+    setCustomerDetails({ name: "", contactPerson: "", phone: "" });
+  };
+
+  useEffect(() => {
+    if (termsId && termsData?.data) {
+      const term = termsData.data.find((t) => t.id === termsId);
+      if (term) setTermsAndCondition(term.termsAndCondition);
+    }
+  }, [termsId, termsData]);
+
+  const totalAmount = items.reduce(
+    (sum, item) => sum + (parseFloat(item.amount) || 0),
+    0,
+  );
+  const totalQty = items.reduce(
+    (sum, item) => sum + (parseFloat(item.qty) || 0),
+    0,
+  );
+
+  const actionButtonClass =
+    "px-3 py-2 rounded-md flex items-center justify-center text-sm text-white transition";
+
+  const leftActions = [
+    ...(!readOnly
+      ? [
+          {
+            key: "saveAndClose",
+            icon: (
+              <span className="flex items-center gap-1">
+                <FiSave className="h-4 w-4" />
+                <HiX className="h-4 w-4" />
+              </span>
+            ),
+            hoverLabel: "Save & Close",
+            iconOnly: true,
+            onClick: () => handleSave("close"),
+            className: `bg-indigo-500 hover:bg-indigo-600 ${actionButtonClass}`,
+          },
+          {
+            key: "saveAndNew",
+            icon: (
+              <span className="flex items-center gap-1">
+                <FiSave className="h-4 w-4" />
+                <HiOutlineRefresh className="h-4 w-4" />
+              </span>
+            ),
+            hoverLabel: "Save & New",
+            iconOnly: true,
+            onClick: () => handleSave("new"),
+            className: `bg-indigo-600 hover:bg-indigo-700 ${actionButtonClass}`,
+          },
+        ]
+      : []),
+  ];
+
+  const rightActions = [
+    {
+      key: "edit",
+      icon: <FiEdit2 className="h-4 w-4" />,
+      hoverLabel: "Edit",
+      iconOnly: true,
+      onClick: () => setReadOnly(false),
+      className: `bg-yellow-600 hover:bg-yellow-700 ${actionButtonClass}`,
+      hidden: !readOnly || !id,
+    },
+    {
+      key: "summary",
+      icon: <FiEye className="h-4 w-4" />,
+      hoverLabel: "View Summary",
+      iconOnly: true,
+      onClick: () => {
+        if (!taxTemplateId) {
+          toast.info("Please Select Tax Template !");
+          return;
         }
-    };
+        setSummary(true);
+      },
+      className:
+        "bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-md transition",
+    },
+    {
+      key: "print",
+      icon: <FiPrinter className="h-4 w-4" />,
+      hoverLabel: "Print",
+      iconOnly: true,
+      onClick: () => setPrintModalOpen(true),
+      className: `bg-slate-600 hover:bg-slate-700 ${actionButtonClass}`,
+    },
+  ].filter((a) => !a.hidden);
 
-    const handleKeyDown = (event) => {
-        let charCode = String.fromCharCode(event.which).toLowerCase();
-        if ((event.ctrlKey || event.metaKey) && charCode === "s") {
-            event.preventDefault();
-            handleSave();
-        }
-    };
-
-    const onNew = () => {
-        setId("");
-        setReadOnly(false);
-        setDocId("New");
-        setDocDate(moment().format("YYYY-MM-DD"));
-        setDeliveryDate(moment().format("YYYY-MM-DD"));
-        setCustomerId("");
-        setOrderEntryId("");
-        setRemarks("");
-        setTermsAndCondition("");
-        setTermsId("");
-        setItems([]);
-    };
-
-    useEffect(() => {
-        if (termsId && termsData?.data) {
-            const term = termsData.data.find(t => t.id.toString() === termsId);
-            if (term) setTermsAndCondition(term.termsAndCondition);
-        }
-    }, [termsId, termsData]);
-
-    const totalAmount = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-
-    return (
-        <div className="flex flex-col h-full bg-[#F1F1F0] p-1" onKeyDown={handleKeyDown}>
-            <Modal
-                isOpen={printModalOpen}
-                onClose={() => setPrintModalOpen(false)}
-                widthClass={"w-[90%] h-[90%]"}
-            >
-                <PDFViewer style={tw("w-full h-full")}>
-                    <ProformaInvoicePrintFormat data={singleData?.data} />
-                </PDFViewer>
-            </Modal>
-
-            <div className="w-full mx-auto rounded-md shadow-lg px-2 py-1 bg-white mb-2">
-                <div className="flex justify-between items-center">
-                    <h1 className="text-lg font-bold flex items-center gap-2 text-slate-800">
-                        Proforma Invoice
-                        <ModeChip id={id} readOnly={readOnly} />
-                    </h1>
-                    <button
-                        onClick={onClose}
-                        className="text-indigo-600 hover:text-indigo-700 transition-colors"
-                        title="Back to Report"
-                    >
-                        <IoArrowBackCircleSharp className="w-7 h-7" />
-                    </button>
-                </div>
-            </div>
-
-            <div className="flex-grow overflow-auto">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
-                    <div className="border border-slate-200 p-2 bg-white rounded-md shadow-sm col-span-3">
-                        <h2 className="text-xs font-bold text-gray-700 mb-2 uppercase">Basic Details</h2>
-                        <div className="grid grid-cols-4 gap-2">
-                            <TextInput name="Doc No" value={docId} disabled={true} />
-                            <DateInputNew
-                                name="Doc Date"
-                                value={docDate}
-                                setValue={setDocDate}
-                                readOnly={readOnly}
-                                required={true}
-                            />
-                            <DateInputNew
-                                name="Delivery Date"
-                                value={deliveryDate}
-                                setValue={setDeliveryDate}
-                                readOnly={readOnly}
-                            />
-                            <DropdownInput
-                                name="Order No"
-                                options={dropDownListObject(orderList?.data, "docId", "id")}
-                                value={orderEntryId}
-                                setValue={setOrderEntryId}
-                                readOnly={readOnly}
-                                required={true}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="border border-slate-200 p-2 bg-white rounded-md shadow-sm col-span-1 flex flex-col justify-center">
-                        <div className="text-center">
-                            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Grand Total</p>
-                            <p className="text-4xl font-black text-emerald-600">
-                                <span className="text-lg font-normal text-emerald-500 mr-1">₹</span>
-                                {totalAmount.toFixed(2)}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="border border-slate-200 p-2 bg-white rounded-md shadow-sm mb-2 h-[55vh] overflow-auto">
-                    <h2 className="text-xs font-bold text-gray-700 mb-2 uppercase">Invoice Items</h2>
-                    <ProformaInvoiceItems
-                        items={items}
-                        setItems={setItems}
-                        readOnly={readOnly}
-                    />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    <div className="border border-slate-200 p-2 bg-white rounded-md shadow-sm">
-                        <h2 className="text-xs font-bold text-gray-700 mb-2 uppercase">Terms & Conditions</h2>
-                        <DropdownInput
-                            name="Select Terms Template"
-                            options={dropDownListObject(termsData?.data, "name", "id")}
-                            value={termsId}
-                            setValue={setTermsId}
-                            readOnly={readOnly}
-                        />
-                        <textarea
-                            className="w-full mt-2 p-2 text-xs border border-gray-300 rounded-md focus:ring-1 focus:ring-emerald-500"
-                            rows={4}
-                            value={termsAndCondition}
-                            onChange={(e) => setTermsAndCondition(e.target.value)}
-                            readOnly={readOnly}
-                            placeholder="Terms and conditions..."
-                        />
-                    </div>
-                    <div className="border border-slate-200 p-2 bg-white rounded-md shadow-sm">
-                        <h2 className="text-xs font-bold text-gray-700 mb-2 uppercase">Remarks</h2>
-                        <textarea
-                            className="w-full p-2 text-xs border border-gray-300 rounded-md focus:ring-1 focus:ring-emerald-500"
-                            rows={6}
-                            value={remarks}
-                            onChange={(e) => setRemarks(e.target.value)}
-                            readOnly={readOnly}
-                            placeholder="Internal remarks..."
-                        />
-                    </div>
-                </div>
-            </div>
-
-            {/* Footer Actions */}
-            <div className="mt-2 border border-slate-200 p-2 py-3 bg-white rounded-md shadow-sm flex items-center justify-between gap-x-4">
-                <div className="flex gap-2">
-                    {!readOnly && (
-                        <button
-                            onClick={handleSave}
-                            className="bg-emerald-600 text-white px-4 py-1 rounded-md hover:bg-emerald-700 flex items-center gap-2 text-xs transition-all shadow-sm"
-                        >
-                            <FiSave className="w-4 h-4" />
-                            {id ? "Update Changes" : "Save Invoice"}
-                        </button>
-                    )}
-                    {id && (
-                        <button
-                            onClick={() => setPrintModalOpen(true)}
-                            className="bg-slate-600 text-white px-4 py-1 rounded-md hover:bg-slate-700 flex items-center gap-2 text-xs transition-all shadow-sm"
-                        >
-                            <FiFileText className="w-4 h-4" />
-                            PDF Export
-                        </button>
-                    )}
-                </div>
-
-                <div className="flex gap-2">
-                    {id && readOnly && (
-                        <button
-                            className="bg-amber-500 text-white px-4 py-1 rounded-md hover:bg-amber-600 flex items-center gap-2 text-xs transition-all shadow-sm"
-                            onClick={() => setReadOnly(false)}
-                        >
-                            <FiEdit2 className="w-4 h-4" />
-                            Edit Invoice
-                        </button>
-                    )}
-                    <button
-                        onClick={onNew}
-                        className="bg-white border border-slate-300 text-slate-700 px-4 py-1 rounded-md hover:bg-slate-50 flex items-center text-xs transition-all shadow-sm"
-                    >
-                        New Invoice
-                    </button>
-                </div>
-            </div>
+  const headerContent = (
+    <div className="flex flex-col md:flex-row gap-1">
+      <div className="w-fit border border-slate-200 p-1.5 bg-white rounded-md shadow-sm">
+        <h2 className="text-[10px] font-bold text-gray-500 mb-1 uppercase border-b pb-0.5">
+          Basic Details
+        </h2>
+        <div className="flex gap-2">
+          <div className="w-36">
+            <TextInput name="PI No" value={docId} disabled={true} />
+          </div>
+          <div className="w-24">
+            <DateInputNew
+              name="PI Date"
+              value={docDate}
+              setValue={setDocDate}
+              disabled={true}
+              required={true}
+            />
+          </div>
         </div>
+      </div>
+
+      <div className="flex-1 border border-slate-200 p-1.5 bg-white rounded-md shadow-sm">
+        <h2 className="text-[10px] font-bold text-gray-500 mb-1 uppercase border-b pb-0.5">
+          Order Details
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-8 gap-2">
+          <div className="md:col-span-1">
+            <DropdownInput
+              name="Order No"
+              options={dropDownListObject(orderList?.data, "docId", "id")}
+              value={orderEntryId}
+              setValue={setOrderEntryId}
+              readOnly={readOnly}
+              required={true}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <TextInput
+              name="Customer"
+              value={customerDetails.name}
+              disabled={true}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <TextInput
+              name="Contact"
+              value={customerDetails.contactPerson}
+              disabled={true}
+            />
+          </div>
+          <div className="md:col-span-1">
+            <TextInput
+              name="Phone"
+              value={customerDetails.phone}
+              disabled={true}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <DropdownInput
+              name="Tax Type"
+              options={dropDownListObject(
+                taxTypeList ? taxTypeList?.data : [],
+                "name",
+                "id",
+              )}
+              value={taxTemplateId}
+              setValue={setTaxTemplateId}
+              required={true}
+              readOnly={readOnly}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const isSupplierOutside = useMemo(() => {
+    return supplierData?.data?.City?.state?.name !== "TAMILNADU";
+  }, [supplierData]);
+
+  const enrichedData = useMemo(() => {
+    const filteredItems = items.filter((i) => i.styleItemId);
+    if (!filteredItems.length)
+      return {
+        items: [],
+        gross: 0,
+        taxable: 0,
+        net: 0,
+        slabBreakup: [],
+        roundOff: 0,
+      };
+
+    // We need taxPercent for each item. If missing, we should ideally get it from HSN master.
+    // For now, we'll try to use what's in the item.
+    return calculateTaxWithHSNBreakupAndInsertIntoPoItems(
+      filteredItems,
+      isSupplierOutside,
+      discountType,
+      discountValue,
     );
+  }, [items, isSupplierOutside, discountType, discountValue]);
+
+  const footerContent = (
+    <>
+      <CommonFormFooter
+        remarks={remarks}
+        setRemarks={setRemarks}
+        terms={termsAndCondition}
+        setTerms={setTermsAndCondition}
+        readOnly={readOnly}
+        showTermSelect={true}
+        termValue={termsId}
+        onTermChange={(value) => setTermsId(value)}
+        termOptions={
+          termsData?.data?.map((item) => ({
+            value: item.id,
+            label: item.name,
+            templateText: item.termsAndCondition || "",
+          })) || []
+        }
+        totalsRows={[
+          {
+            key: "totalQty",
+            label: "Total Qty",
+            value: totalQty.toFixed(2),
+            summaryColumn: "right",
+          },
+          {
+            key: "grossAmount",
+            label: "Gross Amount",
+            value: enrichedData.gross.toFixed(2),
+            summaryColumn: "right",
+          },
+          {
+            key: "netAmount",
+            label: "Net Amount",
+            value: `Rs.${enrichedData.net.toFixed(2)}`,
+            summaryColumn: "right",
+            emphasized: true,
+          },
+        ]}
+      />
+      <TransactionActions
+        leftActions={leftActions}
+        rightActions={rightActions}
+      />
+    </>
+  );
+
+  return (
+    <>
+      <Modal
+        isOpen={summary}
+        onClose={() => setSummary(false)}
+        widthClass="w-[500px]"
+      >
+        <PoSummary
+          poItems={items}
+          totals={enrichedData}
+          readOnly={readOnly}
+          discountType={discountType}
+          setDiscountType={setDiscountType}
+          discountValue={discountValue}
+          setDiscountValue={setDiscountValue}
+          setSummary={setSummary}
+        />
+      </Modal>
+
+      <Modal
+        isOpen={printModalOpen}
+        onClose={() => setPrintModalOpen(false)}
+        widthClass={"w-[90%] h-[90%]"}
+      >
+        <PDFViewer style={tw("w-full h-full")}>
+          <ProformaInvoicePrintFormat data={singleData?.data} />
+        </PDFViewer>
+      </Modal>
+
+      <TransactionLayout
+        title="Proforma Invoice"
+        badge={<ModeChip id={id} readOnly={readOnly} />}
+        closeIcon={<IoArrowBackCircleSharp className="w-7 h-7" />}
+        onClose={onClose}
+        onKeyDown={handleKeyDown}
+        header={headerContent}
+        detailsLayout="default"
+        detailsLayouts={["default"]}
+        gridItems={
+          <ProformaInvoiceItems
+            items={items}
+            enrichedItems={enrichedData.items}
+            setItems={setItems}
+            readOnly={readOnly}
+            taxTemplateId={taxTemplateId}
+            id={id}
+          />
+        }
+        footer={footerContent}
+      />
+    </>
+  );
 };
 
 export default ProformaInvoiceForm;

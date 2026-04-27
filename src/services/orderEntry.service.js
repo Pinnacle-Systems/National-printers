@@ -300,6 +300,15 @@ async function getOne(id) {
     },
     include: {
       attachments: true,
+      orderItems: {
+        include: {
+          StyleItem: true,
+          Size: true,
+          Uom: true,
+          Gsm: true,
+          Hsn: true,
+        },
+      },
       Branch: {
         select: {
           branchName: true,
@@ -308,6 +317,8 @@ async function getOne(id) {
       customer: {
         select: {
           name: true,
+          contactPersonName: true,
+          contactNumber: true,
         },
       },
       _count: {
@@ -343,6 +354,7 @@ async function create(body) {
     draftSave,
     termsAndCondition,
     termsId,
+    orderItems,
   } = await body;
   let finYearDate = await getFinYearStartTimeEndTime(finYearId);
   const shortCode = finYearDate
@@ -364,8 +376,21 @@ async function create(body) {
     branchId,
   );
   let data;
-  const safeorderQty =
-    orderQty && !isNaN(Number(orderQty)) ? parseFloat(orderQty) : null;
+  // const safeorderQty =
+  //   orderQty && !isNaN(Number(orderQty)) ? parseFloat(orderQty) : null;
+  const parsedOrderItems =
+    typeof orderItems === "string" ? JSON.parse(orderItems) : orderItems;
+  const safeOrderItems =
+    parsedOrderItems?.length > 0
+      ? parsedOrderItems.map((item) => ({
+          StyleItem: item?.styleItemId ? { connect: { id: parseInt(item.styleItemId) } } : undefined,
+          orderQty: item?.orderQty && !isNaN(Number(item.orderQty)) ? parseInt(item.orderQty) : null,
+          Size: item?.sizeId ? { connect: { id: parseInt(item.sizeId) } } : undefined,
+          Uom: item?.uomId ? { connect: { id: parseInt(item.uomId) } } : undefined,
+          Gsm: item?.gsmId ? { connect: { id: parseInt(item.gsmId) } } : undefined,
+          Hsn: item?.hsnId ? { connect: { id: parseInt(item.hsnId) } } : undefined,
+        }))
+      : [];
   await prisma.$transaction(async (tx) => {
     data = await tx.orderEntry.create({
       data: {
@@ -378,9 +403,15 @@ async function create(body) {
         deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
         remarks,
         requirements,
-        orderQty: safeorderQty,
+        // orderQty: safeorderQty,
         termsId: termsId ? parseInt(termsId) : null,
         termsAndCondition,
+        orderItems:
+          safeOrderItems.length > 0
+            ? {
+                create: safeOrderItems,
+              }
+            : undefined,
         attachments:
           JSON.parse(attachments)?.length > 0
             ? {
@@ -435,6 +466,7 @@ async function update(id, body, files) {
     attachments,
     termsId,
     termsAndCondition,
+    orderItems,
   } = await body;
 
   const safeorderQty =
@@ -445,6 +477,10 @@ async function update(id, body, files) {
     ?.filter((i) => i.id)
     .map((i) => parseInt(i.id));
 
+  const parsedItems = JSON.parse(orderItems || "[]");
+  const incomingItemIds = parsedItems
+    ?.filter((i) => i.id)
+    .map((i) => parseInt(i.id));
   let data;
   const dataFound = await prisma.orderEntry.findUnique({
     where: {
@@ -452,6 +488,7 @@ async function update(id, body, files) {
     },
     include: {
       attachments: { select: { id: true, filePath: true } },
+      orderItems: true,
     },
   });
   if (!dataFound) return NoRecordFound("Purchase Inward");
@@ -505,6 +542,35 @@ async function update(id, body, files) {
         orderQty: safeorderQty,
         termsAndCondition,
         termsId: termsId ? parseInt(termsId) : null,
+        orderItems: {
+          deleteMany: incomingItemIds.length
+            ? { id: { notIn: incomingItemIds } }
+            : {}, // delete all if no items sent
+          update: parsedItems
+            .filter((item) => item.id)
+            .map((item) => ({
+              where: { id: parseInt(item.id) },
+              data: {
+                StyleItem: item.styleItemId ? { connect: { id: parseInt(item.styleItemId) } } : undefined,
+                orderQty: item.orderQty ? parseInt(item.orderQty) : null,
+                Size: item.sizeId ? { connect: { id: parseInt(item.sizeId) } } : undefined,
+                Uom: item.uomId ? { connect: { id: parseInt(item.uomId) } } : undefined,
+                Gsm: item.gsmId ? { connect: { id: parseInt(item.gsmId) } } : undefined,
+                Hsn: item.hsnId ? { connect: { id: parseInt(item.hsnId) } } : undefined,
+              },
+            })),
+
+          create: parsedItems
+            .filter((item) => !item.id)
+            .map((item) => ({
+              StyleItem: item.styleItemId ? { connect: { id: parseInt(item.styleItemId) } } : undefined,
+              orderQty: item.orderQty ? parseInt(item.orderQty) : null,
+              Size: item.sizeId ? { connect: { id: parseInt(item.sizeId) } } : undefined,
+              Uom: item.uomId ? { connect: { id: parseInt(item.uomId) } } : undefined,
+              Gsm: item.gsmId ? { connect: { id: parseInt(item.gsmId) } } : undefined,
+              Hsn: item.hsnId ? { connect: { id: parseInt(item.hsnId) } } : undefined,
+            })),
+        },
         attachments: {
           deleteMany: {
             ...(incomingIds.length > 0 && {

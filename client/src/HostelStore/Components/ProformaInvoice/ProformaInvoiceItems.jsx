@@ -1,197 +1,358 @@
-import React from "react";
-import { Plus, Trash2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import FxSelect from "../../../Inputs";
 import { useGetStyleItemMasterQuery } from "../../../redux/services/StyleItemMasterService";
 import { useGetSizeMasterQuery } from "../../../redux/services/SizemasterService";
 import { useGetGsmMasterQuery } from "../../../redux/services/GsmMasterService";
 import { useGetUomQuery } from "../../../redux/services/UomMasterService";
+import { useGetHsnMasterQuery } from "../../../redux/services/HsnMasterServices";
 import { getCommonParams } from "../../../Utils/helper";
-import { DropdownWithSearch } from "../../../Inputs";
+import { VIEW } from "../../../icons";
+import Modal from "../../../UiComponents/Modal";
+import TaxDetailsFullTemplate from "../TaxDetailsCompleteTemplate";
+import { toast } from "react-toastify";
 
-const ProformaInvoiceItems = ({ items, setItems, readOnly }) => {
-    const { companyId } = getCommonParams();
-    const { data: styleItemList } = useGetStyleItemMasterQuery({ params: { companyId } });
-    const { data: sizeList } = useGetSizeMasterQuery({ params: { companyId } });
-    const { data: gsmList } = useGetGsmMasterQuery({ params: { companyId } });
-    const { data: uomList } = useGetUomQuery({ params: { companyId } });
+const ProformaInvoiceItems = ({
+  items,
+  enrichedItems,
+  setItems,
+  readOnly,
+  taxTemplateId,
+  id,
+}) => {
+  const { companyId } = getCommonParams();
+  const { data: styleItemList } = useGetStyleItemMasterQuery({
+    params: { companyId },
+  });
+  const { data: sizeList } = useGetSizeMasterQuery({ params: { companyId } });
+  const { data: gsmList } = useGetGsmMasterQuery({ params: { companyId } });
+  const { data: uomList } = useGetUomQuery({ params: { companyId } });
+  const { data: hsnList } = useGetHsnMasterQuery({ params: { companyId } });
 
-    const handleAddItem = () => {
+  const EMPTY_ROW = {
+    styleItemId: "",
+    sizeId: "",
+    uomId: "",
+    gsmId: "",
+    hsnId: "",
+    qty: 0,
+    price: 0,
+    amount: 0, // Used for "Gross"
+  };
+
+  const [contextMenu, setContextMenu] = useState(null);
+  const [currentSelectedIndex, setCurrentSelectedIndex] = useState(null);
+
+  const addRow = () => {
+    setItems([...items, EMPTY_ROW]);
+  };
+
+  const deleteRow = (index) => {
+    setItems(items.filter((_, i) => i !== index));
+  };
+
+  const handleInputChange = (value, index, field) => {
+    const newItems = [...items];
+    newItems[index] = {
+      ...newItems[index],
+      [field]: value,
+    };
+
+    // Calculate gross (amount)
+    const qty = parseFloat(newItems[index].qty) || 0;
+    const price = parseFloat(newItems[index].price) || 0;
+    newItems[index].amount = (qty * price).toFixed(2);
+
+    setItems(newItems);
+  };
+
+  const handleRightClick = (event, rowIndex) => {
+    event.preventDefault();
+    setContextMenu({
+      mouseX: event.clientX,
+      mouseY: event.clientY,
+      rowId: rowIndex,
+    });
+  };
+
+  const handleCloseContextMenu = () => {
+    setContextMenu(null);
+  };
+
+  useEffect(() => {
+    if (!items || items.length < 14) {
+      const currentLength = items?.length || 0;
+      const paddingNeeded = 14 - currentLength;
+      if (paddingNeeded > 0) {
         setItems([
-            ...items,
-            {
-                styleItemId: "",
-                sizeId: "",
-                uomId: "",
-                gsmId: "",
-                qty: 0,
-                price: 0,
-                taxPercent: 0,
-                discountType: "PERCENTAGE",
-                discountValue: 0,
-                amount: 0,
-            },
+          ...(items || []),
+          ...Array.from({ length: paddingNeeded }, () => ({ ...EMPTY_ROW })),
         ]);
-    };
+      }
+    }
+  }, [items]);
 
-    const handleRemoveItem = (index) => {
-        const newItems = items.filter((_, i) => i !== index);
-        setItems(newItems);
-    };
+  return (
+    <>
+      <Modal
+        isOpen={Number.isInteger(currentSelectedIndex)}
+        onClose={() => {
+          setCurrentSelectedIndex(null);
+        }}
+      >
+        <TaxDetailsFullTemplate
+          readOnly={readOnly}
+          taxTypeId={taxTemplateId}
+          currentIndex={currentSelectedIndex}
+          setCurrentSelectedIndex={setCurrentSelectedIndex}
+          poItems={enrichedItems || items}
+          handleInputChange={handleInputChange}
+          id={id}
+          isNewVersion={false}
+          onCloseFocus={() => {}}
+        />
+      </Modal>
 
-    const handleInputChange = (index, field, value) => {
-        const newItems = [...items];
-        newItems[index][field] = value;
+      <div className="w-full h-full overflow-y-auto bg-white">
+        <table className="w-full border-collapse table-fixed min-h-full bg-white">
+          <thead className="bg-gray-200 text-gray-800 sticky top-0 z-10 text-[12px]">
+            <tr>
+              <th className="w-10 px-1 py-2 text-center font-medium border border-gray-300">
+                S.No
+              </th>
+              <th className="w-48 px-2 py-2 text-center font-medium border border-gray-300">
+                Description of Goods
+              </th>
+              <th className="w-24 px-1 py-2 text-center font-medium border border-gray-300">
+                Size
+              </th>
 
-        // Calculate amount
-        const qty = parseFloat(newItems[index].qty) || 0;
-        const price = parseFloat(newItems[index].price) || 0;
-        const tax = parseFloat(newItems[index].taxPercent) || 0;
-        const discValue = parseFloat(newItems[index].discountValue) || 0;
-        const discType = newItems[index].discountType;
+              <th className="w-20 px-1 py-2 text-center font-medium border border-gray-300">
+                GSM
+              </th>
+              <th className="w-24 px-1 py-2 text-center font-medium border border-gray-300">
+                HSN
+              </th>
+              <th className="w-20 px-1 py-2 text-center font-medium border border-gray-300">
+                UOM
+              </th>
+              <th className="w-16 px-1 py-2 text-center font-medium border border-gray-300">
+                Qty
+              </th>
+              <th className="w-20 px-1 py-2 text-center font-medium border border-gray-300">
+                Price
+              </th>
+              <th className="w-24 px-1 py-2 text-center font-medium border border-gray-300">
+                Gross
+              </th>
+              <th className="w-12 px-1 py-2 text-center font-medium border border-gray-300">
+                Tax
+              </th>
+              <th className="w-10 px-1 py-2 text-center font-medium border border-gray-300">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {items?.map((item, index) => (
+              <tr
+                key={index}
+                className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50"} border border-gray-200 cursor-pointer hover:bg-indigo-50`}
+                onContextMenu={(e) => !readOnly && handleRightClick(e, index)}
+              >
+                <td className="text-[11px] text-center border border-gray-300">
+                  {index + 1}
+                </td>
+                <td className="border border-gray-300">
+                  <FxSelect
+                    value={item.styleItemId}
+                    onChange={(val) =>
+                      handleInputChange(val, index, "styleItemId")
+                    }
+                    options={
+                      styleItemList?.data
+                        ?.filter((p) => p.active)
+                        .map((p) => ({ label: p.name, value: p.id })) || []
+                    }
+                    readOnly={true} // Read-only from Order Entry
+                    placeholder=""
+                  />
+                </td>
+                <td className="border border-gray-300">
+                  <FxSelect
+                    value={item.sizeId}
+                    onChange={(val) => handleInputChange(val, index, "sizeId")}
+                    options={
+                      sizeList?.data
+                        ?.filter((p) => p.active)
+                        .map((p) => ({ label: p.name, value: p.id })) || []
+                    }
+                    readOnly={true} // Read-only from Order Entry
+                    placeholder=""
+                  />
+                </td>
 
-        let baseAmount = qty * price;
-        let discount = 0;
-        if (discType === "PERCENTAGE") {
-            discount = (baseAmount * discValue) / 100;
-        } else {
-            discount = discValue;
-        }
+                <td className="border border-gray-300">
+                  <FxSelect
+                    value={item.gsmId}
+                    onChange={(val) => handleInputChange(val, index, "gsmId")}
+                    options={
+                      gsmList?.data
+                        ?.filter((p) => p.active)
+                        .map((p) => ({ label: p.name, value: p.id })) || []
+                    }
+                    readOnly={true} // Read-only from Order Entry
+                    placeholder=""
+                  />
+                </td>
+                <td className="border border-gray-300">
+                  <FxSelect
+                    value={item.hsnId}
+                    onChange={(val) => handleInputChange(val, index, "hsnId")}
+                    options={
+                      hsnList?.data
+                        ?.filter((p) => p.active)
+                        .map((p) => ({ label: p.name, value: p.id })) || []
+                    }
+                    readOnly={true} // Read-only from Order Entry
+                    placeholder=""
+                  />
+                </td>
+                <td className="border border-gray-300">
+                  <FxSelect
+                    value={item.uomId}
+                    onChange={(val) => handleInputChange(val, index, "uomId")}
+                    options={
+                      uomList?.data
+                        ?.filter((p) => p.active)
+                        .map((p) => ({ label: p.name, value: p.id })) || []
+                    }
+                    readOnly={true} // Read-only from Order Entry
+                    placeholder=""
+                  />
+                </td>
+                <td className="border border-gray-300">
+                  <input
+                    type="number"
+                    className="w-full text-[11px] text-right px-1 outline-none bg-transparent"
+                    value={item.qty}
+                    onChange={(e) =>
+                      handleInputChange(e.target.value, index, "qty")
+                    }
+                    readOnly={readOnly}
+                    onFocus={(e) => e.target.select()}
+                  />
+                </td>
+                <td className="border border-gray-300 border-l-2 ">
+                  <input
+                    type="number"
+                    className="w-full text-[11px] text-right px-1 outline-none bg-transparent"
+                    value={item.price}
+                    onChange={(e) =>
+                      handleInputChange(e.target.value, index, "price")
+                    }
+                    readOnly={readOnly}
+                    onFocus={(e) => e.target.select()}
+                  />
+                </td>
+                <td className="text-[11px] text-right  px-1 border border-gray-300 bg-gray-50 bg-transparent">
+                  {item.amount}
+                </td>
+                <td className="border border-gray-300 text-center text-[11px]">
+                  <button
+                    disabled={!item.styleItemId}
+                    className=" text-indigo-600 hover:text-indigo-800 disabled:text-gray-300"
+                    onClick={() => {
+                      if (!taxTemplateId) {
+                        return toast.info("Please select Tax Type", {
+                          position: "top-center",
+                        });
+                      }
+                      setCurrentSelectedIndex(index);
+                    }}
+                  >
+                    {VIEW}
+                  </button>
+                </td>
+                <td className="border border-gray-300 text-center">
+                  <input
+                    className="w-full bg-transparent outline-none"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (index === items.length - 1) {
+                          addRow();
+                        }
+                      }
+                    }}
+                    disabled={readOnly}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="bg-gray-100 h-7 font-bold text-gray-800 text-[12px]">
+              <td
+                className="text-right px-2 border border-gray-300"
+                colSpan={6}
+              >
+                Total Qty
+              </td>
+              <td className="text-right px-1 border border-gray-300">
+                {items
+                  ?.reduce((sum, i) => sum + (parseFloat(i.qty) || 0), 0)
+                  .toFixed(2)}
+              </td>
+              <td className="border border-gray-300"></td>
+              <td className="text-right px-1 border border-gray-300  text-black">
+                {items
+                  ?.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0)
+                  .toFixed(2)}
+              </td>
+              <td className="border border-gray-300" colSpan={2}></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
 
-        let afterDiscount = baseAmount - discount;
-        let taxAmount = (afterDiscount * tax) / 100;
-        newItems[index].amount = (afterDiscount + taxAmount).toFixed(2);
-
-        setItems(newItems);
-    };
-
-    return (
-        <div className="overflow-x-auto h-full">
-            <table className="min-w-full divide-y divide-gray-200 border border-gray-200">
-                <thead className="bg-emerald-50 sticky top-0 z-10">
-                    <tr>
-                        <th className="px-2 py-2 text-left text-[10px] font-bold text-emerald-800 uppercase w-8">S#</th>
-                        <th className="px-2 py-2 text-left text-[10px] font-bold text-emerald-800 uppercase min-w-[180px]">Style Item</th>
-                        <th className="px-2 py-2 text-left text-[10px] font-bold text-emerald-800 uppercase w-28">Size</th>
-                        <th className="px-2 py-2 text-left text-[10px] font-bold text-emerald-800 uppercase w-20">UOM</th>
-                        <th className="px-2 py-2 text-left text-[10px] font-bold text-emerald-800 uppercase w-20">GSM</th>
-                        <th className="px-2 py-2 text-center text-[10px] font-bold text-emerald-800 uppercase w-20">Qty</th>
-                        <th className="px-2 py-2 text-center text-[10px] font-bold text-emerald-800 uppercase w-24">Price</th>
-                        <th className="px-2 py-2 text-center text-[10px] font-bold text-emerald-800 uppercase w-16">Tax%</th>
-                        <th className="px-2 py-2 text-center text-[10px] font-bold text-emerald-800 uppercase w-32">Discount</th>
-                        <th className="px-2 py-2 text-right text-[10px] font-bold text-emerald-800 uppercase w-28">Amount</th>
-                        {!readOnly && (
-                            <th className="px-2 py-2 text-center text-[10px] font-bold text-emerald-800 uppercase w-10">
-                                <button
-                                    onClick={handleAddItem}
-                                    className="p-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors"
-                                >
-                                    <Plus size={14} />
-                                </button>
-                            </th>
-                        )}
-                    </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                    {items.map((item, index) => (
-                        <tr key={index} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-2 py-1 text-xs text-gray-500 font-medium">{index + 1}</td>
-                            <td className="px-1 py-1">
-                                <DropdownWithSearch
-                                    value={item.styleItemId}
-                                    setValue={(val) => handleInputChange(index, "styleItemId", val)}
-                                    options={styleItemList?.data?.filter(p => p.active)}
-                                    readOnly={readOnly}
-                                />
-                            </td>
-                            <td className="px-1 py-1">
-                                <DropdownWithSearch
-                                    value={item.sizeId}
-                                    setValue={(val) => handleInputChange(index, "sizeId", val)}
-                                    options={sizeList?.data?.filter(p => p.active)}
-                                    readOnly={readOnly}
-                                />
-                            </td>
-                            <td className="px-1 py-1">
-                                <DropdownWithSearch
-                                    value={item.uomId}
-                                    setValue={(val) => handleInputChange(index, "uomId", val)}
-                                    options={uomList?.data?.filter(p => p.active)}
-                                    readOnly={readOnly}
-                                />
-                            </td>
-                            <td className="px-1 py-1">
-                                <DropdownWithSearch
-                                    value={item.gsmId}
-                                    setValue={(val) => handleInputChange(index, "gsmId", val)}
-                                    options={gsmList?.data?.filter(p => p.active)}
-                                    readOnly={readOnly}
-                                />
-                            </td>
-                            <td className="px-1 py-1">
-                                <input
-                                    type="number"
-                                    className="w-full text-xs border border-gray-300 rounded px-1 py-1 text-center focus:ring-1 focus:ring-emerald-500"
-                                    value={item.qty}
-                                    onChange={(e) => handleInputChange(index, "qty", e.target.value)}
-                                    readOnly={readOnly}
-                                />
-                            </td>
-                            <td className="px-1 py-1">
-                                <input
-                                    type="number"
-                                    className="w-full text-xs border border-gray-300 rounded px-1 py-1 text-right focus:ring-1 focus:ring-emerald-500"
-                                    value={item.price}
-                                    onChange={(e) => handleInputChange(index, "price", e.target.value)}
-                                    readOnly={readOnly}
-                                />
-                            </td>
-                            <td className="px-1 py-1">
-                                <input
-                                    type="number"
-                                    className="w-full text-xs border border-gray-300 rounded px-1 py-1 text-center focus:ring-1 focus:ring-emerald-500"
-                                    value={item.taxPercent}
-                                    onChange={(e) => handleInputChange(index, "taxPercent", e.target.value)}
-                                    readOnly={readOnly}
-                                />
-                            </td>
-                            <td className="px-1 py-1">
-                                <div className="flex gap-1">
-                                    <select
-                                        className="text-[10px] border border-gray-300 rounded px-0.5 focus:ring-1 focus:ring-emerald-500"
-                                        value={item.discountType}
-                                        onChange={(e) => handleInputChange(index, "discountType", e.target.value)}
-                                        disabled={readOnly}
-                                    >
-                                        <option value="PERCENTAGE">%</option>
-                                        <option value="FIXED">₹</option>
-                                    </select>
-                                    <input
-                                        type="number"
-                                        className="w-full text-xs border border-gray-300 rounded px-1 py-1 text-right focus:ring-1 focus:ring-emerald-500"
-                                        value={item.discountValue}
-                                        onChange={(e) => handleInputChange(index, "discountValue", e.target.value)}
-                                        readOnly={readOnly}
-                                    />
-                                </div>
-                            </td>
-                            <td className="px-2 py-1 text-xs text-right font-bold text-slate-800">
-                                {item.amount}
-                            </td>
-                            {!readOnly && (
-                                <td className="px-2 py-1 text-center">
-                                    <button
-                                        onClick={() => handleRemoveItem(index)}
-                                        className="text-red-400 hover:text-red-600 transition-colors"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
-                                </td>
-                            )}
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+      {contextMenu && (
+        <div
+          style={{
+            position: "fixed",
+            top: `${contextMenu.mouseY}px`,
+            left: `${contextMenu.mouseX}px`,
+            boxShadow: "0px 0px 5px rgba(0,0,0,0.3)",
+            padding: "4px",
+            borderRadius: "4px",
+            zIndex: 1000,
+          }}
+          className="bg-white border border-gray-200 shadow-xl"
+          onMouseLeave={handleCloseContextMenu}
+        >
+          <div className="flex flex-col min-w-[100px]">
+            <button
+              className="text-[12px] text-left px-3 py-1.5 hover:bg-red-50 text-red-600 font-medium rounded transition-colors"
+              onClick={() => {
+                deleteRow(contextMenu.rowId);
+                handleCloseContextMenu();
+              }}
+            >
+              Delete Row
+            </button>
+            <button
+              className="text-[12px] text-left px-3 py-1.5 hover:bg-gray-100 text-gray-700 font-medium rounded transition-colors"
+              onClick={() => {
+                setItems(Array.from({ length: 14 }, () => ({ ...EMPTY_ROW })));
+                handleCloseContextMenu();
+              }}
+            >
+              Clear All
+            </button>
+          </div>
         </div>
-    );
+      )}
+    </>
+  );
 };
 
 export default ProformaInvoiceItems;

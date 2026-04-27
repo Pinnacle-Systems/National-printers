@@ -1129,6 +1129,7 @@ model TaxTemplate {
   pos                 Po[]
   purchaseBillEntries PurchaseBillEntry[]
   purchaseInwards     PurchaseInward[]
+  proformaInvoices    ProformaInvoice[]
 }
 
 model TaxTemplateDetails {
@@ -1156,6 +1157,8 @@ model Hsn {
   purchaseReturnItems    PurchaseReturnItems[]
   purchaseCancelItems    PurchaseCancelItems[]
   purchaseBillEntryItems PurchaseBillEntryItems[]
+  OrderItems             OrderItems[]
+  ProformaInvoiceItems   ProformaInvoiceItem[]
 }
 
 model BranchType {
@@ -1817,6 +1820,8 @@ model OrderItems {
   Uom          Uom?        @relation(fields: [uomId], references: [id])
   gsmId        Int?
   Gsm          Gsm?        @relation(fields: [gsmId], references: [id])
+  hsnId        Int?
+  Hsn          Hsn?        @relation(fields: [hsnId], references: [id])
 }
 
 model ProformaInvoice {
@@ -1846,6 +1851,8 @@ model ProformaInvoice {
   attachments       ProformaAttachments[]
   OrderEntry        OrderEntry?           @relation(fields: [orderEntryId], references: [id])
   orderEntryId      Int?
+  TaxTemplate       TaxTemplate?          @relation(fields: [taxTemplateId], references: [id])
+  taxTemplateId     Int?
 }
 
 model ProformaInvoiceItem {
@@ -1866,6 +1873,8 @@ model ProformaInvoiceItem {
   Uom               Uom?            @relation(fields: [uomId], references: [id])
   gsmId             Int?
   Gsm               Gsm?            @relation(fields: [gsmId], references: [id])
+  hsnId             Int?
+  Hsn               Hsn?            @relation(fields: [hsnId], references: [id])
   product           Product?        @relation(fields: [productId], references: [id])
   productId         Int?
 }

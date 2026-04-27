@@ -47,6 +47,7 @@ async function get(req) {
     searchDocDate,
     finYearId,
     searchCustomer,
+    searchOrderNo,
   } = req.query;
 
   let finYearDate = await getFinYearStartTimeEndTime(finYearId);
@@ -65,6 +66,7 @@ async function get(req) {
         : undefined,
       docId: serachDocNo ? { contains: serachDocNo } : undefined,
       customer: searchCustomer ? { name: { contains: searchCustomer } } : undefined,
+      OrderEntry: searchOrderNo ? { docId: { contains: searchOrderNo } } : undefined,
     },
     include: {
       customer: { select: { id: true, name: true } },
@@ -106,6 +108,7 @@ async function getOne(id) {
           Size: true,
           Uom: true,
           Gsm: true,
+          Hsn: true,
         }
       },
       attachments: true,
@@ -113,12 +116,14 @@ async function getOne(id) {
       customer: true,
       OrderEntry: {
         include: {
+          customer: true,
           orderItems: {
             include: {
               StyleItem: true,
               Size: true,
               Uom: true,
               Gsm: true,
+              Hsn: true,
             }
           }
         }
@@ -144,6 +149,7 @@ async function create(body) {
     termsAndCondition,
     termsId,
     orderEntryId,
+    taxTemplateId,
   } = body;
 
   let finYearDate = await getFinYearStartTimeEndTime(finYearId);
@@ -172,6 +178,7 @@ async function create(body) {
       customerId: customerId ? parseInt(customerId) : null,
       finYearId: parseInt(finYearId),
       orderEntryId: orderEntryId ? parseInt(orderEntryId) : null,
+      taxTemplateId: taxTemplateId ? parseInt(taxTemplateId) : null,
       remarks,
       termsAndCondition,
       termsId: termsId ? parseInt(termsId) : null,
@@ -182,6 +189,7 @@ async function create(body) {
             sizeId: item.sizeId ? parseInt(item.sizeId) : null,
             uomId: item.uomId ? parseInt(item.uomId) : null,
             gsmId: item.gsmId ? parseInt(item.gsmId) : null,
+            hsnId: item.hsnId ? parseInt(item.hsnId) : null,
             qty: parseFloat(item.qty || 0),
             price: parseFloat(item.price || 0),
             taxPercent: parseFloat(item.taxPercent || 0),
@@ -221,6 +229,7 @@ async function update(id, body, files) {
     termsId,
     termsAndCondition,
     orderEntryId,
+    taxTemplateId,
   } = body;
 
   const parseItems = JSON.parse(items || "[]");
@@ -260,6 +269,7 @@ async function update(id, body, files) {
       termsAndCondition,
       termsId: termsId ? parseInt(termsId) : null,
       orderEntryId: orderEntryId ? parseInt(orderEntryId) : null,
+      taxTemplateId: taxTemplateId ? parseInt(taxTemplateId) : null,
       items: {
         deleteMany: {},
         createMany: {
@@ -268,6 +278,7 @@ async function update(id, body, files) {
             sizeId: item.sizeId ? parseInt(item.sizeId) : null,
             uomId: item.uomId ? parseInt(item.uomId) : null,
             gsmId: item.gsmId ? parseInt(item.gsmId) : null,
+            hsnId: item.hsnId ? parseInt(item.hsnId) : null,
             qty: parseFloat(item.qty || 0),
             price: parseFloat(item.price || 0),
             taxPercent: parseFloat(item.taxPercent || 0),
