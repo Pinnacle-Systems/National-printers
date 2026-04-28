@@ -145,6 +145,7 @@ const AppHeader = ({ setIsGlobalOpen, setLogout }) => {
     let data = arr.find((item) => parseInt(item.id) === parseInt(id));
     return data ? data.name : "";
   }
+  
   const masters = allowedPages.filter((page) => page.type === "Masters");
   const mastersGroup = [
     ...new Set(masters.map((page) => page.pageGroupId)),

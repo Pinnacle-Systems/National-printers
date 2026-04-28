@@ -166,6 +166,11 @@ export const orderTypes = [
   { show: "BULK", value: "BULK" },
 ];
 
+export const productionTypes = [
+  { show: "SAMPLE", value: "SAMPLE" },
+  { show: "BULK", value: "BULK" },
+];
+
 export const jobTypes = [
   { show: "Internal", value: "Internal" },
   { show: "External", value: "External" },

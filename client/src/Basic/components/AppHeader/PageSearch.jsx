@@ -44,9 +44,12 @@ const PageSearch = ({ pageList }) => {
 
 
     useEffect(() => {
-        if (!search) { setFilteredPages(pageList) }
-        setFilteredPages(pageList.filter(page => page.name.toLowerCase().includes(search.toLowerCase())))
-    }, [search])
+        if (!search) {
+            setFilteredPages(pageList);
+        } else {
+            setFilteredPages(pageList.filter(page => page.name.toLowerCase().includes(search.toLowerCase())));
+        }
+    }, [search, pageList])
     return (
         <div id='pageSearch' className='relative flex flex-col text-black z-10' ref={inputRef}>
             <input

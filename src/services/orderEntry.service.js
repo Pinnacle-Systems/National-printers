@@ -185,6 +185,7 @@ async function get(req) {
       _count: {
         select: {
           JobCard: true,
+          ProformaInvoices: true,
         },
       },
     },
@@ -273,7 +274,7 @@ async function get(req) {
 
     return {
       ...order,
-      childRecord: order._count.JobCard,
+      childRecord: order._count.JobCard + order._count.ProformaInvoices,
       approvalStatus: getApprovalStatus(log, !!log || shouldTrigger),
     };
   });
@@ -324,6 +325,7 @@ async function getOne(id) {
       _count: {
         select: {
           JobCard: true,
+          ProformaInvoices: true,
         },
       },
     },
@@ -333,7 +335,7 @@ async function getOne(id) {
     statusCode: 0,
     data: {
       ...data,
-      childRecord: data._count.JobCard,
+      childRecord: data._count.JobCard + data._count.ProformaInvoices,
     },
   };
 }
@@ -345,6 +347,7 @@ async function create(body) {
     docDate,
     customerId,
     orderType,
+    productionType,
     deliveryDate,
     remarks,
     requirements,
@@ -396,15 +399,16 @@ async function create(body) {
       data: {
         docId: newDocId,
         docDate: docDate ? new Date(docDate) : null,
-        createdById: parseInt(userId),
-        branchId: parseInt(branchId),
-        customerId: parseInt(customerId),
+        createdBy: userId ? { connect: { id: parseInt(userId) } } : undefined,
+        Branch: branchId ? { connect: { id: parseInt(branchId) } } : undefined,
+        customer: customerId ? { connect: { id: parseInt(customerId) } } : undefined,
         orderType,
+        productionType,
         deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
         remarks,
         requirements,
         // orderQty: safeorderQty,
-        termsId: termsId ? parseInt(termsId) : null,
+        Terms: termsId ? { connect: { id: parseInt(termsId) } } : undefined,
         termsAndCondition,
         orderItems:
           safeOrderItems.length > 0
@@ -459,6 +463,7 @@ async function update(id, body, files) {
     docDate,
     customerId,
     orderType,
+    productionType,
     deliveryDate,
     remarks,
     requirements,
@@ -489,9 +494,13 @@ async function update(id, body, files) {
     include: {
       attachments: { select: { id: true, filePath: true } },
       orderItems: true,
+      _count: { select: { ProformaInvoices: true } },
     },
   });
-  if (!dataFound) return NoRecordFound("Purchase Inward");
+  if (!dataFound) return NoRecordFound("Order Entry");
+  if (dataFound._count.ProformaInvoices > 0) {
+    return { statusCode: 1, message: "Child Record Found: Cannot update Order Entry because a Proforma Invoice is already generated for it." };
+  }
   const removedAttachments = dataFound.attachments.filter(
     (existing) => !incomingIds.includes(existing.id),
   );
@@ -532,16 +541,17 @@ async function update(id, body, files) {
       },
       data: {
         docDate: docDate ? new Date(docDate) : null,
-        updatedById: parseInt(userId),
-        branchId: parseInt(branchId),
-        customerId: parseInt(customerId),
+        updatedBy: userId ? { connect: { id: parseInt(userId) } } : undefined,
+        Branch: branchId ? { connect: { id: parseInt(branchId) } } : undefined,
+        customer: customerId ? { connect: { id: parseInt(customerId) } } : undefined,
         orderType,
+        productionType,
         deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
         remarks,
         requirements,
         orderQty: safeorderQty,
         termsAndCondition,
-        termsId: termsId ? parseInt(termsId) : null,
+        Terms: termsId ? { connect: { id: parseInt(termsId) } } : undefined,
         orderItems: {
           deleteMany: incomingItemIds.length
             ? { id: { notIn: incomingItemIds } }
@@ -622,8 +632,15 @@ async function remove(id) {
   });
   const dataFound = await prisma.orderEntry.findUnique({
     where: { id: parseInt(id) },
-    include: { attachments: { select: { filePath: true } } },
+    include: { 
+      attachments: { select: { filePath: true } },
+      _count: { select: { ProformaInvoices: true } }
+    },
   });
+  if (!dataFound) return NoRecordFound("Order Entry");
+  if (dataFound._count.ProformaInvoices > 0) {
+    return { statusCode: 1, message: "Child Record Found: Cannot delete Order Entry because a Proforma Invoice is already generated for it." };
+  }
 
   dataFound?.attachments?.forEach((att) => {
     if (!att.filePath) return;

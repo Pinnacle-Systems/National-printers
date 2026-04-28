@@ -18,11 +18,14 @@ const PoSummary = ({
 }) => {
   const amount = Math.abs(totals?.net || 0);
   return (
-    <div className={`bg-gray-200 rounded z-50 w-[500px] `}>
+    <div className={`bg-gray-200 z-50 overflow-auto `}>
+      <div className=" flex text-sm justify-around text-center border-t border-r border-l border-gray-500 bo font-bold p-1">
+        <span>Tax Details</span>
+      </div>
       <table className="border border-gray-500 w-full text-xs text-start">
         <thead className="border border-gray-500">
           <tr>
-            <th className="w-36 border border-gray-500">Tax Details</th>
+            <th className="w-52 border border-gray-500">Tax Name</th>
             <th className="w-28 border border-gray-500">Value</th>
             <th className="w-28 border border-gray-500">Amount</th>
           </tr>
@@ -152,25 +155,19 @@ const PoSummary = ({
             </td>
           </tr>
           <tr className="h-7">
-            <td className="border border-gray-500">Amount in Words</td>
-            <td className="border border-gray-500" colSpan={2}>
-              <input
-                disabled
-                type="text"
-                name="value"
-                className="h-7 w-full text-right"
-                value={
-                  amount === 0
-                    ? "Rupees Zero Only"
-                    : "Rupees " +
-                      numberToWords
-                        .toWords(amount)
-                        .replace(/,/g, "") // remove commas only
-                        .replace(/-/g, " ") // ✅ hyphen → space ("Fifty Five")
-                        .replace(/\b\w/g, (c) => c.toUpperCase()) +
-                      " Only"
-                }
-              />
+            <td className="border border-gray-500 py-1 px-1">Amount in Words</td>
+            <td className="border border-gray-500 text-right px-1 py-1" colSpan={2}>
+              <div className="w-full text-[11px] break-words whitespace-normal leading-tight">
+                {amount === 0
+                  ? "Rupees Zero Only"
+                  : "Rupees " +
+                    numberToWords
+                      .toWords(amount)
+                      .replace(/,/g, "") // remove commas only
+                      .replace(/-/g, " ") // ✅ hyphen → space ("Fifty Five")
+                      .replace(/\b\w/g, (c) => c.toUpperCase()) +
+                    " Only"}
+              </div>
             </td>
           </tr>
         </tbody>

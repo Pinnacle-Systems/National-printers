@@ -140,6 +140,7 @@ async function create(body) {
     branchId,
     companyId,
     docDate,
+    userDate,
     customerId,
     deliveryDate,
     remarks,
@@ -171,6 +172,7 @@ async function create(body) {
     data: {
       docId: newDocId,
       docDate: docDate ? new Date(docDate) : null,
+      userDate: userDate ? new Date(userDate) : null,
       deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
       createdById: parseInt(userId),
       branchId: parseInt(branchId),
@@ -221,6 +223,7 @@ async function update(id, body, files) {
     userId,
     branchId,
     docDate,
+    userDate,
     customerId,
     deliveryDate,
     remarks,
@@ -230,6 +233,7 @@ async function update(id, body, files) {
     termsAndCondition,
     orderEntryId,
     taxTemplateId,
+    isApproved,
   } = body;
 
   const parseItems = JSON.parse(items || "[]");
@@ -240,10 +244,37 @@ async function update(id, body, files) {
 
   const dataFound = await prisma.proformaInvoice.findUnique({
     where: { id: parseInt(id) },
-    include: { attachments: true },
+    include: { attachments: true, items: true },
   });
 
   if (!dataFound) return NoRecordFound("Proforma Invoice");
+
+  // ── Fast path: approval-only toggle ─────────────────────────────────────
+  // When only approvalStatus (or isApproved) is sent from the report page,
+  // skip the full update to avoid overwriting all other fields with null.
+  const approvalStatus = body.approvalStatus;
+
+  const isApprovalOnlyUpdate =
+    (approvalStatus !== undefined || isApproved !== undefined) &&
+    !docDate && !customerId && !userId && !items;
+
+  if (isApprovalOnlyUpdate) {
+    // Derive both fields from approvalStatus if provided, else from isApproved
+    let newStatus = approvalStatus;
+    let newIsApproved;
+    if (approvalStatus) {
+      newIsApproved = approvalStatus === "APPROVED";
+    } else {
+      newIsApproved = isApproved === "true" || isApproved === true;
+      newStatus = newIsApproved ? "APPROVED" : "REVOKED";
+    }
+    const data = await prisma.proformaInvoice.update({
+      where: { id: parseInt(id) },
+      data: { isApproved: newIsApproved, approvalStatus: newStatus },
+    });
+    return { statusCode: 0, data };
+  }
+  // ────────────────────────────────────────────────────────────────────────
 
   // Handle file unlinking for removed attachments
   const removedAttachments = dataFound.attachments.filter(
@@ -258,10 +289,40 @@ async function update(id, body, files) {
     }
   });
 
+  const currentQuoteVersion = dataFound.quoteVersion || 1;
+  const latestItems = dataFound.items.filter(i => i.quoteVersion === currentQuoteVersion);
+
+  let isTableChanged = false;
+  if (parseItems.length !== latestItems.length) {
+    isTableChanged = true;
+  } else {
+    isTableChanged = parseItems.some((newItem, index) => {
+      // Assuming ordered arrays from the client match the order of latestItems, or we just compare element by element.
+      // Since ProformaInvoiceForm sets/gets the entire array in order, index matching works fine.
+      const oldItem = latestItems[index];
+      if (!oldItem) return true;
+      return (
+        parseInt(newItem.styleItemId || 0) !== parseInt(oldItem.styleItemId || 0) ||
+        parseFloat(newItem.qty || 0) !== parseFloat(oldItem.qty || 0) ||
+        parseFloat(newItem.price || 0) !== parseFloat(oldItem.price || 0) ||
+        parseFloat(newItem.taxPercent || 0) !== parseFloat(oldItem.taxPercent || 0) ||
+        (newItem.discountType || null) !== (oldItem.discountType || null) ||
+        parseFloat(newItem.discountValue || 0) !== parseFloat(oldItem.discountValue || 0) ||
+        parseInt(newItem.sizeId || 0) !== parseInt(oldItem.sizeId || 0) ||
+        parseInt(newItem.uomId || 0) !== parseInt(oldItem.uomId || 0) ||
+        parseInt(newItem.gsmId || 0) !== parseInt(oldItem.gsmId || 0) ||
+        parseInt(newItem.hsnId || 0) !== parseInt(oldItem.hsnId || 0)
+      );
+    });
+  }
+
+  const nextQuoteVersion = isTableChanged ? currentQuoteVersion + 1 : currentQuoteVersion;
+
   const data = await prisma.proformaInvoice.update({
     where: { id: parseInt(id) },
     data: {
       docDate: docDate ? new Date(docDate) : null,
+      userDate: userDate ? new Date(userDate) : null,
       deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
       updatedById: parseInt(userId),
       customerId: customerId ? parseInt(customerId) : null,
@@ -270,8 +331,9 @@ async function update(id, body, files) {
       termsId: termsId ? parseInt(termsId) : null,
       orderEntryId: orderEntryId ? parseInt(orderEntryId) : null,
       taxTemplateId: taxTemplateId ? parseInt(taxTemplateId) : null,
-      items: {
-        deleteMany: {},
+      quoteVersion: nextQuoteVersion,
+      ...(isApproved !== undefined && { isApproved: isApproved === "true" || isApproved === true }),
+      items: isTableChanged ? {
         createMany: {
           data: parseItems.map((item) => ({
             styleItemId: item.styleItemId ? parseInt(item.styleItemId) : null,
@@ -285,9 +347,10 @@ async function update(id, body, files) {
             discountType: item.discountType,
             discountValue: parseFloat(item.discountValue || 0),
             amount: parseFloat(item.amount || 0),
+            quoteVersion: nextQuoteVersion,
           })),
         },
-      },
+      } : undefined,
       attachments: {
         deleteMany: {
           ...(incomingAttachmentIds.length > 0 && {

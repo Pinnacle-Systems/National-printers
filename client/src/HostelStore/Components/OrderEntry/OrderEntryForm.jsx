@@ -6,7 +6,11 @@ import {
   ReusableInput,
   TextInput,
 } from "../../../Inputs";
-import { orderTypes } from "../../../Utils/DropdownData";
+import {
+  orderTypes,
+  poTypes,
+  productionTypes,
+} from "../../../Utils/DropdownData";
 import { useCallback, useEffect, useRef, useState } from "react";
 import moment from "moment";
 import {
@@ -46,13 +50,29 @@ const OrderEntryForm = ({
   onClose,
   id,
   setId,
-  readOnly,
+  readOnly: parentReadOnly,
   setReadOnly,
   customerList,
   termsData,
   branchList,
 }) => {
   const today = new Date();
+  
+  const [dispatchInvalidate] = useInvalidateTags();
+  const { userId, finYearId, branchId, companyId } = getCommonParams();
+  const params = {
+    branchId,
+    companyId,
+    finYearId,
+  };
+
+  const {
+    data: singleData,
+    isFetching: isSingleFetching,
+    isLoading: isSingleLoading,
+  } = useGetOrderEntryByIdQuery(id, { skip: !id });
+
+  const isReadOnly = parentReadOnly || singleData?.data?.childRecord > 0;
 
   const [docDate, setDocDate] = useState(
     moment.utc(today).format("YYYY-MM-DD"),
@@ -60,7 +80,8 @@ const OrderEntryForm = ({
   const [customerId, setCustomerId] = useState("");
   const [remarks, setRemarks] = useState("");
   const [requirements, setRequirements] = useState("");
-  const [orderType, setOrderType] = useState("Sample");
+  const [orderType, setOrderType] = useState("ORDER");
+  const [productionType, setProductionType] = useState("SAMPLE");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [jobType, setJobType] = useState("Internal");
   const [docId, setDocId] = useState("");
@@ -88,22 +109,8 @@ const OrderEntryForm = ({
 
   const qrRef = useRef(null);
   const customerRef = useRef(null);
-  const childRecord = useRef(0);
 
-  const [dispatchInvalidate] = useInvalidateTags();
 
-  const { userId, finYearId, branchId, companyId } = getCommonParams();
-  const params = {
-    branchId,
-    companyId,
-    finYearId,
-  };
-
-  const {
-    data: singleData,
-    isFetching: isSingleFetching,
-    isLoading: isSingleLoading,
-  } = useGetOrderEntryByIdQuery(id, { skip: !id });
   const { data: styleItemList } = useGetStyleItemMasterQuery({
     params: { ...params },
   });
@@ -121,7 +128,8 @@ const OrderEntryForm = ({
           ? moment.utc(data.docDate).format("YYYY-MM-DD")
           : moment.utc(new Date()).format("YYYY-MM-DD"),
       );
-      setOrderType(data?.orderType || "Sample");
+      setOrderType(data?.orderType || "ORDER");
+      setProductionType(data?.productionType || "SAMPLE");
       setCustomerId(data?.customerId || "");
       setRemarks(data?.remarks || "");
       setAttachments(data?.attachments ? data?.attachments : []);
@@ -134,7 +142,6 @@ const OrderEntryForm = ({
       );
       setTermsAndCondition(data?.termsAndCondition || "");
       setTermsId(data?.termsId || "");
-      childRecord.current = data?.childRecord ? data?.childRecord : 0;
       setOrderItems(
         data?.orderItems && data.orderItems.length > 0
           ? data.orderItems
@@ -165,6 +172,7 @@ const OrderEntryForm = ({
     branchId,
     userId,
     orderType,
+    productionType,
     jobType,
     customerId,
     remarks,
@@ -422,7 +430,7 @@ const OrderEntryForm = ({
                   e.target.value = "";
                 }
               }}
-              disabled={readOnly}
+              disabled={isReadOnly}
             />
 
             {/* Attachments Table */}
@@ -471,14 +479,14 @@ const OrderEntryForm = ({
                               handleInputChange(e.target.value, index, "name")
                             }
                             onClick={(e) => e.stopPropagation()}
-                            disabled={readOnly}
+                            disabled={isReadOnly}
                           />
                         </td>
 
                         {/* File */}
                         <td className="border-r border-white/50 h-8 px-2">
                           <div className="flex items-center gap-2">
-                            {!readOnly && (
+                            {!isReadOnly && (
                               <label
                                 htmlFor={`modal-row-upload-${index}`}
                                 className="cursor-pointer flex items-center justify-center p-1 bg-gray-100 rounded hover:bg-gray-200"
@@ -500,7 +508,7 @@ const OrderEntryForm = ({
                                       e.target.value = "";
                                     }
                                   }}
-                                  disabled={readOnly}
+                                  disabled={isReadOnly}
                                 />
                               </label>
                             )}
@@ -519,7 +527,7 @@ const OrderEntryForm = ({
                                 >
                                   View
                                 </button>
-                                {!readOnly && (
+                                {!isReadOnly && (
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -527,7 +535,7 @@ const OrderEntryForm = ({
                                     }}
                                     className="text-red-600 text-xs"
                                     title="Remove file"
-                                    disabled={readOnly}
+                                    disabled={isReadOnly}
                                   >
                                     ✕
                                   </button>
@@ -549,7 +557,7 @@ const OrderEntryForm = ({
                                 e.stopPropagation();
                                 addNewComments();
                               }}
-                              disabled={readOnly}
+                              disabled={isReadOnly}
                               className="flex items-center px-1 bg-blue-50 rounded"
                             >
                               <Plus size={18} className="text-blue-800" />
@@ -563,7 +571,7 @@ const OrderEntryForm = ({
                                   setSelectedAttachmentIndex(null);
                                 }
                               }}
-                              disabled={readOnly}
+                              disabled={isReadOnly}
                             >
                               <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -625,7 +633,7 @@ const OrderEntryForm = ({
         <div className="flex justify-between items-center">
           <h1 className="text-lg font-bold flex items-center gap-2">
             Order Entry
-            <ModeChip id={id} readOnly={readOnly} />
+            <ModeChip id={id} readOnly={isReadOnly} />
           </h1>
           <button
             onClick={() => {
@@ -664,24 +672,34 @@ const OrderEntryForm = ({
             <div className="grid grid-cols-2 gap-1 ">
               <DropdownInput
                 name="Order Type"
-                options={orderTypes}
+                options={poTypes}
                 value={orderType}
                 setValue={(value) => {
                   setOrderType(value);
                 }}
                 required={true}
-                readOnly={readOnly}
-                disabled={readOnly}
+                readOnly={isReadOnly}
+                disabled={isReadOnly}
                 ref={customerRef}
               />
-
+              <DropdownInput
+                name="Production Type"
+                options={productionTypes}
+                value={productionType}
+                setValue={(value) => {
+                  setProductionType(value);
+                }}
+                required={true}
+                readOnly={isReadOnly}
+                disabled={isReadOnly}
+              />
               <div className="w-28">
                 <DateInputNew
                   name="Delivery Date"
                   value={deliveryDate}
                   setValue={setDeliveryDate}
                   required={true}
-                  readOnly={readOnly}
+                  readOnly={isReadOnly}
                   type={"date"}
                 />
               </div>
@@ -708,7 +726,7 @@ const OrderEntryForm = ({
                   value={customerId}
                   setValue={setCustomerId}
                   required={true}
-                  readOnly={readOnly}
+                  readOnly={isReadOnly}
                   className={`w-[150px]`}
                   addNewLabel="+ Add New Customer"
                   childComponent={PartyMaster}
@@ -771,7 +789,7 @@ const OrderEntryForm = ({
               <OrderItems
                 orderItems={orderItems}
                 setOrderItems={setOrderItems}
-                readOnly={readOnly}
+                readOnly={isReadOnly}
                 styleItemList={styleItemList}
                 sizeList={sizeList}
                 uomList={uomList}
@@ -822,7 +840,7 @@ const OrderEntryForm = ({
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => saveData("close")}
-            disabled={readOnly}
+            disabled={isReadOnly}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -837,7 +855,7 @@ const OrderEntryForm = ({
           </button>
           <button
             onClick={() => saveData("new")}
-            disabled={readOnly}
+            disabled={isReadOnly}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -854,7 +872,7 @@ const OrderEntryForm = ({
 
         <div className="flex gap-2 flex-wrap">
           {!id ||
-            (readOnly && (
+            (parentReadOnly && !(singleData?.data?.childRecord > 0) && (
               <button
                 className="bg-yellow-600 text-white px-4 py-1 rounded-md hover:bg-yellow-700 flex items-center text-xs"
                 onClick={() => setReadOnly(false)}
@@ -897,7 +915,7 @@ const OrderEntryForm = ({
 export default OrderEntryForm;
 
 //   <textarea
-//                                 readOnly={readOnly}
+//                                 readOnly={isReadOnly}
 //                                 value={requirements}
 //                                 onChange={(e) => {
 //                                     setRequirements(e.target.value);

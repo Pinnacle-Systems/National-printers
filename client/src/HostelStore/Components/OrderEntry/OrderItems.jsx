@@ -43,7 +43,9 @@ const OrderItems = ({
 
     // Auto-fill UOM, GSM, and HSN when item is chosen
     if (field === "styleItemId" && value) {
-      const selectedItem = styleItemList?.data?.find(item => item.id === value);
+      const selectedItem = styleItemList?.data?.find(
+        (item) => item.id === value,
+      );
       if (selectedItem) {
         updatedRow = {
           ...updatedRow,
@@ -85,18 +87,34 @@ const OrderItems = ({
 
   return (
     <>
-      <div className="w-full min-h-[250px] max-h-[350px] overflow-y-auto mb-2 bg-white">
+      <div className="w-[70vw]  h-[300px] overflow-y-auto mb-2 bg-white">
         <table className="w-full border-collapse table-fixed">
           <thead className="bg-gray-200 text-gray-800 sticky top-0 z-10 text-[12px]">
             <tr>
-              <th className="w-10 px-1 py-2 text-center font-medium border border-gray-300">S.No</th>
-              <th className="w-64 px-2 py-2 text-center font-medium border border-gray-300">Description of Goods</th>
-              <th className="w-24 px-1 py-2 text-center font-medium border border-gray-300">Size</th>
-              <th className="w-20 px-1 py-2 text-center font-medium border border-gray-300">UOM</th>
-              <th className="w-20 px-1 py-2 text-center font-medium border border-gray-300">GSM</th>
-              <th className="w-24 px-1 py-2 text-center font-medium border border-gray-300">HSN</th>
-              <th className="w-20 px-1 py-2 text-center font-medium border border-gray-300">Qty</th>
-              <th className="w-10 px-1 py-2 text-center font-medium border border-gray-300">Actions</th>
+              <th className="w-10 px-1 py-2 text-center font-medium border border-gray-300">
+                S.No
+              </th>
+              <th className="w-64 px-2 py-2 text-center font-medium border border-gray-300">
+                Description of Goods
+              </th>
+              <th className="w-24 px-1 py-2 text-center font-medium border border-gray-300">
+                Size
+              </th>
+              <th className="w-20 px-1 py-2 text-center font-medium border border-gray-300">
+                UOM
+              </th>
+              <th className="w-20 px-1 py-2 text-center font-medium border border-gray-300">
+                GSM
+              </th>
+              <th className="w-24 px-1 py-2 text-center font-medium border border-gray-300">
+                HSN
+              </th>
+              <th className="w-20 px-1 py-2 text-center font-medium border border-gray-300">
+                Qty
+              </th>
+              <th className="w-10 px-1 py-2 text-center font-medium border border-gray-300">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -104,14 +122,20 @@ const OrderItems = ({
               <tr
                 key={index}
                 className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50"} border border-gray-200 cursor-pointer h-8 hover:bg-indigo-50`}
-                onContextMenu={(e) => !readOnly && handleRightClick(e, index, "")}
+                onContextMenu={(e) =>
+                  !readOnly && handleRightClick(e, index, "")
+                }
               >
-                <td className="text-[11px] text-center border border-gray-300">{index + 1}</td>
+                <td className="text-[11px] text-center border border-gray-300">
+                  {index + 1}
+                </td>
                 <td className="border border-gray-300">
                   <FxSelect
                     inputId={`styleItemId-input-${index}`}
                     value={row.styleItemId}
-                    onChange={(val) => handleInputChange(val, index, "styleItemId")}
+                    onChange={(val) =>
+                      handleInputChange(val, index, "styleItemId")
+                    }
                     options={(styleItemList?.data || [])
                       .filter((item) => (id ? true : item.active))
                       .map((item) => ({ label: item.name, value: item.id }))}
@@ -179,10 +203,16 @@ const OrderItems = ({
                           ? Number(row.orderQty).toFixed(2)
                           : ""
                     }
-                    onChange={(e) => handleInputChange(e.target.value, index, "orderQty")}
+                    onChange={(e) =>
+                      handleInputChange(e.target.value, index, "orderQty")
+                    }
                     onBlur={(e) => {
                       const val = e.target.value;
-                      handleInputChange(val ? Number(val).toFixed(2) : "", index, "orderQty");
+                      handleInputChange(
+                        val ? Number(val).toFixed(2) : "",
+                        index,
+                        "orderQty",
+                      );
                       setFocusedField(null);
                     }}
                     disabled={readOnly}
@@ -207,9 +237,16 @@ const OrderItems = ({
           </tbody>
           <tfoot>
             <tr className="bg-gray-100 h-8 font-bold text-gray-800 text-[12px]">
-              <td className="text-right px-2 border border-gray-300" colSpan={6}>Total</td>
-              <td className="text-right px-1 border border-gray-300 bg-emerald-50 text-emerald-800">
-                {orderItems?.reduce((sum, row) => sum + (Number(row.orderQty) || 0), 0).toFixed(2)}
+              <td
+                className="text-right px-2 border border-gray-300"
+                colSpan={6}
+              >
+                Total
+              </td>
+              <td className="text-right px-1 border border-gray-300 text-black">
+                {orderItems
+                  ?.reduce((sum, row) => sum + (Number(row.orderQty) || 0), 0)
+                  .toFixed(2)}
               </td>
               <td className="border border-gray-300"></td>
             </tr>

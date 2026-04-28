@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
-import { toast } from "react-toastify";
+import Swal from "sweetalert2";
 import { TextInput, DropdownInput, DateInputNew } from "../../../Inputs";
 import {
   useAddProformaInvoiceMutation,
@@ -36,6 +36,29 @@ import { calculateTaxWithHSNBreakupAndInsertIntoPoItems } from "../../../Utils/t
 import PoSummary from "../PurchaseOrder/PoSummary";
 import { useGetPartyByIdQuery } from "../../../redux/services/PartyMasterService";
 
+const EMPTY_ROW = {
+  styleItemId: "",
+  sizeId: "",
+  uomId: "",
+  gsmId: "",
+  hsnId: "",
+  qty: 0,
+  price: 0,
+  amount: 0,
+};
+
+const padItems = (itemsArray = []) => {
+  const minLength = 14;
+  const currentLength = itemsArray.length;
+  if (currentLength < minLength) {
+    const padding = Array.from({ length: minLength - currentLength }, () => ({
+      ...EMPTY_ROW,
+    }));
+    return [...itemsArray, ...padding];
+  }
+  return itemsArray;
+};
+
 const ProformaInvoiceForm = ({
   readOnly,
   setReadOnly,
@@ -48,17 +71,23 @@ const ProformaInvoiceForm = ({
 
   const [docId, setDocId] = useState("New");
   const [docDate, setDocDate] = useState(moment().format("YYYY-MM-DD"));
+  const [userDate, setUserDate] = useState(moment().format("YYYY-MM-DD"));
   const [customerId, setCustomerId] = useState("");
   const [orderEntryId, setOrderEntryId] = useState("");
   const [remarks, setRemarks] = useState("");
   const [termsAndCondition, setTermsAndCondition] = useState("");
   const [termsId, setTermsId] = useState("");
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(padItems([]));
   const [taxTemplateId, setTaxTemplateId] = useState("");
   const [summary, setSummary] = useState(false);
   const [discountType, setDiscountType] = useState("Percentage");
   const [discountValue, setDiscountValue] = useState(0);
   const [printModalOpen, setPrintModalOpen] = useState(false);
+
+  const [selectedQuoteVersion, setSelectedQuoteVersion] = useState("Latest");
+  const [availableVersions, setAvailableVersions] = useState([]);
+  const isOldVersion = selectedQuoteVersion !== "Latest";
+  const effectiveReadOnly = readOnly || isOldVersion;
 
   const [customerDetails, setCustomerDetails] = useState({
     name: "",
@@ -96,13 +125,24 @@ const ProformaInvoiceForm = ({
       const data = singleData.data;
       setDocId(data.docId);
       setDocDate(moment(data.docDate).format("YYYY-MM-DD"));
+      setUserDate(data.userDate ? moment(data.userDate).format("YYYY-MM-DD") : moment().format("YYYY-MM-DD"));
       setCustomerId(data.customerId);
       setOrderEntryId(data.orderEntryId || "");
       setRemarks(data.remarks || "");
       setTermsAndCondition(data.termsAndCondition || "");
       setTermsId(data.termsId || "");
       setTaxTemplateId(data.taxTemplateId || "");
-      setItems(data.items || []);
+
+      let loadedVersions = [];
+      if (data.items?.length > 0) {
+        loadedVersions = [...new Set(data.items.map(i => i.quoteVersion).filter(Boolean))].sort((a,b) => b - a);
+      }
+      setAvailableVersions(loadedVersions);
+      setSelectedQuoteVersion("Latest");
+
+      const targetVersion = loadedVersions.length > 0 ? Math.max(...loadedVersions, 1) : 1;
+      const filteredItems = (data.items || []).filter(i => (i.quoteVersion || 1) === targetVersion);
+      setItems(padItems(filteredItems));
 
       const cust = data.customer || data.OrderEntry?.customer;
       if (cust) {
@@ -114,6 +154,21 @@ const ProformaInvoiceForm = ({
       }
     }
   }, [id, singleData]);
+
+  useEffect(() => {
+    if (singleData?.data?.items && id) {
+      const itemsArr = singleData.data.items;
+      const maxVersion = availableVersions.length > 0 ? Math.max(...availableVersions, 1) : 1;
+      let targetVersion = maxVersion;
+      
+      if (selectedQuoteVersion !== "Latest") {
+        targetVersion = parseInt(selectedQuoteVersion.replace("V", ""));
+      }
+
+      const filteredItems = itemsArr.filter(i => (i.quoteVersion || 1) === targetVersion);
+      setItems(padItems(filteredItems));
+    }
+  }, [selectedQuoteVersion, singleData, id, availableVersions]);
 
   useEffect(() => {
     if (orderEntryId) {
@@ -143,7 +198,7 @@ const ProformaInvoiceForm = ({
                   gsmId: oi.gsmId,
                   hsnId: oi.hsnId,
                 }));
-                setItems(mappedItems);
+                setItems(padItems(mappedItems));
               }
             }
 
@@ -164,10 +219,26 @@ const ProformaInvoiceForm = ({
   }, [orderEntryId, triggerGetOrderById, id]);
 
   const handleSave = async (pendingAction = null) => {
+    if (!orderEntryId) {
+      Swal.fire({ title: "Warning", text: "Please select an Order No.", icon: "warning", confirmButtonColor: "#3085d6" });
+      return;
+    }
+
+    if (!taxTemplateId) {
+      Swal.fire({ title: "Warning", text: "Please select a Tax Template.", icon: "warning", confirmButtonColor: "#3085d6" });
+      return;
+    }
+
     const filteredItems = items.filter((item) => item.styleItemId);
 
     if (filteredItems.length === 0) {
-      toast.error("Please add at least one item.");
+      Swal.fire({ title: "Warning", text: "Please add at least one item.", icon: "warning", confirmButtonColor: "#3085d6" });
+      return;
+    }
+
+    const hasMissingPrice = filteredItems.some((item) => !item.price || parseFloat(item.price) <= 0);
+    if (hasMissingPrice) {
+      Swal.fire({ title: "Warning", text: "Please enter a valid price for all selected items.", icon: "warning", confirmButtonColor: "#3085d6" });
       return;
     }
 
@@ -177,6 +248,7 @@ const ProformaInvoiceForm = ({
       companyId,
       finYearId,
       docDate,
+      userDate,
       deliveryDate: docDate,
       customerId,
       orderEntryId,
@@ -191,12 +263,12 @@ const ProformaInvoiceForm = ({
       let savedId = id;
       if (id) {
         await updateData({ id, body: payload }).unwrap();
-        toast.success("Proforma Invoice updated successfully");
+        Swal.fire({ title: "Success", text: "Proforma Invoice updated successfully", icon: "success", timer: 1500, showConfirmButton: false });
       } else {
         const res = await addData(payload).unwrap();
         savedId = res.data.id;
         setId(savedId);
-        toast.success("Proforma Invoice created successfully");
+        Swal.fire({ title: "Success", text: "Proforma Invoice created successfully", icon: "success", timer: 1500, showConfirmButton: false });
       }
       setReadOnly(true);
 
@@ -206,7 +278,7 @@ const ProformaInvoiceForm = ({
         onClose();
       }
     } catch (error) {
-      toast.error(error.data?.message || "Failed to save Proforma Invoice");
+      Swal.fire({ title: "Error", text: error.data?.message || "Failed to save Proforma Invoice", icon: "error", confirmButtonColor: "#d33" });
     }
   };
 
@@ -223,14 +295,17 @@ const ProformaInvoiceForm = ({
     setReadOnly(false);
     setDocId("New");
     setDocDate(moment().format("YYYY-MM-DD"));
+    setUserDate(moment().format("YYYY-MM-DD"));
     setCustomerId("");
     setOrderEntryId("");
     setRemarks("");
     setTermsAndCondition("");
     setTermsId("");
     setTaxTemplateId("");
-    setItems([]);
+    setItems(padItems([]));
     setCustomerDetails({ name: "", contactPerson: "", phone: "" });
+    setSelectedQuoteVersion("Latest");
+    setAvailableVersions([]);
   };
 
   useEffect(() => {
@@ -253,7 +328,7 @@ const ProformaInvoiceForm = ({
     "px-3 py-2 rounded-md flex items-center justify-center text-sm text-white transition";
 
   const leftActions = [
-    ...(!readOnly
+    ...(!effectiveReadOnly
       ? [
           {
             key: "saveAndClose",
@@ -293,7 +368,7 @@ const ProformaInvoiceForm = ({
       iconOnly: true,
       onClick: () => setReadOnly(false),
       className: `bg-yellow-600 hover:bg-yellow-700 ${actionButtonClass}`,
-      hidden: !readOnly || !id,
+      hidden: !readOnly || !id || isOldVersion,
     },
     {
       key: "summary",
@@ -302,7 +377,7 @@ const ProformaInvoiceForm = ({
       iconOnly: true,
       onClick: () => {
         if (!taxTemplateId) {
-          toast.info("Please Select Tax Template !");
+          Swal.fire({ title: "Information", text: "Please Select Tax Template !", icon: "info", confirmButtonColor: "#3085d6" });
           return;
         }
         setSummary(true);
@@ -330,13 +405,24 @@ const ProformaInvoiceForm = ({
           <div className="w-36">
             <TextInput name="PI No" value={docId} disabled={true} />
           </div>
-          <div className="w-24">
+          <div className="w-32">
             <DateInputNew
               name="PI Date"
               value={docDate}
               setValue={setDocDate}
               disabled={true}
               required={true}
+              type="date"
+            />
+          </div>
+          <div className="w-32">
+            <DateInputNew
+              name="User Date"
+              value={userDate}
+              setValue={setUserDate}
+              disabled={effectiveReadOnly}
+              required={false}
+              type="date"
             />
           </div>
         </div>
@@ -353,7 +439,7 @@ const ProformaInvoiceForm = ({
               options={dropDownListObject(orderList?.data, "docId", "id")}
               value={orderEntryId}
               setValue={setOrderEntryId}
-              readOnly={readOnly}
+              readOnly={effectiveReadOnly}
               required={true}
             />
           </div>
@@ -366,7 +452,7 @@ const ProformaInvoiceForm = ({
           </div>
           <div className="md:col-span-2">
             <TextInput
-              name="Contact"
+              name="Contact Person"
               value={customerDetails.contactPerson}
               disabled={true}
             />
@@ -389,7 +475,7 @@ const ProformaInvoiceForm = ({
               value={taxTemplateId}
               setValue={setTaxTemplateId}
               required={true}
-              readOnly={readOnly}
+              readOnly={effectiveReadOnly}
             />
           </div>
         </div>
@@ -423,6 +509,49 @@ const ProformaInvoiceForm = ({
     );
   }, [items, isSupplierOutside, discountType, discountValue]);
 
+  const versionDropdown = (
+    <div className="flex items-center gap-2 ml-2">
+      <span className="text-xs text-gray-500 mt-1">Version</span>
+
+      <div className="relative">
+        <select
+          value={selectedQuoteVersion}
+          onChange={(e) => setSelectedQuoteVersion(e.target.value)}
+          className="appearance-none bg-white border border-gray-300 text-gray-700 text-xs rounded-md pl-2 pr-6 py-1 
+                   focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 
+                   hover:border-gray-400 transition"
+        >
+          {availableVersions.length > 0 ? (
+            availableVersions.map((v) => (
+              <option key={v} value={Math.max(...availableVersions) === v ? "Latest" : `V${v}`}>
+                {Math.max(...availableVersions) === v ? "Latest" : `V${v}`}
+              </option>
+            ))
+          ) : (
+            <option value="Latest">Latest</option>
+          )}
+        </select>
+
+        {/* Custom arrow */}
+        <div className="pointer-events-none absolute inset-y-0 right-1 flex items-center text-gray-400">
+          <svg
+            className="w-3 h-3"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </div>
+      </div>
+    </div>
+  );
+
   const footerContent = (
     <>
       <CommonFormFooter
@@ -430,7 +559,7 @@ const ProformaInvoiceForm = ({
         setRemarks={setRemarks}
         terms={termsAndCondition}
         setTerms={setTermsAndCondition}
-        readOnly={readOnly}
+        readOnly={effectiveReadOnly}
         showTermSelect={true}
         termValue={termsId}
         onTermChange={(value) => setTermsId(value)}
@@ -451,13 +580,13 @@ const ProformaInvoiceForm = ({
           {
             key: "grossAmount",
             label: "Gross Amount",
-            value: enrichedData.gross.toFixed(2),
+            value: `₹ ${enrichedData.gross.toFixed(2)}`,
             summaryColumn: "right",
           },
           {
             key: "netAmount",
             label: "Net Amount",
-            value: `Rs.${enrichedData.net.toFixed(2)}`,
+            value: `₹ ${enrichedData.net.toFixed(2)}`,
             summaryColumn: "right",
             emphasized: true,
           },
@@ -480,7 +609,7 @@ const ProformaInvoiceForm = ({
         <PoSummary
           poItems={items}
           totals={enrichedData}
-          readOnly={readOnly}
+          readOnly={effectiveReadOnly}
           discountType={discountType}
           setDiscountType={setDiscountType}
           discountValue={discountValue}
@@ -511,14 +640,15 @@ const ProformaInvoiceForm = ({
         gridItems={
           <ProformaInvoiceItems
             items={items}
-            enrichedItems={enrichedData.items}
+            enrichedItems={enrichedData}
             setItems={setItems}
-            readOnly={readOnly}
+            readOnly={effectiveReadOnly}
             taxTemplateId={taxTemplateId}
             id={id}
           />
         }
         footer={footerContent}
+        versionDropdown={id ? versionDropdown : null}
       />
     </>
   );

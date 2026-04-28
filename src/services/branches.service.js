@@ -79,7 +79,7 @@ async function create(body) {
 }
 
 async function update(id, body) {
-    const { name, code, contactEmail, contactName, contactMobile, active, prefixCategory, idPrefix, idSequence, tempPrefix, tempSequence, address } = await body
+    const { name, code, contactEmail, contactName, contactMobile, active, prefixCategory, idPrefix, idSequence, tempPrefix, tempSequence, address, proformaInvoiceEnabled, proformaInvoiceApprovalEnabled } = await body
 
     const dataFound = await prisma.branch.findUnique({
         where: {
@@ -93,7 +93,9 @@ async function update(id, body) {
         },
         data: {
             branchName: name, branchCode: code, contactEmail, contactName, contactMobile: contactEmail ? parseInt(contactMobile) : undefined, active,
-            idPrefix, idSequence, tempPrefix, tempSequence, prefixCategory, address
+            idPrefix, idSequence, tempPrefix, tempSequence, prefixCategory, address,
+            proformaInvoiceEnabled: proformaInvoiceEnabled !== undefined ? Boolean(proformaInvoiceEnabled) : undefined,
+            proformaInvoiceApprovalEnabled: proformaInvoiceApprovalEnabled !== undefined ? Boolean(proformaInvoiceApprovalEnabled) : undefined,
         },
     })
     return { statusCode: 0, data };

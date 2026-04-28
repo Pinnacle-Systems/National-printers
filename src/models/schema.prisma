@@ -100,8 +100,10 @@ model Branch {
   tempSequence     String?
   logo             String?
 
-  prefixCategory        PrefixCategory?
-  PurchaseBill          PurchaseBill[]
+  prefixCategory                   PrefixCategory?
+  proformaInvoiceEnabled           Boolean @default(false)
+  proformaInvoiceApprovalEnabled   Boolean @default(false)
+  PurchaseBill                     PurchaseBill[]
   PurchaseReturn        PurchaseReturn[]
   Stock                 Stock[]
   SalesBill             SalesBill[]
@@ -1794,6 +1796,7 @@ model OrderEntry {
   customer          Party?              @relation(fields: [customerId], references: [id])
   customerId        Int?
   orderType         String?
+  productionType    String?
   orderQty          Int?
   qrCode            String?
   requirements      String?
@@ -1828,6 +1831,7 @@ model ProformaInvoice {
   id                Int                   @id @default(autoincrement())
   docId             String
   docDate           DateTime?
+  userDate          DateTime?
   deliveryDate      DateTime?
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
@@ -1853,6 +1857,10 @@ model ProformaInvoice {
   orderEntryId      Int?
   TaxTemplate       TaxTemplate?          @relation(fields: [taxTemplateId], references: [id])
   taxTemplateId     Int?
+  quoteVersion      Int                   @default(1)
+  isApproved        Boolean               @default(false)
+  approvalStatus    String                @default("PENDING")
+  JobCards          JobCard[]
 }
 
 model ProformaInvoiceItem {
@@ -1877,6 +1885,7 @@ model ProformaInvoiceItem {
   Hsn               Hsn?            @relation(fields: [hsnId], references: [id])
   product           Product?        @relation(fields: [productId], references: [id])
   productId         Int?
+  quoteVersion      Int             @default(1)
 }
 
 model ProformaAttachments {
@@ -1961,8 +1970,10 @@ model JobCard {
   updatedById        Int?
   Branch             Branch?     @relation(fields: [branchId], references: [id])
   branchId           Int?
-  OrderEntry         OrderEntry? @relation(fields: [orderEntryId], references: [id])
+  OrderEntry         OrderEntry?      @relation(fields: [orderEntryId], references: [id])
   orderEntryId       Int?
+  ProformaInvoice    ProformaInvoice? @relation(fields: [proformaInvoiceId], references: [id])
+  proformaInvoiceId  Int?
   orderType          String?
   orderQty           Int?
   customerId         Int?

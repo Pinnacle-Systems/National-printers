@@ -9,7 +9,7 @@ import { getCommonParams } from "../../../Utils/helper";
 import { VIEW } from "../../../icons";
 import Modal from "../../../UiComponents/Modal";
 import TaxDetailsFullTemplate from "../TaxDetailsCompleteTemplate";
-import { toast } from "react-toastify";
+import Swal from "sweetalert2";
 
 const ProformaInvoiceItems = ({
   items,
@@ -78,18 +78,8 @@ const ProformaInvoiceItems = ({
     setContextMenu(null);
   };
 
-  useEffect(() => {
-    if (!items || items.length < 14) {
-      const currentLength = items?.length || 0;
-      const paddingNeeded = 14 - currentLength;
-      if (paddingNeeded > 0) {
-        setItems([
-          ...(items || []),
-          ...Array.from({ length: paddingNeeded }, () => ({ ...EMPTY_ROW })),
-        ]);
-      }
-    }
-  }, [items]);
+  // The padding to 14 elements is now handled synchronously in the parent (ProformaInvoiceForm)
+  // to avoid a layout shift ("shake") when new data is loaded.
 
   return (
     <>
@@ -104,7 +94,7 @@ const ProformaInvoiceItems = ({
           taxTypeId={taxTemplateId}
           currentIndex={currentSelectedIndex}
           setCurrentSelectedIndex={setCurrentSelectedIndex}
-          poItems={enrichedItems || items}
+          poItems={enrichedItems?.items || items}
           handleInputChange={handleInputChange}
           id={id}
           isNewVersion={false}
@@ -147,17 +137,18 @@ const ProformaInvoiceItems = ({
               <th className="w-12 px-1 py-2 text-center font-medium border border-gray-300">
                 Tax
               </th>
-              <th className="w-10 px-1 py-2 text-center font-medium border border-gray-300">
-                Actions
-              </th>
+              {/* <th className="w-10 px-1 py-2 text-center font-medium border border-gray-300">
+              </th> */}
             </tr>
           </thead>
           <tbody>
             {items?.map((item, index) => (
               <tr
                 key={index}
-                className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50"} border border-gray-200 cursor-pointer hover:bg-indigo-50`}
-                onContextMenu={(e) => !readOnly && handleRightClick(e, index)}
+                className={`h-7 hover:bg-gray-50 transition-colors ${
+                  index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                }`}
+                // onContextMenu={(e) => !readOnly && handleRightClick(e, index)}
               >
                 <td className="text-[11px] text-center border border-gray-300">
                   {index + 1}
@@ -234,7 +225,7 @@ const ProformaInvoiceItems = ({
                   <input
                     type="number"
                     className="w-full text-[11px] text-right px-1 outline-none bg-transparent"
-                    value={item.qty}
+                    value={item.qty?.toFixed(3)}
                     onChange={(e) =>
                       handleInputChange(e.target.value, index, "qty")
                     }
@@ -243,19 +234,25 @@ const ProformaInvoiceItems = ({
                   />
                 </td>
                 <td className="border border-gray-300 border-l-2 ">
-                  <input
-                    type="number"
-                    className="w-full text-[11px] text-right px-1 outline-none bg-transparent"
-                    value={item.price}
-                    onChange={(e) =>
-                      handleInputChange(e.target.value, index, "price")
-                    }
-                    readOnly={readOnly}
-                    onFocus={(e) => e.target.select()}
-                  />
+                  <div className="flex items-center justify-end px-1">
+                    <span className="text-[11px] text-gray-500 mr-1">₹</span>
+                    <input
+                      type="number"
+                      className="text-[11px] text-right outline-none bg-transparent p-0 m-0"
+                      style={{
+                        width: `${Math.max(1, String(item.price || "").length) + 0.5}ch`,
+                      }}
+                      value={item.price}
+                      onChange={(e) =>
+                        handleInputChange(e.target.value, index, "price")
+                      }
+                      readOnly={readOnly}
+                      onFocus={(e) => e.target.select()}
+                    />
+                  </div>
                 </td>
                 <td className="text-[11px] text-right  px-1 border border-gray-300 bg-gray-50 bg-transparent">
-                  {item.amount}
+                  {item.amount > 0 ? `₹ ${item.amount}` : item.amount}
                 </td>
                 <td className="border border-gray-300 text-center text-[11px]">
                   <button
@@ -263,8 +260,11 @@ const ProformaInvoiceItems = ({
                     className=" text-indigo-600 hover:text-indigo-800 disabled:text-gray-300"
                     onClick={() => {
                       if (!taxTemplateId) {
-                        return toast.info("Please select Tax Type", {
-                          position: "top-center",
+                        return Swal.fire({
+                          title: "Information",
+                          text: "Please select Tax Type",
+                          icon: "info",
+                          confirmButtonColor: "#3085d6",
                         });
                       }
                       setCurrentSelectedIndex(index);
@@ -273,7 +273,7 @@ const ProformaInvoiceItems = ({
                     {VIEW}
                   </button>
                 </td>
-                <td className="border border-gray-300 text-center">
+                {/* <td className="border border-gray-300 text-center">
                   <input
                     className="w-full bg-transparent outline-none"
                     onKeyDown={(e) => {
@@ -286,7 +286,7 @@ const ProformaInvoiceItems = ({
                     }}
                     disabled={readOnly}
                   />
-                </td>
+                </td> */}
               </tr>
             ))}
           </tbody>
@@ -301,21 +301,22 @@ const ProformaInvoiceItems = ({
               <td className="text-right px-1 border border-gray-300">
                 {items
                   ?.reduce((sum, i) => sum + (parseFloat(i.qty) || 0), 0)
-                  .toFixed(2)}
+                  .toFixed(3)}
               </td>
               <td className="border border-gray-300"></td>
               <td className="text-right px-1 border border-gray-300  text-black">
+                ₹{" "}
                 {items
                   ?.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0)
                   .toFixed(2)}
               </td>
-              <td className="border border-gray-300" colSpan={2}></td>
+              <td className="border border-gray-300"></td>
             </tr>
           </tfoot>
         </table>
       </div>
 
-      {contextMenu && (
+      {/* {contextMenu && (
         <div
           style={{
             position: "fixed",
@@ -346,11 +347,11 @@ const ProformaInvoiceItems = ({
                 handleCloseContextMenu();
               }}
             >
-              Clear All
+              Delete All
             </button>
           </div>
         </div>
-      )}
+      )} */}
     </>
   );
 };

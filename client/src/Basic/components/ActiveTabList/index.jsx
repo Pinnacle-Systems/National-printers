@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { push, remove } from "../../../redux/features/opentabs";
 import {
@@ -24,7 +24,6 @@ import {
 
 import { CLOSE_ICON, DOUBLE_NEXT_ICON } from "../../../icons";
 import CompanyMaster from "../CompanyMaster";
-import { useState } from "react";
 import useOutsideClick from "../../../CustomHooks/handleOutsideClick";
 import {
   PartyCategoryMaster,
