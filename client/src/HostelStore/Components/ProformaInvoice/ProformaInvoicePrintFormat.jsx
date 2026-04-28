@@ -1,284 +1,389 @@
 import {
-    Document,
-    Page,
-    View,
-    Text,
-    Image,
-    StyleSheet,
+  Document,
+  Page,
+  View,
+  Text,
+  Image,
+  StyleSheet,
 } from "@react-pdf/renderer";
-import Logo from "../../../assets/mplogo.png";
+import Logo from "../../../assets/NPLogo.jpeg";
 import moment from "moment";
 
 const styles = StyleSheet.create({
-    borderBox: { border: "1 solid #ccc", margin: 0, padding: 0 },
-    page: { fontFamily: "Helvetica", fontSize: 8, padding: 0, paddingBottom: 60, backgroundColor: "#fff" },
-    topBar: { height: 4, backgroundColor: "#1a1a2e" },
-    header: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: 20,
-        paddingTop: 14,
-        paddingBottom: 10,
-        borderBottom: "1.5 solid #1a1a2e",
-    },
-    logo: { height: 52, width: 52 },
-    companyLeft: { width: 140, alignItems: "flex-start" },
-    companyCenter: { alignItems: "center", flex: 1 },
-    companyName: { fontSize: 18, fontWeight: "bold", color: "#1a1a2e", letterSpacing: 0.5 },
-    companyRight: { width: 140, alignItems: "flex-start" },
-    companyRightRow: { flexDirection: "row", marginBottom: 2, width: "100%" },
-    companyLabel: { fontSize: 7.5, color: "#888", width: 38 },
-    companyColon: { fontSize: 7.5, color: "#888", width: 8 },
-    companyValue: { fontSize: 7.5, color: "#1a1a2e", fontWeight: "bold", flex: 1 },
-    titleBand: {
-        backgroundColor: "#1a1a2e",
-        color: "#fff",
-        textAlign: "center",
-        fontSize: 13,
-        fontWeight: "bold",
-        letterSpacing: 3,
-        paddingVertical: 6,
-        marginBottom: 10,
-    },
-    metaRow: {
-        flexDirection: "row",
-        justifyContent: "flex-end",
-        paddingHorizontal: 20,
-        paddingTop: 8,
-        paddingBottom: 4,
-        gap: 8,
-    },
-    metaPill: {
-        flexDirection: "row",
-        backgroundColor: "#f4f4f6",
-        border: "1 solid #ddd",
-        borderLeft: "2 solid #1a1a2e",
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 2,
-    },
-    metaLabel: { fontSize: 7.5, color: "#888", marginRight: 3 },
-    metaValue: { fontSize: 7.5, fontWeight: "bold", color: "#1a1a2e" },
-    twoCol: {
-        flexDirection: "row",
-        marginHorizontal: 20,
-        marginBottom: 10,
-        border: "1 solid #ddd",
-        borderRadius: 3,
-    },
-    colHalf: { flex: 1 },
-    sectionHeader: {
-        backgroundColor: "#2d2d44",
-        color: "#e8e8f0",
-        fontSize: 7.5,
-        fontWeight: "bold",
-        letterSpacing: 1,
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-    },
-    sectionBody: { padding: 8 },
-    partyName: { fontSize: 9, fontWeight: "bold", color: "#1a1a2e", marginBottom: 3 },
-    partyAddr: { fontSize: 7.5, color: "#555", textTransform: "uppercase", marginBottom: 4, lineHeight: 1.5 },
-    partyRow: { flexDirection: "row", marginBottom: 1.5 },
-    partyLabel: { fontSize: 7.5, color: "#888", width: 58 },
-    partyValue: { fontSize: 7.5, color: "#222", fontWeight: "bold" },
-    table: {
-        marginHorizontal: 20,
-        marginVertical: 10,
-        border: "1 solid #ddd",
-        borderRadius: 3,
-        overflow: "hidden",
-    },
-    tableHeader: {
-        flexDirection: "row",
-        backgroundColor: "#2d2d44",
-        color: "#fff",
-        fontSize: 7.5,
-        fontWeight: "bold",
-        paddingVertical: 5,
-        paddingHorizontal: 5,
-    },
-    tableRow: {
-        flexDirection: "row",
-        borderBottom: "1 solid #eee",
-        paddingVertical: 5,
-        paddingHorizontal: 5,
-    },
-    colSno: { width: 30 },
-    colDesc: { flex: 1 },
-    colQty: { width: 50, textAlign: "center" },
-    colPrice: { width: 60, textAlign: "right" },
-    colTax: { width: 40, textAlign: "center" },
-    colAmount: { width: 70, textAlign: "right" },
-    totalRow: {
-        flexDirection: "row",
-        backgroundColor: "#f9fafb",
-        paddingVertical: 8,
-        paddingHorizontal: 5,
-        borderTop: "1 solid #ddd",
-    },
-    totalLabel: { flex: 1, textAlign: "right", fontWeight: "bold", fontSize: 9, color: "#1a1a2e", marginRight: 10 },
-    totalValue: { width: 70, textAlign: "right", fontWeight: "bold", fontSize: 9, color: "#1a1a2e" },
-    footer: {
-        marginHorizontal: 20,
-        marginTop: 10,
-        flexDirection: "row",
-        justifyContent: "space-between",
-    },
-    footerSection: { width: "48%", border: "1 solid #ddd", borderRadius: 3 },
-    footerContent: { padding: 8, fontSize: 7.5, color: "#555", lineHeight: 1.4 },
-    sigArea: {
-        marginTop: 30,
-        marginHorizontal: 20,
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "flex-end",
-    },
-    sigBox: { width: 120, borderTop: "1 solid #ccc", textAlign: "center", paddingTop: 5, fontSize: 8, color: "#888" },
-    pageFooter: {
-        position: "absolute",
-        bottom: 20,
-        left: 0,
-        right: 0,
-        textAlign: "center",
-        fontSize: 7,
-        color: "#999",
-    }
+  page: {
+    fontFamily: "Helvetica",
+    fontSize: 7,
+    padding: 20,
+    paddingBottom: 60,
+    backgroundColor: "#fff",
+  },
+  topBar: { height: 4, backgroundColor: "#1a1a2e", marginBottom: 10 },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingBottom: 15,
+    borderBottom: "1.5 solid #1a1a2e",
+    marginBottom: 15,
+  },
+  logoContainer: { width: 140, alignItems: "flex-start" },
+  logo: { height: 65, width: 65 },
+  companyCenter: { flex: 1, alignItems: "center" },
+  companyName: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#1a1a2e",
+    marginBottom: 4,
+  },
+  companyAddr: {
+    fontSize: 8,
+    color: "#444",
+    textAlign: "center",
+    lineHeight: 1.3,
+  },
+  companyRight: { width: 140, alignItems: "flex-end" },
+  companyRightRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginBottom: 3,
+  },
+  companyLabel: { fontSize: 8, color: "#888", marginRight: 4 },
+  companyValue: { fontSize: 8, color: "#1a1a2e", fontWeight: "bold" },
+
+  titleBand: {
+    backgroundColor: "#1a1a2e",
+    color: "#fff",
+    textAlign: "center",
+    fontSize: 12,
+    fontWeight: "bold",
+    letterSpacing: 2,
+    paddingVertical: 5,
+    marginBottom: 15,
+  },
+
+  infoGrid: {
+    flexDirection: "row",
+    marginBottom: 15,
+    gap: 20,
+  },
+  billToBox: {
+    flex: 1,
+    border: "1 solid #eee",
+    borderRadius: 4,
+  },
+  piDetailsBox: {
+    width: 160,
+    border: "1 solid #eee",
+    borderRadius: 4,
+  },
+  sectionHeader: {
+    backgroundColor: "#f8f9fa",
+    borderBottom: "1 solid #eee",
+    padding: "4 8",
+    fontSize: 8,
+    fontWeight: "bold",
+    color: "#1a1a2e",
+  },
+  sectionBody: { padding: 8 },
+  partyName: {
+    fontSize: 10,
+    fontWeight: "bold",
+    color: "#000",
+    marginBottom: 4,
+  },
+  partyAddr: { fontSize: 8, color: "#555", lineHeight: 1.4, marginBottom: 6 },
+  labelValueRow: { flexDirection: "row", marginBottom: 2 },
+  label: { width: 50, fontSize: 7.5, color: "#888" },
+  value: { flex: 1, fontSize: 7.5, color: "#000", fontWeight: "bold" },
+
+  table: {
+    marginTop: 10,
+    border: "1 solid #eee",
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  tableHeader: {
+    flexDirection: "row",
+    backgroundColor: "#1a1a2e",
+    color: "#fff",
+    padding: "6 4",
+    fontSize: 7.5,
+    fontWeight: "bold",
+  },
+  tableRow: {
+    flexDirection: "row",
+    borderBottom: "1 solid #f0f0f0",
+    padding: "6 4",
+    alignItems: "center",
+  },
+  colSno: { width: 25, textAlign: "center" },
+  colDesc: { flex: 1, paddingRight: 10 },
+  colSize: { width: 45, textAlign: "center" },
+  colGSM: { width: 40, textAlign: "center" },
+  colHSN: { width: 45, textAlign: "center" },
+  colUOM: { width: 40, textAlign: "center" },
+  colQty: { width: 40, textAlign: "center" },
+  colPrice: { width: 55, textAlign: "right" },
+  colGross: { width: 65, textAlign: "right" },
+
+  summaryContainer: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 15,
+  },
+  summaryBox: {
+    width: 180,
+    border: "1 solid #eee",
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  summaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    padding: "4 8",
+    borderBottom: "1 solid #f9f9f9",
+  },
+  grandTotalRow: {
+    backgroundColor: "#1a1a2e",
+    color: "#fff",
+    fontWeight: "bold",
+  },
+
+  notesSection: {
+    marginTop: 20,
+    flexDirection: "row",
+    gap: 15,
+  },
+  noteBox: {
+    flex: 1,
+    border: "1 solid #eee",
+    borderRadius: 4,
+  },
+  noteContent: { padding: 8, fontSize: 7.5, color: "#555", lineHeight: 1.4 },
+
+  pageFooter: {
+    position: "absolute",
+    bottom: 20,
+    left: 20,
+    right: 20,
+    borderTop: "1 solid #eee",
+    paddingTop: 10,
+    textAlign: "center",
+    fontSize: 7,
+    color: "#999",
+  },
 });
 
 const ProformaInvoicePrintFormat = ({ data }) => {
-    if (!data) return null;
+  if (!data) return null;
 
-    const totalAmount = data.items?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0;
+  const items = data.items || [];
 
-    return (
-        <Document>
-            <Page size="A4" style={styles.page}>
-                <View style={styles.topBar} />
-                
-                <View style={styles.header}>
-                    <View style={styles.companyLeft}>
-                        <Image src={Logo} style={styles.logo} />
-                    </View>
-                    <View style={styles.companyCenter}>
-                        <Text style={styles.companyName}>{data.Branch?.branchName || "National Printers"}</Text>
-                        <Text style={{ fontSize: 7, color: "#666", marginTop: 2 }}>{data.Branch?.address}</Text>
-                    </View>
-                    <View style={styles.companyRight}>
-                        <View style={styles.companyRightRow}>
-                            <Text style={styles.companyLabel}>GSTIN</Text>
-                            <Text style={styles.companyColon}>:</Text>
-                            <Text style={styles.companyValue}>{data.Branch?.gstNo || "N/A"}</Text>
-                        </View>
-                        <View style={styles.companyRightRow}>
-                            <Text style={styles.companyLabel}>Mobile</Text>
-                            <Text style={styles.companyColon}>:</Text>
-                            <Text style={styles.companyValue}>{data.Branch?.contactMobile || "N/A"}</Text>
-                        </View>
-                    </View>
-                </View>
+  // Calculations
+  const subTotal = items.reduce(
+    (acc, item) =>
+      acc + parseFloat(item.qty || 0) * parseFloat(item.price || 0),
+    0,
+  );
 
-                <Text style={styles.titleBand}>PROFORMA INVOICE</Text>
+  const totalDiscount = items.reduce((acc, item) => {
+    const rowGross = parseFloat(item.qty || 0) * parseFloat(item.price || 0);
+    let disc = 0;
+    if (item.discountType === "PERCENTAGE") {
+      disc = rowGross * (parseFloat(item.discountValue || 0) / 100);
+    } else {
+      disc = parseFloat(item.discountValue || 0);
+    }
+    return acc + disc;
+  }, 0);
 
-                <View style={styles.metaRow}>
-                    <View style={styles.metaPill}>
-                        <Text style={styles.metaLabel}>Doc No:</Text>
-                        <Text style={styles.metaValue}>{data.docId}</Text>
-                    </View>
-                    <View style={styles.metaPill}>
-                        <Text style={styles.metaLabel}>Doc Date:</Text>
-                        <Text style={styles.metaValue}>{moment(data.docDate).format('DD-MM-YYYY')}</Text>
-                    </View>
-                </View>
+  const taxableAmount = subTotal - totalDiscount;
 
-                <View style={styles.twoCol}>
-                    <View style={[styles.colHalf, { borderRight: "1 solid #ddd" }]}>
-                        <Text style={styles.sectionHeader}>BILL TO</Text>
-                        <View style={styles.sectionBody}>
-                            <Text style={styles.partyName}>{data.customer?.name}</Text>
-                            <Text style={styles.partyAddr}>{data.customer?.address}</Text>
-                            <View style={styles.partyRow}>
-                                <Text style={styles.partyLabel}>GSTIN</Text>
-                                <Text style={styles.partyValue}>: {data.customer?.gstNo || "N/A"}</Text>
-                            </View>
-                            <View style={styles.partyRow}>
-                                <Text style={styles.partyLabel}>Contact</Text>
-                                <Text style={styles.partyValue}>: {data.customer?.contactNumber || "N/A"}</Text>
-                            </View>
-                        </View>
-                    </View>
-                    <View style={styles.colHalf}>
-                        <Text style={styles.sectionHeader}>DELIVERY DETAILS</Text>
-                        <View style={styles.sectionBody}>
-                            <View style={styles.partyRow}>
-                                <Text style={styles.partyLabel}>Expected Date</Text>
-                                <Text style={styles.partyValue}>: {moment(data.deliveryDate).format('DD-MM-YYYY')}</Text>
-                            </View>
-                        </View>
-                    </View>
-                </View>
+  const totalTax = items.reduce((acc, item) => {
+    const rowGross = parseFloat(item.qty || 0) * parseFloat(item.price || 0);
+    let disc = 0;
+    if (item.discountType === "PERCENTAGE") {
+      disc = rowGross * (parseFloat(item.discountValue || 0) / 100);
+    } else {
+      disc = parseFloat(item.discountValue || 0);
+    }
+    const rowTaxable = rowGross - disc;
+    return acc + rowTaxable * (parseFloat(item.taxPercent || 0) / 100);
+  }, 0);
 
-                <View style={styles.table}>
-                    <View style={styles.tableHeader}>
-                        <Text style={styles.colSno}>S.No</Text>
-                        <Text style={styles.colDesc}>Product Description</Text>
-                        <Text style={styles.colQty}>Qty</Text>
-                        <Text style={styles.colPrice}>Price</Text>
-                        <Text style={styles.colTax}>Tax %</Text>
-                        <Text style={styles.colAmount}>Amount</Text>
-                    </View>
-                    {data.items?.map((item, index) => (
-                        <View key={index} style={styles.tableRow}>
-                            <Text style={styles.colSno}>{index + 1}</Text>
-                            <View style={styles.colDesc}>
-                                <Text style={{ fontWeight: "bold" }}>{item.StyleItem?.name || "N/A"}</Text>
-                                <Text style={{ fontSize: 6.5, color: "#666", marginTop: 1 }}>
-                                    {[
-                                        item.Size?.name ? `Size: ${item.Size.name}` : "",
-                                        item.Gsm?.name ? `GSM: ${item.Gsm.name}` : "",
-                                        item.Uom?.name ? `UOM: ${item.Uom.name}` : ""
-                                    ].filter(Boolean).join(" | ")}
-                                </Text>
-                            </View>
-                            <Text style={styles.colQty}>{item.qty}</Text>
-                            <Text style={styles.colPrice}>{item.price?.toFixed(2)}</Text>
-                            <Text style={styles.colTax}>{item.taxPercent}%</Text>
-                            <Text style={styles.colAmount}>{item.amount?.toFixed(2)}</Text>
-                        </View>
-                    ))}
-                    <View style={styles.totalRow}>
-                        <Text style={styles.totalLabel}>TOTAL AMOUNT</Text>
-                        <Text style={styles.totalValue}>{totalAmount.toFixed(2)}</Text>
-                    </View>
-                </View>
+  const grandTotal = taxableAmount + totalTax;
 
-                <View style={styles.footer}>
-                    <View style={styles.footerSection}>
-                        <Text style={styles.sectionHeader}>TERMS & CONDITIONS</Text>
-                        <View style={styles.footerContent}>
-                            <Text>{data.termsAndCondition || "N/A"}</Text>
-                        </View>
-                    </View>
-                    <View style={styles.footerSection}>
-                        <Text style={styles.sectionHeader}>REMARKS</Text>
-                        <View style={styles.footerContent}>
-                            <Text>{data.remarks || "N/A"}</Text>
-                        </View>
-                    </View>
-                </View>
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        <View style={styles.topBar} />
 
-                <View style={styles.sigArea}>
-                    <Text style={styles.sigBox}>Customer Signature</Text>
-                    <Text style={styles.sigBox}>Authorized Signatory</Text>
-                </View>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.logoContainer}>
+            <Image src={Logo} style={styles.logo} />
+          </View>
+          <View style={styles.companyCenter}>
+            <Text style={styles.companyName}>NATIONAL PRINTING PRESS</Text>
+            <Text style={styles.companyAddr}>
+              {data.Branch?.address || "N/A"}
+            </Text>
+          </View>
+          <View style={styles.companyRight}>
+            <View style={styles.companyRightRow}>
+              <Text style={styles.companyLabel}>GSTIN :</Text>
+              <Text style={styles.companyValue}>
+                {data.Branch?.gstNo || "N/A"}
+              </Text>
+            </View>
+            <View style={styles.companyRightRow}>
+              <Text style={styles.companyLabel}>Mobile :</Text>
+              <Text style={styles.companyValue}>
+                {data.Branch?.contactMobile || "N/A"}
+              </Text>
+            </View>
+          </View>
+        </View>
 
-                <Text style={styles.pageFooter} fixed>
-                    Generated on {moment().format('DD-MM-YYYY HH:mm')}
+        <Text style={styles.titleBand}>PROFORMA INVOICE</Text>
+
+        {/* Info Grid: Bill To and PI Details aligned */}
+        <View style={styles.infoGrid}>
+          <View style={styles.billToBox}>
+            <Text style={styles.sectionHeader}>BILL TO</Text>
+            <View style={styles.sectionBody}>
+              <Text style={styles.partyName}>{data.customer?.name}</Text>
+              <Text style={styles.partyAddr}>{data.customer?.address}</Text>
+              <View style={styles.labelValueRow}>
+                <Text style={styles.label}>GSTIN</Text>
+                <Text style={styles.value}>
+                  : {data.customer?.gstNo || "N/A"}
                 </Text>
-            </Page>
-        </Document>
-    );
+              </View>
+              <View style={styles.labelValueRow}>
+                <Text style={styles.label}>Contact</Text>
+                <Text style={styles.value}>
+                  : {data.customer?.contactNumber || "N/A"}
+                </Text>
+              </View>
+            </View>
+          </View>
+          <View style={styles.piDetailsBox}>
+            <Text style={styles.sectionHeader}>INVOICE DETAILS</Text>
+            <View style={styles.sectionBody}>
+              <View style={styles.labelValueRow}>
+                <Text style={styles.label}>PI NO</Text>
+                <Text style={styles.value}>: {data.docId}</Text>
+              </View>
+              <View style={styles.labelValueRow}>
+                <Text style={styles.label}>PI Date</Text>
+                <Text style={styles.value}>
+                  : {moment(data.docDate).format("DD-MM-YYYY")}
+                </Text>
+              </View>
+              <View style={styles.labelValueRow}>
+                <Text style={styles.label}>Order No</Text>
+                <Text style={styles.value}>
+                  : {data.OrderEntry?.docId || "-"}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Table */}
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={styles.colSno}>S.No</Text>
+            <Text style={styles.colDesc}>Description of Goods</Text>
+            <Text style={styles.colSize}>Size</Text>
+            <Text style={styles.colGSM}>GSM</Text>
+            <Text style={styles.colHSN}>HSN</Text>
+            <Text style={styles.colUOM}>UOM</Text>
+            <Text style={styles.colQty}>Qty</Text>
+            <Text style={styles.colPrice}>Price</Text>
+            <Text style={styles.colGross}>Gross</Text>
+          </View>
+          {items.map((item, index) => {
+            const gross =
+              parseFloat(item.qty || 0) * parseFloat(item.price || 0);
+            return (
+              <View key={index} style={styles.tableRow}>
+                <Text style={styles.colSno}>{index + 1}</Text>
+                <Text style={[styles.colDesc, { fontWeight: "bold" }]}>
+                  {item.StyleItem?.name || "N/A"}
+                </Text>
+                <Text style={styles.colSize}>{item.Size?.name || "-"}</Text>
+                <Text style={styles.colGSM}>{item.Gsm?.name || "-"}</Text>
+                <Text style={styles.colHSN}>{item.Hsn?.name || "-"}</Text>
+                <Text style={styles.colUOM}>{item.Uom?.name || "-"}</Text>
+                <Text style={styles.colQty}>{item.qty?.toFixed(3)}</Text>
+                <Text style={styles.colPrice}>
+                  {parseFloat(item.price || 0).toFixed(2)}
+                </Text>
+                <Text style={styles.colGross}>{gross.toFixed(2)}</Text>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Summary Section */}
+        <View style={styles.summaryContainer}>
+          <View style={styles.summaryBox}>
+            <View style={styles.summaryRow}>
+              <Text style={{ fontSize: 8 }}>Total Gross</Text>
+              <Text style={{ fontSize: 8, fontWeight: "bold" }}>
+                {subTotal.toFixed(2)}
+              </Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={{ fontSize: 8 }}>Discount</Text>
+              <Text style={{ fontSize: 8, fontWeight: "bold" }}>
+                (-) {totalDiscount.toFixed(2)}
+              </Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={{ fontSize: 8 }}>Taxable Value</Text>
+              <Text style={{ fontSize: 8, fontWeight: "bold" }}>
+                {taxableAmount.toFixed(2)}
+              </Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={{ fontSize: 8 }}>GST Total</Text>
+              <Text style={{ fontSize: 8, fontWeight: "bold" }}>
+                (+) {totalTax.toFixed(2)}
+              </Text>
+            </View>
+            <View style={[styles.summaryRow, styles.grandTotalRow]}>
+              <Text style={{ fontSize: 9 }}>GRAND TOTAL</Text>
+              <Text style={{ fontSize: 9 }}>{grandTotal.toFixed(2)}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Terms and Remarks */}
+        <View style={styles.notesSection}>
+          <View style={styles.noteBox}>
+            <Text style={styles.sectionHeader}>TERMS & CONDITIONS</Text>
+            <View style={styles.noteContent}>
+              <Text>{data.termsAndCondition || "N/A"}</Text>
+            </View>
+          </View>
+          <View style={styles.noteBox}>
+            <Text style={styles.sectionHeader}>REMARKS</Text>
+            <View style={styles.noteContent}>
+              <Text>{data.remarks || "N/A"}</Text>
+            </View>
+          </View>
+        </View>
+
+        <Text style={styles.pageFooter} fixed>
+          Generated on {moment().format("DD-MM-YYYY HH:mm")} | National Printing
+          Press
+        </Text>
+      </Page>
+    </Document>
+  );
 };
 
 export default ProformaInvoicePrintFormat;

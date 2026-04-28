@@ -39,12 +39,17 @@ const ProformaInvoiceSettings = () => {
   const [updateBranch, { isLoading: isUpdating }] = useUpdateBranchMutation();
 
   const [proformaInvoiceEnabled, setProformaInvoiceEnabled] = useState(false);
-  const [proformaInvoiceApprovalEnabled, setProformaInvoiceApprovalEnabled] = useState(false);
+  const [proformaInvoiceApprovalEnabled, setProformaInvoiceApprovalEnabled] =
+    useState(false);
 
   useEffect(() => {
     if (singleData?.data) {
-      setProformaInvoiceEnabled(singleData.data.proformaInvoiceEnabled || false);
-      setProformaInvoiceApprovalEnabled(singleData.data.proformaInvoiceApprovalEnabled || false);
+      setProformaInvoiceEnabled(
+        singleData.data.proformaInvoiceEnabled || false,
+      );
+      setProformaInvoiceApprovalEnabled(
+        singleData.data.proformaInvoiceApprovalEnabled || false,
+      );
     }
   }, [singleData, isFetching, isLoading]);
 
@@ -101,7 +106,7 @@ const ProformaInvoiceSettings = () => {
 
         <ToggleRow
           title="Enable Proforma Invoice for Job Card Orders"
-          description="If enabled, the Order No in the Job Card module will fetch options from Proforma Invoices instead of Order Entries."
+          description="If enabled, the Order No in the Job Card module will Show only if the proforma invoice is generated for that order."
           checked={proformaInvoiceEnabled}
           onChange={handleProformaToggle}
           disabled={isUpdating}
@@ -122,5 +127,3 @@ const ProformaInvoiceSettings = () => {
 };
 
 export default ProformaInvoiceSettings;
-
-
