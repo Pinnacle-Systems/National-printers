@@ -6,7 +6,7 @@ import {
   Image,
   StyleSheet,
 } from "@react-pdf/renderer";
-import Logo from "../../../assets/NPLogo.jpeg";
+import Logo from "../../../assets/NPLOGO.jpeg";
 import moment from "moment";
 
 const styles = StyleSheet.create({
