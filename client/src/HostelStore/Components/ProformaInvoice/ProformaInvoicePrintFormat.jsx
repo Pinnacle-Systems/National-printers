@@ -6,7 +6,7 @@ import {
   Image,
   StyleSheet,
 } from "@react-pdf/renderer";
-import Logo from "../../../assets/NPLOGO.jpeg";
+import Logo from "../../../assets/NationalPrintLogo.jpeg";
 import moment from "moment";
 
 const styles = StyleSheet.create({
@@ -27,7 +27,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   logoContainer: { width: 140, alignItems: "flex-start" },
-  logo: { height: 65, width: 65 },
+  logo: { height: 80, width: 80 },
   companyCenter: { flex: 1, alignItems: "center" },
   companyName: {
     fontSize: 20,
@@ -233,7 +233,7 @@ const ProformaInvoicePrintFormat = ({ data }) => {
             <View style={styles.companyRightRow}>
               <Text style={styles.companyLabel}>GSTIN :</Text>
               <Text style={styles.companyValue}>
-                {data.Branch?.gstNo || "N/A"}
+                {data.Branch?.gstNo || "33BHEPC9190H1ZE"}
               </Text>
             </View>
             <View style={styles.companyRightRow}>
@@ -247,7 +247,7 @@ const ProformaInvoicePrintFormat = ({ data }) => {
 
         <Text style={styles.titleBand}>PROFORMA INVOICE</Text>
 
-        {/* Info Grid: Bill To and PI Details aligned */}
+        {/* Info Grid */}
         <View style={styles.infoGrid}>
           <View style={styles.billToBox}>
             <Text style={styles.sectionHeader}>BILL TO</Text>
@@ -287,6 +287,14 @@ const ProformaInvoicePrintFormat = ({ data }) => {
                   : {data.OrderEntry?.docId || "-"}
                 </Text>
               </View>
+              {data.quoteVersion > 1 && (
+                <View style={styles.labelValueRow}>
+                  <Text style={styles.label}>Revised PI</Text>
+                  <Text style={[styles.value, { color: "#b91c1c" }]}>
+                    : v{data.quoteVersion}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -319,9 +327,9 @@ const ProformaInvoicePrintFormat = ({ data }) => {
                 <Text style={styles.colUOM}>{item.Uom?.name || "-"}</Text>
                 <Text style={styles.colQty}>{item.qty?.toFixed(3)}</Text>
                 <Text style={styles.colPrice}>
-                  {parseFloat(item.price || 0).toFixed(2)}
+                  Rs. {parseFloat(item.price || 0).toFixed(2)}
                 </Text>
-                <Text style={styles.colGross}>{gross.toFixed(2)}</Text>
+                <Text style={styles.colGross}>Rs. {gross.toFixed(2)}</Text>
               </View>
             );
           })}
@@ -333,30 +341,30 @@ const ProformaInvoicePrintFormat = ({ data }) => {
             <View style={styles.summaryRow}>
               <Text style={{ fontSize: 8 }}>Total Gross</Text>
               <Text style={{ fontSize: 8, fontWeight: "bold" }}>
-                {subTotal.toFixed(2)}
+                Rs. {subTotal.toFixed(2)}
               </Text>
             </View>
             <View style={styles.summaryRow}>
               <Text style={{ fontSize: 8 }}>Discount</Text>
               <Text style={{ fontSize: 8, fontWeight: "bold" }}>
-                (-) {totalDiscount.toFixed(2)}
+                (-) Rs. {totalDiscount.toFixed(2)}
               </Text>
             </View>
             <View style={styles.summaryRow}>
               <Text style={{ fontSize: 8 }}>Taxable Value</Text>
               <Text style={{ fontSize: 8, fontWeight: "bold" }}>
-                {taxableAmount.toFixed(2)}
+                Rs. {taxableAmount.toFixed(2)}
               </Text>
             </View>
             <View style={styles.summaryRow}>
               <Text style={{ fontSize: 8 }}>GST Total</Text>
               <Text style={{ fontSize: 8, fontWeight: "bold" }}>
-                (+) {totalTax.toFixed(2)}
+                (+) Rs. {totalTax.toFixed(2)}
               </Text>
             </View>
             <View style={[styles.summaryRow, styles.grandTotalRow]}>
               <Text style={{ fontSize: 9 }}>GRAND TOTAL</Text>
-              <Text style={{ fontSize: 9 }}>{grandTotal.toFixed(2)}</Text>
+              <Text style={{ fontSize: 9 }}>Rs. {grandTotal.toFixed(2)}</Text>
             </View>
           </View>
         </View>

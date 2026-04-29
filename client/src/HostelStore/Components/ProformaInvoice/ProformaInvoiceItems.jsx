@@ -238,21 +238,29 @@ const ProformaInvoiceItems = ({
                     <span className="text-[11px] text-gray-500 mr-1">₹</span>
                     <input
                       type="number"
+                      step="0.01"
                       className="text-[11px] text-right outline-none bg-transparent p-0 m-0"
                       style={{
-                        width: `${Math.max(1, String(item.price || "").length) + 0.5}ch`,
+                        width: `${Math.max(1, String(item.price || "").length) + 1.5}ch`,
                       }}
-                      value={item.price}
+                      value={parseFloat(item.price || 0).toFixed(2)}
                       onChange={(e) =>
                         handleInputChange(e.target.value, index, "price")
                       }
                       readOnly={readOnly}
                       onFocus={(e) => e.target.select()}
+                      onBlur={(e) =>
+                        handleInputChange(
+                          parseFloat(e.target.value || 0).toFixed(2),
+                          index,
+                          "price",
+                        )
+                      }
                     />
                   </div>
                 </td>
                 <td className="text-[11px] text-right  px-1 border border-gray-300 bg-gray-50 bg-transparent">
-                  {item.amount > 0 ? `₹ ${item.amount}` : item.amount}
+                  ₹ {parseFloat(item.amount || 0).toFixed(2)}
                 </td>
                 <td className="border border-gray-300 text-center text-[11px]">
                   <button
