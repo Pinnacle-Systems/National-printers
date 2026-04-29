@@ -14,6 +14,8 @@
     "tempPrefix": null,
     "tempSequence": null,
     "prefixCategory": null,
+    "proformaInvoiceEnabled": false,
+    "proformaInvoiceApprovalEnabled": false,
     "logo": null
   }
 ]
