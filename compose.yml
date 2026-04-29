@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: mysecretpassword
-      POSTGRES_DB: muthu_printers
+      POSTGRES_DB: national_printers
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "15432:5432"
