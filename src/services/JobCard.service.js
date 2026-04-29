@@ -6,6 +6,14 @@ import {
 } from "../utils/helper.js";
 import { getFinYearStartTimeEndTime } from "../utils/finYearHelper.js";
 import { getTableRecordWithId } from "../utils/helperQueries.js";
+import {
+  buildIncludeForModule,
+  createApprovalLog,
+  evaluateConfigs,
+  getApprovalStatus,
+  getModuleApprovalSetup,
+} from "../utils/approvalHelper.js";
+const REFERENCE_PAGE = "JOB CARD";
 
 // ─────────────────────────────────────────────
 // Doc ID Generator
@@ -83,22 +91,89 @@ async function get(req) {
     orderBy: { id: "desc" },
   });
 
-  let totalCount = data.length;
-
   if (searchDocDate) {
     data = data.filter((item) =>
       String(getDateFromDateTime(item.createdAt)).includes(searchDocDate),
     );
   }
 
+  let totalCount = data.length;
+
+  const { module, hasApproval } = await getModuleApprovalSetup(
+    REFERENCE_PAGE,
+    branchId,
+  );
+
+  const jobCardIds = data.map((o) => o.id);
+
+  const approvalLogs = await prisma.approvalLog.findMany({
+    where: { referencePage: REFERENCE_PAGE, referenceId: { in: jobCardIds } },
+    select: {
+      id: true,
+      referenceId: true,
+      status: true,
+      remarks: true,
+      currentLevel: true,
+      LevelLogs: {
+        select: {
+          action: true,
+          levelNo: true,
+          userId: true,
+          createdAt: true,
+          User: { select: { id: true, username: true } },
+        },
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
+
+  const approvalLogMap = approvalLogs.reduce((acc, log) => {
+    acc[log.referenceId] = log;
+    return acc;
+  }, {});
+
+  const activeConfigs =
+    hasApproval && module
+      ? await prisma.approvalConfig.findMany({
+          where: {
+            moduleId: module.id,
+            branchId: parseInt(branchId),
+            active: true,
+          },
+          include: {
+            ConfigConditions: {
+              include: { Field: true, Operator: true, CompareField: true },
+            },
+            approvalLevels: {
+              include: { LevelUsers: true },
+              orderBy: { levelNo: "asc" },
+            },
+          },
+        })
+      : [];
+
+  let resolvedData = data.map((jobCard) => {
+    const log = approvalLogMap[jobCard.id] ?? null;
+
+    let shouldTrigger = false;
+    if (!log && hasApproval && activeConfigs.length > 0) {
+      shouldTrigger = evaluateConfigs(activeConfigs, jobCard);
+    }
+
+    return {
+      ...jobCard,
+      approvalStatus: getApprovalStatus(log, !!log || shouldTrigger),
+    };
+  });
+
   if (pagination) {
-    data = data.slice(
+    resolvedData = resolvedData.slice(
       (pageNumber - 1) * parseInt(dataPerPage),
-      pageNumber * dataPerPage,
+      pageNumber * parseInt(dataPerPage),
     );
   }
 
-  return { statusCode: 0, data, nextDocId: newDocId, totalCount };
+  return { statusCode: 0, data: resolvedData, nextDocId: newDocId, totalCount };
 }
 
 // ─────────────────────────────────────────────
@@ -128,27 +203,78 @@ async function getOne(id) {
       machineDetails: {
         include: { Machine: { select: { id: true, name: true } } },
       },
+      processRoute: {
+        include: { Process: { select: { id: true, name: true } } },
+      },
     },
   });
 
   if (!data) return NoRecordFound("Job Card");
-  return { statusCode: 0, data };
+
+  const { module, hasApproval } = await getModuleApprovalSetup(
+    REFERENCE_PAGE,
+    data.branchId,
+  );
+  let log = null;
+  let shouldTrigger = false;
+
+  if (hasApproval && module) {
+    log = await prisma.approvalLog.findFirst({
+      where: {
+        referencePage: REFERENCE_PAGE,
+        referenceId: data.id,
+      },
+      include: {
+        LevelLogs: {
+          include: {
+            User: { select: { id: true, username: true } },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    });
+
+    if (!log) {
+      const activeConfigs = await prisma.approvalConfig.findMany({
+        where: {
+          moduleId: module.id,
+          branchId: parseInt(data.branchId),
+          active: true,
+        },
+        include: {
+          ConfigConditions: {
+            include: {
+              Field: true,
+              Operator: true,
+              CompareField: true,
+            },
+          },
+        },
+      });
+
+      if (activeConfigs.length > 0) {
+        shouldTrigger = evaluateConfigs(activeConfigs, data);
+      }
+    }
+  }
+
+  return {
+    statusCode: 0,
+    data: {
+      ...data,
+      approvalStatus: getApprovalStatus(log, !!log || shouldTrigger),
+      approvalLog: log,
+    },
+  };
 }
 
 // ─────────────────────────────────────────────
 // SAFE ARRAY PARSER (NO JSON ERRORS)
 // ─────────────────────────────────────────────
 function safeArray(val) {
-  // already array
   if (Array.isArray(val)) return val;
-
-  // null / undefined / empty
   if (!val) return [];
-
-  // string "undefined"
   if (val === "undefined") return [];
-
-  // ONLY parse if it's actually a string
   if (typeof val === "string") {
     try {
       return JSON.parse(val);
@@ -157,10 +283,9 @@ function safeArray(val) {
       return [];
     }
   }
-
-  // fallback
   return [];
 }
+
 // ─────────────────────────────────────────────
 // CREATE
 // ─────────────────────────────────────────────
@@ -172,7 +297,7 @@ async function create(body) {
       finYearId,
       docDate,
       orderEntryId,
-      proformaInvoiceId,
+      proformaInvoiceId, // ✅ added back
       orderType,
       orderQty,
       customerId,
@@ -197,23 +322,20 @@ async function create(body) {
       designerId,
       tagCardUps,
       jobRunTime,
-
-      // Arrays
       boardItems,
       selectedProcesses,
       laminations,
       varnishes,
       selectedMachines,
+      processRoute,
     } = body;
 
-    // ─────────────────────────────
-    // ✅ SAFE ARRAYS
-    // ─────────────────────────────
     const safeBoardItems = safeArray(boardItems);
     const safeProcesses = safeArray(selectedProcesses);
     const safeLaminations = safeArray(laminations);
     const safeVarnishes = safeArray(varnishes);
     const safeMachines = safeArray(selectedMachines);
+    const safeProcessRoute = safeArray(processRoute);
 
     console.log("✅ SAFE ARRAYS:");
     console.log({
@@ -224,9 +346,6 @@ async function create(body) {
       safeMachines,
     });
 
-    // ─────────────────────────────
-    // FIN YEAR + DOC ID
-    // ─────────────────────────────
     let finYearDate = await getFinYearStartTimeEndTime(finYearId);
 
     const shortCode = finYearDate
@@ -245,6 +364,11 @@ async function create(body) {
 
     console.log("📄 NEW DOC ID:", newDocId);
 
+    const { module, hasApproval } = await getModuleApprovalSetup(
+      REFERENCE_PAGE,
+      branchId,
+    );
+
     let data;
 
     await prisma.$transaction(async (tx) => {
@@ -257,7 +381,9 @@ async function create(body) {
           branchId: Number(branchId),
 
           orderEntryId: orderEntryId ? Number(orderEntryId) : null,
-          proformaInvoiceId: proformaInvoiceId ? Number(proformaInvoiceId) : null,
+          proformaInvoiceId: proformaInvoiceId
+            ? Number(proformaInvoiceId)
+            : null, // ✅ added back
           orderType: orderType || null,
           orderQty: orderQty ? Number(orderQty) : null,
           customerId: customerId ? Number(customerId) : null,
@@ -288,10 +414,6 @@ async function create(body) {
           designerId: designerId ? Number(designerId) : null,
           tagCardUps: tagCardUps || null,
           jobRunTime: jobRunTime || null,
-
-          // ─────────────────────────────
-          // RELATIONS
-          // ─────────────────────────────
 
           boardQualities: safeBoardItems.length
             ? {
@@ -346,8 +468,42 @@ async function create(body) {
                 },
               }
             : undefined,
+
+          processRoute: safeProcessRoute.length
+            ? {
+                createMany: {
+                  data: safeProcessRoute.map((r, idx) => ({
+                    processId: Number(r.processId),
+                    type: r.type,
+                    sequence: idx + 1,
+                    isFront: !!r.isFront,
+                    isFrontAndBack: !!r.isFrontAndBack,
+                  })),
+                },
+              }
+            : undefined,
         },
       });
+
+      if (hasApproval && module) {
+        const includeClause = await buildIncludeForModule(module.id);
+
+        const fullRecord = await tx.jobCard.findUnique({
+          where: { id: data.id },
+          include: includeClause,
+        });
+
+        await createApprovalLog(
+          tx,
+          branchId,
+          module.id,
+          data.id,
+          REFERENCE_PAGE,
+          fullRecord,
+          data.docId,
+          userId,
+        );
+      }
     });
 
     console.log("✅ CREATED SUCCESS:", data);
@@ -369,7 +525,7 @@ async function update(id, body) {
       branchId,
       docDate,
       orderEntryId,
-      proformaInvoiceId,
+      proformaInvoiceId, // ✅ added back
       orderType,
       orderQty,
       customerId,
@@ -399,6 +555,8 @@ async function update(id, body) {
       laminations,
       varnishes,
       selectedMachines,
+      processRoute,
+      submitApproval,
     } = body;
 
     const dataFound = await prisma.jobCard.findUnique({
@@ -406,15 +564,13 @@ async function update(id, body) {
     });
     if (!dataFound) return NoRecordFound("Job Card");
 
-    // const parsedBoardItems = parseJsonField(boardItems, []);
-    // const parsedProcesses = parseJsonField(selectedProcesses, []);
-    // const parsedLaminations = parseJsonField(laminations, []);
-    // const parsedVarnishes = parseJsonField(varnishes, []);
-    // const parsedMachines = parseJsonField(selectedMachines, []);
+    const { module, hasApproval } = await getModuleApprovalSetup(
+      REFERENCE_PAGE,
+      branchId,
+    );
 
     let data;
     await prisma.$transaction(async (tx) => {
-      // Delete all child records first, then recreate (simplest safe strategy)
       await tx.boardQuality.deleteMany({ where: { jobCardId: parseInt(id) } });
       await tx.processDetails.deleteMany({
         where: { jobCardId: parseInt(id) },
@@ -428,6 +584,7 @@ async function update(id, body) {
       await tx.machineDetails.deleteMany({
         where: { jobCardId: parseInt(id) },
       });
+      await tx.processRoute.deleteMany({ where: { jobCardId: parseInt(id) } });
 
       data = await tx.jobCard.update({
         where: { id: parseInt(id) },
@@ -436,7 +593,9 @@ async function update(id, body) {
           updatedById: parseInt(userId),
           branchId: parseInt(branchId),
           orderEntryId: orderEntryId ? parseInt(orderEntryId) : null,
-          proformaInvoiceId: proformaInvoiceId ? parseInt(proformaInvoiceId) : null,
+          proformaInvoiceId: proformaInvoiceId
+            ? parseInt(proformaInvoiceId)
+            : null, // ✅ added back
           orderType: orderType || null,
           orderQty: orderQty ? parseInt(orderQty) : null,
           customerId: customerId ? parseInt(customerId) : null,
@@ -520,8 +679,48 @@ async function update(id, body) {
                   },
                 }
               : undefined,
+
+          processRoute: processRoute.length
+            ? {
+                createMany: {
+                  data: processRoute.map((r, idx) => ({
+                    processId: parseInt(r.processId),
+                    type: r.type,
+                    sequence: idx + 1,
+                    isFront: Boolean(r.isFront),
+                    isFrontAndBack: Boolean(r.isFrontAndBack),
+                  })),
+                },
+              }
+            : undefined,
         },
       });
+
+      if (submitApproval && hasApproval && module) {
+        await tx.approvalLog.deleteMany({
+          where: {
+            referenceId: parseInt(id),
+            referencePage: REFERENCE_PAGE,
+            status: { in: ["REJECTED", "NOTAPPROVED"] },
+          },
+        });
+
+        const fullRecord = await tx.jobCard.findUnique({
+          where: { id: parseInt(id) },
+          include: await buildIncludeForModule(module.id),
+        });
+
+        await createApprovalLog(
+          tx,
+          branchId,
+          module.id,
+          data.id,
+          REFERENCE_PAGE,
+          fullRecord,
+          data.docId,
+          userId,
+        );
+      }
     });
 
     return { statusCode: 0, data };
@@ -535,14 +734,18 @@ async function update(id, body) {
 // ─────────────────────────────────────────────
 async function remove(id) {
   try {
+    const jobCardId = parseInt(id);
+    await prisma.approvalLog.deleteMany({
+      where: { referencePage: REFERENCE_PAGE, referenceId: jobCardId },
+    });
+
     const dataFound = await prisma.jobCard.findUnique({
-      where: { id: parseInt(id) },
+      where: { id: jobCardId },
     });
     if (!dataFound) return NoRecordFound("Job Card");
 
-    // Cascade delete handles child records (onDelete: Cascade in schema)
     const data = await prisma.jobCard.delete({
-      where: { id: parseInt(id) },
+      where: { id: jobCardId },
     });
 
     return { statusCode: 0, data };
@@ -552,6 +755,6 @@ async function remove(id) {
 }
 
 // ─────────────────────────────────────────────
-// Helper
+// Export
 // ─────────────────────────────────────────────
 export { get, getOne, create, update, remove };

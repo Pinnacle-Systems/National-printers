@@ -55,7 +55,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import moment from "moment";
 import { findFromList, getCommonParams, ModeChip } from "../../../Utils/helper";
 import { toast } from "react-toastify";
-import { FiEdit2, FiPrinter, FiSave } from "react-icons/fi";
+import { FiCheck, FiEdit2, FiPrinter, FiSave, FiSend } from "react-icons/fi";
 import { HiOutlineRefresh } from "react-icons/hi";
 import Swal from "sweetalert2";
 import { dropDownListObject } from "../../../Utils/contructObject";
@@ -72,8 +72,8 @@ import {
   useGetJobCardByIdQuery,
   useUpdateJobCardMutation,
 } from "../../../redux/uniformService/JobCardService.js";
-import { useGetProformaInvoiceQuery } from "../../../redux/uniformService/ProformaInvoiceService.js";
-import { useGetBranchByIdQuery } from "../../../redux/services/BranchMasterService.js";
+import { useGetProformaInvoiceQuery } from "../../../redux/uniformService/ProformaInvoiceService.js"; // ✅ added back
+import { useGetBranchByIdQuery } from "../../../redux/services/BranchMasterService.js"; // ✅ added back
 import { useGetProcessMasterQuery } from "../../../redux/services/ProcessMasterService.js";
 import { useGetProcessGroupMasterQuery } from "../../../redux/services/ProcessGroupMaster.service.js";
 import secureLocalStorage from "react-secure-storage";
@@ -87,6 +87,9 @@ import OrderEntryApi, {
 } from "../../../redux/uniformService/OrderEntryService.js";
 import { useDispatch } from "react-redux";
 import { invalidateOrderEntryModule } from "../../../redux/Dispatch/OrderInvalidateTags.js";
+import { ProcessRoutePanel, routeKeysToDb } from "./ProcessRoutePanel.jsx";
+import { useAddApprovalStausMutation } from "../../../redux/uniformService/PoServices.js";
+import { MdKeyboardDoubleArrowLeft } from "react-icons/md";
 
 // ── Section card ─────────────────────────────────────────────
 const SectionCard = ({ title, children, className = "" }) => (
@@ -104,14 +107,8 @@ const SectionCard = ({ title, children, className = "" }) => (
   </div>
 );
 
-// ── Column wrapper ────────────────────────────────────────────
 const Col = ({ title, children, className = "" }) => (
-  <div className={`flex flex-col gap-2.5 gap-y-4 ${className}`}>
-    <h2 className="text-[11px] font-extrabold uppercase tracking-widest text-slate-800 pb-1.5 border-b-2 border-slate-700">
-      {title}
-    </h2>
-    {children}
-  </div>
+  <div className={`flex flex-col gap-2.5 gap-y-3 ${className}`}>{children}</div>
 );
 
 // ── Field label + input wrapper ───────────────────────────────
@@ -125,7 +122,6 @@ const Field = ({ label, children }) => (
 );
 
 // ── LV Row (Lamination / Varnish) ─────────────────────────────
-// type col is wider (flex-[2]) so long names don't crowd the checkboxes
 const LVRow = ({ item, selected, onMain, onFront, onFrontBack, readOnly }) => (
   <div className="flex items-center gap-2 gap-y-4 py-1 border-b border-slate-100 last:border-0">
     <div className="flex-[2] min-w-0">
@@ -190,6 +186,8 @@ const JobCardForm = ({
   setFromOrderType,
   fromOrderQty,
   setFromOrderQty,
+  canApprove,
+  userData,
 }) => {
   const today = new Date();
 
@@ -198,7 +196,7 @@ const JobCardForm = ({
   );
   const [customerId, setCustomerId] = useState("");
   const [remarks, setRemarks] = useState("");
-  const [orderType, setOrderType] = useState("Sample");
+  const [orderType, setOrderType] = useState("ORDER");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [docId, setDocId] = useState("");
   const [orderQty, setOrderQty] = useState("");
@@ -229,11 +227,17 @@ const JobCardForm = ({
   const [laminations, setLaminations] = useState([]);
   const [varnishes, setVarnishes] = useState([]);
   const [orderEntryId, setOrderEntryId] = useState("");
-  const [proformaInvoiceId, setProformaInvoiceId] = useState("");
+  const [proformaInvoiceId, setProformaInvoiceId] = useState(""); // ✅ added back
   const customerRef = useRef(null);
   const { userId, finYearId, branchId, companyId } = getCommonParams();
   const [pendingAction, setPendingAction] = useState(null);
   const [jobRunTime, setJobRunTime] = useState("");
+  const [processRoute, setProcessRoute] = useState([]);
+  const [approvalModal, setApprovalModal] = useState(false);
+  const [actionType, setActionType] = useState("");
+  const [approvalRemarks, setApprovalRemarks] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
+
   const dispatch = useDispatch();
 
   const params = {
@@ -249,23 +253,26 @@ const JobCardForm = ({
   const { data: processGroupList, isFetching: isProcessGroupFetching } =
     useGetProcessGroupMasterQuery({ params });
 
-  const { data: currentBranch } = useGetBranchByIdQuery(branchId, { skip: !branchId });
-  const isProformaEnabled = currentBranch?.data?.proformaInvoiceEnabled || false;
-  const isApprovalEnabled = currentBranch?.data?.proformaInvoiceApprovalEnabled || false;
+  // ✅ added back — branch feature flags
+  const { data: currentBranch } = useGetBranchByIdQuery(branchId, {
+    skip: !branchId,
+  });
+  const isProformaEnabled =
+    currentBranch?.data?.proformaInvoiceEnabled || false;
+  const isApprovalEnabled =
+    currentBranch?.data?.proformaInvoiceApprovalEnabled || false;
 
+  // ✅ added back — conditional fetch based on isProformaEnabled
   const { data: orderList } = useGetOrderEntryQuery(
     { params: { companyId, branchId } },
-    { skip: isProformaEnabled }
+    { skip: isProformaEnabled },
   );
 
+  // ✅ added back
   const { data: proformaList } = useGetProformaInvoiceQuery(
     { params: { companyId, branchId } },
-    { skip: !isProformaEnabled }
+    { skip: !isProformaEnabled },
   );
-  // const getGroupIds = (groupName) =>
-  //     processGroupList?.data
-  //         ?.find((g) => g.name === groupName)
-  //         ?.processGroupList?.map((i) => i.id) || [];
 
   const getGroupIds = (groupName) =>
     processGroupList?.data
@@ -287,9 +294,11 @@ const JobCardForm = ({
     isFetching: isSingleFetching,
     isLoading: isSingleLoading,
   } = useGetJobCardByIdQuery(id, { skip: !id });
+  const status = singleData?.data?.approvalStatus?.status;
 
   const [addData] = useAddJobCardMutation();
   const [updateData] = useUpdateJobCardMutation();
+  const [addApprovalStatus] = useAddApprovalStausMutation();
 
   const syncFormWithDb = useCallback((data) => {
     setDocId(data?.docId || "New");
@@ -298,7 +307,7 @@ const JobCardForm = ({
         ? moment.utc(data.docDate).format("YYYY-MM-DD")
         : moment.utc(new Date()).format("YYYY-MM-DD"),
     );
-    setOrderType(data?.orderType || "Sample");
+    setOrderType(data?.orderType || "ORDER");
     setCustomerId(data?.customerId || "");
     setRemarks(data?.remarks || "");
     setOrderQty(data?.orderQty || "");
@@ -341,9 +350,26 @@ const JobCardForm = ({
     );
     setSelectedMachines(data?.machineDetails?.map((m) => m.machineId) || []);
     setOrderEntryId(data?.orderEntryId || "");
-    setProformaInvoiceId(data?.proformaInvoiceId || "");
+    setProformaInvoiceId(data?.proformaInvoiceId || ""); // ✅ added back
     setBoardId(data?.boardId || "");
     setJobRunTime(data?.jobRunTime || "");
+    setProcessRoute(
+      data?.processRoute
+        ? [...data.processRoute]
+            .sort((a, b) => a.sequence - b.sequence)
+            .map((r) => {
+              const sub = r.isFront
+                ? "front"
+                : r.isFrontAndBack
+                  ? "frontback"
+                  : "";
+              return `${r.type}:${r.processId}${sub ? `:${sub}` : ""}`;
+            })
+        : [],
+    );
+    setReadOnly(
+      (["PENDING", "APPROVED"].includes(status) && !canApprove) || readOnly,
+    );
   }, []);
 
   useEffect(() => {
@@ -378,7 +404,7 @@ const JobCardForm = ({
     orderType,
     orderQty,
     customerId,
-    boardItems: boardItems?.map((i) => i.id) || [],
+    boardItems,
     gsmId,
     boardId,
     remarks,
@@ -402,8 +428,9 @@ const JobCardForm = ({
     varnishes,
     selectedMachines,
     orderEntryId,
-    proformaInvoiceId,
+    proformaInvoiceId, // ✅ added back
     jobRunTime,
+    processRoute: routeKeysToDb(processRoute),
   };
 
   const handleSubmitCustom = async (callback, data, text, nextProcess) => {
@@ -428,18 +455,14 @@ const JobCardForm = ({
                   cancelButtonText: "No [Esc]",
                   confirmButtonColor: "#3085d6",
                   cancelButtonColor: "#6b7280",
-                  focusConfirm: true, // ✅ Auto-focus confirm button
-                  allowEnterKey: true, // ✅ Allow Enter to confirm
-                  allowEscapeKey: true, // ✅ Allow Escape to cancel
+                  focusConfirm: true,
+                  allowEnterKey: true,
+                  allowEscapeKey: true,
                   didOpen: () => {
-                    // ✅ Ensure confirm button is focused when modal opens
                     const confirmButton = Swal.getConfirmButton();
                     const cancelButton = Swal.getCancelButton();
-
                     if (confirmButton) {
                       confirmButton.focus();
-
-                      // ✅ Add keyboard navigation
                       confirmButton.addEventListener("keydown", (e) => {
                         if (e.key === "Tab" && !e.shiftKey) {
                           e.preventDefault();
@@ -447,7 +470,6 @@ const JobCardForm = ({
                         }
                       });
                     }
-
                     if (cancelButton) {
                       cancelButton.addEventListener("keydown", (e) => {
                         if (e.key === "Tab" && e.shiftKey) {
@@ -459,20 +481,16 @@ const JobCardForm = ({
                   },
                 }).then((result) => {
                   if (result.isConfirmed) {
-                    // ✅ User clicked "Yes, Print"
                     setPrintModalOpen(true);
-                    // Set the ID so the print modal can access the saved data
                     if (returnData?.data?.id) {
                       setId(returnData.data.id);
                     }
                     setPendingAction(nextProcess);
                   } else {
-                    // ✅ User clicked "No, Thanks" - proceed with normal flow
                     if (nextProcess === "new") {
                       syncFormWithDb(undefined);
                       setId("");
                       setDocId("New");
-
                       setTimeout(() => {
                         supplierRef.current?.focus();
                       }, 300);
@@ -496,7 +514,6 @@ const JobCardForm = ({
             }
           },
         });
-        // dispatch(OrderEntryApi.util.invalidateTags(["orderEntry"]));
         invalidateOrderEntryModule();
       }
     } catch (error) {
@@ -506,6 +523,8 @@ const JobCardForm = ({
 
   const validateData = (data) => {
     const checks = [
+      { condition: !data.orderEntryId, title: "Order No is required!" },
+      { condition: !data.docDate, title: "Document Date is required!" },
       { condition: !data.orderType, title: "Order Type is required!" },
       { condition: !data.orderQty, title: "Order Quantity is required!" },
       { condition: !data.customerId, title: "Customer is required!" },
@@ -523,12 +542,25 @@ const JobCardForm = ({
     return true;
   };
 
-  const saveData = (nextProcess) => {
+  const saveData = (nextProcess, options = {}) => {
+    const submitApprovalFlag = !!options.submitApproval;
     if (!validateData(data)) return;
     if (id && !window.confirm("Are you sure you want to update the details?"))
       return;
-    if (id) handleSubmitCustom(updateData, data, "Updated", nextProcess);
-    else handleSubmitCustom(addData, data, "Added", nextProcess);
+    if (id)
+      handleSubmitCustom(
+        updateData,
+        { ...data, ...(submitApprovalFlag ? { submitApproval: true } : {}) },
+        "Updated",
+        nextProcess,
+      );
+    else
+      handleSubmitCustom(
+        addData,
+        { ...data, ...(submitApprovalFlag ? { submitApproval: true } : {}) },
+        "Added",
+        nextProcess,
+      );
   };
 
   const handleKeyDown = (e) => {
@@ -543,13 +575,7 @@ const JobCardForm = ({
   }, []);
 
   useEffect(() => {
-    if (
-      formOrderCustomerId &&
-      fromOrderId &&
-      fromOrderType &&
-      fromOrderQty &&
-      !id
-    ) {
+    if (formOrderCustomerId && fromOrderId && fromOrderType && !id) {
       setCustomerId(formOrderCustomerId);
       setOrderEntryId(fromOrderId);
       setOrderType(fromOrderType);
@@ -557,14 +583,181 @@ const JobCardForm = ({
     }
   }, [formOrderCustomerId, fromOrderId, fromOrderType, fromOrderQty]);
 
+  const handleApprovalAction = (type) => {
+    setActionType(type);
+    setApprovalRemarks("");
+    setApprovalModal(true);
+  };
+
+  const handleConfirmAction = async () => {
+    if (actionType === "REJECT" && !approvalRemarks.trim()) {
+      toast.warning("Remarks required for sending back!");
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const result = await addApprovalStatus({
+        userId: userData?.id,
+        remarks: approvalRemarks || null,
+        actionType,
+        referenceId: id,
+        referencePage: "JOB CARD",
+        recordData: {},
+      }).unwrap();
+
+      if (result.statusCode === 0) {
+        toast.success(
+          result.message ||
+            (actionType === "APPROVE"
+              ? "Job Card Approved!"
+              : "Sent Back for Review!"),
+        );
+        setApprovalModal(false);
+        onClose();
+      } else {
+        toast.error(result.message || "Action failed");
+        setApprovalModal(false);
+      }
+    } catch (err) {
+      toast.error(err?.data?.message || "Something went wrong!");
+      setApprovalModal(false);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   return (
     <>
+      {/* ── Approval Modal ─────────────────────────────────── */}
+      <Modal
+        isOpen={approvalModal}
+        onClose={() => setApprovalModal(false)}
+        widthClass="w-[420px]"
+      >
+        <div className="space-y-4">
+          <h2
+            className={`text-base font-semibold ${actionType === "APPROVE" ? "text-green-700" : "text-blue-700"}`}
+          >
+            {actionType === "APPROVE"
+              ? "✅ Approve Job Card"
+              : "↩️ Send Back for Review"}
+          </h2>
+          <div className="bg-gray-50 border border-gray-200 rounded-md px-3 py-2 text-xs space-y-1.5">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-500">Job Card No</span>
+              <span className="font-medium text-gray-800">{docId}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-500">Customer</span>
+              <span className="font-medium text-gray-800">
+                {findFromList(customerId, customerList?.data, "name")}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-500">Current Approval</span>
+              <span
+                className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                  status === "APPROVED"
+                    ? "bg-green-100 text-green-700"
+                    : status === "REJECTED"
+                      ? "bg-red-100 text-red-700"
+                      : "bg-orange-100 text-orange-700"
+                }`}
+              >
+                {status === "PENDING"
+                  ? "Waiting For Approval"
+                  : status === "SUPERSEDED"
+                    ? "Re-approval Required"
+                    : status}
+              </span>
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-600 mb-1 block">
+              Remarks{" "}
+              {actionType === "REJECT" && (
+                <span className="text-red-500">* required</span>
+              )}
+            </label>
+            <textarea
+              rows={3}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-300 resize-none"
+              placeholder={
+                actionType === "APPROVE"
+                  ? "Optional remarks..."
+                  : "Reason for sending back (required)..."
+              }
+              value={approvalRemarks}
+              onChange={(e) => setApprovalRemarks(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setApprovalModal(false)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  setApprovalModal(false);
+                }
+              }}
+              className="px-4 py-1.5 text-xs rounded text-white hover:bg-red-600 bg-red-500"
+            >
+              Cancel
+            </button>
+            <button
+              disabled={actionLoading}
+              onClick={handleConfirmAction}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleConfirmAction();
+                }
+              }}
+              className={`px-4 py-1.5 text-xs rounded text-white font-semibold transition ${
+                actionType === "APPROVE"
+                  ? "bg-green-600 hover:bg-green-700"
+                  : "bg-blue-600 hover:bg-blue-700"
+              } disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1`}
+            >
+              {actionLoading ? (
+                <>
+                  <svg
+                    className="animate-spin h-3 w-3"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8z"
+                    />
+                  </svg>
+                  Processing...
+                </>
+              ) : actionType === "APPROVE" ? (
+                "Confirm Approve"
+              ) : (
+                "Send Back"
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Print Modal ────────────────────────────────────── */}
       <Modal
         isOpen={printModalOpen}
         onClose={() => {
           setPrintModalOpen(false);
-
-          // Execute pending action after print modal closes
           if (pendingAction === "new") {
             setId("");
             setDocId("New");
@@ -597,9 +790,10 @@ const JobCardForm = ({
           />
         </PDFViewer>
       </Modal>
+
       <div className="flex flex-col" onKeyDown={handleKeyDown}>
         {/* ── Header ─────────────────────────────────────────── */}
-        <div className="flex justify-between items-center px-4 py-1 bg-white rounded-md sticky top-0 z-10 shadow-sm">
+        <div className="flex justify-between items-center px-1 py-1 bg-white rounded-md sticky top-0 z-10 shadow-sm">
           <h1 className="text-lg font-bold text-slate-800 flex items-center gap-2">
             Job Card
             <ModeChip id={id} readOnly={readOnly} />
@@ -613,12 +807,12 @@ const JobCardForm = ({
           </button>
         </div>
 
-        {/* ── Body — 5 card columns with gaps ─────────────────── */}
-        <div className="flex-1 overflow-y-auto p-3">
-          <div className="grid grid-cols-5 gap-3 items-start">
-            {/* ══ COL 5 — BASIC DETAILS ══════════════════════ */}
+        {/* ── Body ─────────────────────────────────────────── */}
+        <div className="flex-1 overflow-y-auto px-1 py-2">
+          <div className="grid grid-cols-5 gap-2 items-start">
+            {/* ══ COL 1 — BASIC DETAILS ══════════════════════ */}
             <Col title="Basic Details">
-              <SectionCard>
+              <SectionCard title="Basic Details">
                 <div className="grid grid-cols-2 gap-x-2 gap-y-2">
                   <Field label="Job Card No">
                     <ReusableInput label="" readOnly value={docId} />
@@ -632,19 +826,22 @@ const JobCardForm = ({
                       disabled
                     />
                   </Field>
+
+                  {/* ✅ Proforma / Order No conditional dropdown — added back from file 1 */}
                   <div className="w-[135px]">
-                    <Field label={isProformaEnabled ? "Proforma Invoice" : "Order No"}>
+                    <Field
+                      label={
+                        isProformaEnabled ? "Proforma Invoice" : "Order No"
+                      }
+                    >
                       {isProformaEnabled ? (
                         <DropdownNew
                           name=""
-                          dataList={proformaList?.data?.filter(
-                            (item) => {
-                              // If approval mode is ON: only show approved invoices
-                              if (isApprovalEnabled) return item.isApproved === true;
-                              // If approval mode is OFF: show all
-                              return true;
-                            }
-                          )}
+                          dataList={proformaList?.data?.filter((item) => {
+                            if (isApprovalEnabled)
+                              return item.isApproved === true;
+                            return true;
+                          })}
                           value={proformaInvoiceId}
                           setValue={setProformaInvoiceId}
                           required
@@ -729,14 +926,8 @@ const JobCardForm = ({
                   </Field>
                 </div>
               </SectionCard>
-              {/* <SectionCard title="">
 
-                                <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-
-                                </div>
-                               
-                            </SectionCard> */}
-              <SectionCard title="Customer Details">
+              <SectionCard>
                 <div className="flex flex-col gap-2">
                   <Field label="Customer">
                     <DropdownWithModal
@@ -786,13 +977,10 @@ const JobCardForm = ({
                   </div>
                 </div>
               </SectionCard>
-
-              {/* <SectionCard title="Order Info"> */}
             </Col>
 
-            {/* ══ COL 1 — BOARD DETAILS ══════════════════════ */}
+            {/* ══ COL 2 — BOARD DETAILS ══════════════════════ */}
             <Col title="Board Details">
-              {/* Board Quality — 2 checkboxes per row */}
               <SectionCard title="Board Quality">
                 <div className="grid grid-cols-2 gap-x-3 gap-y-4">
                   {boardList?.map((item) => (
@@ -807,7 +995,6 @@ const JobCardForm = ({
                 </div>
               </SectionCard>
 
-              {/* Specifications — inputs 2 per row */}
               <SectionCard title="Specifications">
                 <div className="grid grid-cols-2 gap-x-3 gap-y-2">
                   <Field label="GSM">
@@ -886,8 +1073,6 @@ const JobCardForm = ({
                     />
                   </Field>
                 </div>
-
-                {/* Printing flags — 2 per row */}
                 <div className="grid grid-cols-2 gap-x-3 gap-y-4 mt-2.5 pt-2 border-t border-slate-100">
                   <CheckBox
                     name="4 Color"
@@ -917,9 +1102,9 @@ const JobCardForm = ({
               </SectionCard>
             </Col>
 
-            {/* ══ COL 2 — PROCESS ════════════════════════════ */}
+            {/* ══ COL 3 — PROCESS ════════════════════════════ */}
             <Col title="Process Details">
-              <SectionCard title="Process">
+              <SectionCard title="Process Details">
                 <div className="grid grid-cols-1 gap-x-3 gap-y-4 min-h-[365px]">
                   {defaultList?.map((item) => (
                     <CheckBox
@@ -934,9 +1119,9 @@ const JobCardForm = ({
               </SectionCard>
             </Col>
 
-            {/* ══ COL 3 — VARNISH + LAMINATION (one column) ═ */}
+            {/* ══ COL 4 — VARNISH + LAMINATION ══════════════ */}
             <Col title="Varnish & Lamination Details">
-              <SectionCard title="Lamination" className="min-h-[195px]">
+              <SectionCard title="Lamination Details" className="min-h-[195px]">
                 {laminationList?.length > 0 ? (
                   <>
                     <LVHeader />
@@ -972,7 +1157,7 @@ const JobCardForm = ({
                 )}
               </SectionCard>
 
-              <SectionCard title="Varnish">
+              <SectionCard title="Varnish Details">
                 {varnishList?.length > 0 ? (
                   <>
                     <LVHeader />
@@ -1009,7 +1194,7 @@ const JobCardForm = ({
               </SectionCard>
             </Col>
 
-            {/* ══ COL 4 — MACHINE DETAILS ════════════════════ */}
+            {/* ══ COL 5 — MACHINE DETAILS ════════════════════ */}
             <Col title="Machine Details">
               <SectionCard title="Machines">
                 <div className="grid grid-cols-2 gap-x-3 gap-y-5">
@@ -1103,15 +1288,37 @@ const JobCardForm = ({
               </SectionCard>
             </Col>
           </div>
+
+          {/* ── Process Route Panel ──────────────────────────── */}
+          <div className="w-full mt-2">
+            <ProcessRoutePanel
+              selectedProcesses={selectedProcesses}
+              laminations={laminations}
+              varnishes={varnishes}
+              defaultList={defaultList}
+              laminationList={laminationList}
+              varnishList={varnishList}
+              processRoute={processRoute}
+              setProcessRoute={setProcessRoute}
+              readOnly={readOnly}
+            />
+          </div>
         </div>
 
         {/* ── Footer Actions ──────────────────────────────────── */}
-        <div className="flex justify-between items-center px-4 py-2 sticky z-10 shadow-sm">
+        <div className="flex justify-between items-center px-1 py-2 sticky z-10 shadow-sm">
           <div className="flex gap-2">
             <button
               onClick={() => saveData("close")}
               disabled={readOnly}
-              className="bg-indigo-500 disabled:opacity-50 text-white px-3 py-1.5 rounded hover:bg-indigo-600 flex items-center gap-1.5 text-xs font-medium transition-colors"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  saveData("close");
+                  e.stopPropagation();
+                }
+              }}
+              className="bg-indigo-500 disabled:opacity-50 text-white px-2 py-1 rounded hover:bg-indigo-600 flex items-center gap-1.5 text-xs font-medium transition-colors"
             >
               <HiOutlineRefresh className="w-3.5 h-3.5" />
               Save & Close
@@ -1119,13 +1326,75 @@ const JobCardForm = ({
             <button
               onClick={() => saveData("new")}
               disabled={readOnly}
-              className="bg-indigo-500 disabled:opacity-50 text-white px-3 py-1.5 rounded hover:bg-indigo-600 flex items-center gap-1.5 text-xs font-medium transition-colors"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  saveData("new");
+                }
+              }}
+              className="bg-indigo-500 disabled:opacity-50 text-white px-2 py-1 rounded hover:bg-indigo-600 flex items-center gap-1.5 text-xs font-medium transition-colors"
             >
               <FiSave className="w-3.5 h-3.5" />
               Save & New
             </button>
+
+            {status === "REJECTED" && (
+              <button
+                onClick={() => saveData("close", { submitApproval: true })}
+                disabled={readOnly}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    saveData("close", { submitApproval: true });
+                  }
+                }}
+                title="Submit Approval"
+                className="bg-green-700 text-white px-2 py-1 rounded hover:bg-green-800 flex items-center text-xs"
+              >
+                <FiSend className="w-4 h-4" />
+              </button>
+            )}
+
+            {id && status === "PENDING" && canApprove && (
+              <button
+                onClick={() => handleApprovalAction("REJECT")}
+                disabled={readOnly}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleApprovalAction("REJECT");
+                  }
+                }}
+                title="Send Back for Review"
+                className="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 flex items-center text-xs"
+              >
+                <MdKeyboardDoubleArrowLeft className="w-4 h-4" />
+              </button>
+            )}
+
+            {id && status === "PENDING" && canApprove && (
+              <button
+                onClick={() => handleApprovalAction("APPROVE")}
+                disabled={readOnly}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleApprovalAction("APPROVE");
+                  }
+                }}
+                title="Approve"
+                className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 flex items-center text-xs"
+              >
+                <FiCheck className="w-4 h-4" />
+              </button>
+            )}
           </div>
-          <div>
+
+          <div className="flex gap-2">
             {id && readOnly && (
               <button
                 onClick={() => setReadOnly(false)}
@@ -1136,11 +1405,8 @@ const JobCardForm = ({
               </button>
             )}
             <button
-              className="bg-slate-600 text-white px-4 py-1 rounded-md hover:bg-slate-700 flex items-center text-sm"
-              onClick={() => {
-                // handlePrint()
-                setPrintModalOpen(true);
-              }}
+              className="bg-slate-600 text-white px-2 py-1 rounded hover:bg-slate-700 flex items-center text-xs"
+              onClick={() => setPrintModalOpen(true)}
             >
               <FiPrinter className="w-4 h-4 mr-2" />
               Print

@@ -47,7 +47,7 @@ async function getNextDocId(
     const branchObj = await getTableRecordWithId(branchId, "branch");
     let newDocId = `${branchObj.branchCode}${getYearShortCode(
       new Date(),
-    )}/OE/1`;
+    )}/ORD/1`;
 
     if (lastObject) {
       newDocId = `${branchObj.branchCode}${getYearShortCode(new Date())}/OE/${
@@ -386,12 +386,25 @@ async function create(body) {
   const safeOrderItems =
     parsedOrderItems?.length > 0
       ? parsedOrderItems.map((item) => ({
-          StyleItem: item?.styleItemId ? { connect: { id: parseInt(item.styleItemId) } } : undefined,
-          orderQty: item?.orderQty && !isNaN(Number(item.orderQty)) ? parseInt(item.orderQty) : null,
-          Size: item?.sizeId ? { connect: { id: parseInt(item.sizeId) } } : undefined,
-          Uom: item?.uomId ? { connect: { id: parseInt(item.uomId) } } : undefined,
-          Gsm: item?.gsmId ? { connect: { id: parseInt(item.gsmId) } } : undefined,
-          Hsn: item?.hsnId ? { connect: { id: parseInt(item.hsnId) } } : undefined,
+          StyleItem: item?.styleItemId
+            ? { connect: { id: parseInt(item.styleItemId) } }
+            : undefined,
+          orderQty:
+            item?.orderQty && !isNaN(Number(item.orderQty))
+              ? parseInt(item.orderQty)
+              : null,
+          Size: item?.sizeId
+            ? { connect: { id: parseInt(item.sizeId) } }
+            : undefined,
+          Uom: item?.uomId
+            ? { connect: { id: parseInt(item.uomId) } }
+            : undefined,
+          Gsm: item?.gsmId
+            ? { connect: { id: parseInt(item.gsmId) } }
+            : undefined,
+          Hsn: item?.hsnId
+            ? { connect: { id: parseInt(item.hsnId) } }
+            : undefined,
         }))
       : [];
   await prisma.$transaction(async (tx) => {
@@ -401,7 +414,9 @@ async function create(body) {
         docDate: docDate ? new Date(docDate) : null,
         createdBy: userId ? { connect: { id: parseInt(userId) } } : undefined,
         Branch: branchId ? { connect: { id: parseInt(branchId) } } : undefined,
-        customer: customerId ? { connect: { id: parseInt(customerId) } } : undefined,
+        customer: customerId
+          ? { connect: { id: parseInt(customerId) } }
+          : undefined,
         orderType,
         productionType,
         deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
@@ -499,7 +514,11 @@ async function update(id, body, files) {
   });
   if (!dataFound) return NoRecordFound("Order Entry");
   if (dataFound._count.ProformaInvoices > 0) {
-    return { statusCode: 1, message: "Child Record Found: Cannot update Order Entry because a Proforma Invoice is already generated for it." };
+    return {
+      statusCode: 1,
+      message:
+        "Child Record Found: Cannot update Order Entry because a Proforma Invoice is already generated for it.",
+    };
   }
   const removedAttachments = dataFound.attachments.filter(
     (existing) => !incomingIds.includes(existing.id),
@@ -543,7 +562,9 @@ async function update(id, body, files) {
         docDate: docDate ? new Date(docDate) : null,
         updatedBy: userId ? { connect: { id: parseInt(userId) } } : undefined,
         Branch: branchId ? { connect: { id: parseInt(branchId) } } : undefined,
-        customer: customerId ? { connect: { id: parseInt(customerId) } } : undefined,
+        customer: customerId
+          ? { connect: { id: parseInt(customerId) } }
+          : undefined,
         orderType,
         productionType,
         deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
@@ -561,24 +582,44 @@ async function update(id, body, files) {
             .map((item) => ({
               where: { id: parseInt(item.id) },
               data: {
-                StyleItem: item.styleItemId ? { connect: { id: parseInt(item.styleItemId) } } : undefined,
+                StyleItem: item.styleItemId
+                  ? { connect: { id: parseInt(item.styleItemId) } }
+                  : undefined,
                 orderQty: item.orderQty ? parseInt(item.orderQty) : null,
-                Size: item.sizeId ? { connect: { id: parseInt(item.sizeId) } } : undefined,
-                Uom: item.uomId ? { connect: { id: parseInt(item.uomId) } } : undefined,
-                Gsm: item.gsmId ? { connect: { id: parseInt(item.gsmId) } } : undefined,
-                Hsn: item.hsnId ? { connect: { id: parseInt(item.hsnId) } } : undefined,
+                Size: item.sizeId
+                  ? { connect: { id: parseInt(item.sizeId) } }
+                  : undefined,
+                Uom: item.uomId
+                  ? { connect: { id: parseInt(item.uomId) } }
+                  : undefined,
+                Gsm: item.gsmId
+                  ? { connect: { id: parseInt(item.gsmId) } }
+                  : undefined,
+                Hsn: item.hsnId
+                  ? { connect: { id: parseInt(item.hsnId) } }
+                  : undefined,
               },
             })),
 
           create: parsedItems
             .filter((item) => !item.id)
             .map((item) => ({
-              StyleItem: item.styleItemId ? { connect: { id: parseInt(item.styleItemId) } } : undefined,
+              StyleItem: item.styleItemId
+                ? { connect: { id: parseInt(item.styleItemId) } }
+                : undefined,
               orderQty: item.orderQty ? parseInt(item.orderQty) : null,
-              Size: item.sizeId ? { connect: { id: parseInt(item.sizeId) } } : undefined,
-              Uom: item.uomId ? { connect: { id: parseInt(item.uomId) } } : undefined,
-              Gsm: item.gsmId ? { connect: { id: parseInt(item.gsmId) } } : undefined,
-              Hsn: item.hsnId ? { connect: { id: parseInt(item.hsnId) } } : undefined,
+              Size: item.sizeId
+                ? { connect: { id: parseInt(item.sizeId) } }
+                : undefined,
+              Uom: item.uomId
+                ? { connect: { id: parseInt(item.uomId) } }
+                : undefined,
+              Gsm: item.gsmId
+                ? { connect: { id: parseInt(item.gsmId) } }
+                : undefined,
+              Hsn: item.hsnId
+                ? { connect: { id: parseInt(item.hsnId) } }
+                : undefined,
             })),
         },
         attachments: {
@@ -632,14 +673,18 @@ async function remove(id) {
   });
   const dataFound = await prisma.orderEntry.findUnique({
     where: { id: parseInt(id) },
-    include: { 
+    include: {
       attachments: { select: { filePath: true } },
-      _count: { select: { ProformaInvoices: true } }
+      _count: { select: { ProformaInvoices: true } },
     },
   });
   if (!dataFound) return NoRecordFound("Order Entry");
   if (dataFound._count.ProformaInvoices > 0) {
-    return { statusCode: 1, message: "Child Record Found: Cannot delete Order Entry because a Proforma Invoice is already generated for it." };
+    return {
+      statusCode: 1,
+      message:
+        "Child Record Found: Cannot delete Order Entry because a Proforma Invoice is already generated for it.",
+    };
   }
 
   dataFound?.attachments?.forEach((att) => {
