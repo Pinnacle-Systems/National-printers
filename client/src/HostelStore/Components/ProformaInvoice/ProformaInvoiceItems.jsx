@@ -19,6 +19,7 @@ const ProformaInvoiceItems = ({
   taxTemplateId,
   id,
 }) => {
+  console.log("items", items);
   const { companyId } = getCommonParams();
   const { data: styleItemList } = useGetStyleItemMasterQuery({
     params: { companyId },
@@ -41,6 +42,7 @@ const ProformaInvoiceItems = ({
 
   const [contextMenu, setContextMenu] = useState(null);
   const [currentSelectedIndex, setCurrentSelectedIndex] = useState(null);
+  const [focusedField, setFocusedField] = useState(null);
 
   const addRow = () => {
     setItems([...items, EMPTY_ROW]);
@@ -166,6 +168,7 @@ const ProformaInvoiceItems = ({
                     }
                     readOnly={true} // Read-only from Order Entry
                     placeholder=""
+                    disabled={true}
                   />
                 </td>
                 <td className="border border-gray-300">
@@ -179,6 +182,7 @@ const ProformaInvoiceItems = ({
                     }
                     readOnly={true} // Read-only from Order Entry
                     placeholder=""
+                    disabled={true}
                   />
                 </td>
 
@@ -193,6 +197,7 @@ const ProformaInvoiceItems = ({
                     }
                     readOnly={true} // Read-only from Order Entry
                     placeholder=""
+                    disabled={true}
                   />
                 </td>
                 <td className="border border-gray-300">
@@ -204,7 +209,8 @@ const ProformaInvoiceItems = ({
                         ?.filter((p) => p.active)
                         .map((p) => ({ label: p.name, value: p.id })) || []
                     }
-                    readOnly={true} // Read-only from Order Entry
+                    readOnly={true}
+                    disabled={true}
                     placeholder=""
                   />
                 </td>
@@ -217,7 +223,8 @@ const ProformaInvoiceItems = ({
                         ?.filter((p) => p.active)
                         .map((p) => ({ label: p.name, value: p.id })) || []
                     }
-                    readOnly={true} // Read-only from Order Entry
+                    readOnly={true}
+                    disabled={true}
                     placeholder=""
                   />
                 </td>
@@ -230,6 +237,7 @@ const ProformaInvoiceItems = ({
                       handleInputChange(e.target.value, index, "qty")
                     }
                     readOnly={readOnly}
+                    disabled={true}
                     onFocus={(e) => e.target.select()}
                   />
                 </td>
@@ -243,19 +251,37 @@ const ProformaInvoiceItems = ({
                       style={{
                         width: `${Math.max(1, String(item.price || "").length) + 1.5}ch`,
                       }}
-                      value={parseFloat(item.price || 0).toFixed(2)}
-                      onChange={(e) =>
-                        handleInputChange(e.target.value, index, "price")
+                      value={
+                        focusedField === `${index}`
+                          ? item.price ?? ""
+                          : item.price
+                            ? Number(item.price).toFixed(2)
+                            : ""
                       }
-                      readOnly={readOnly}
-                      onFocus={(e) => e.target.select()}
-                      onBlur={(e) =>
+                      onChange={(e) => {
+                        const val = e.target.value;
+
                         handleInputChange(
-                          parseFloat(e.target.value || 0).toFixed(2),
+                          val === "" ? "" : val, // allow empty while typing
                           index,
                           "price",
-                        )
-                      }
+                        );
+                      }}
+                      readOnly={readOnly}
+                      onFocus={(e) => {
+                        e.target.select();
+                        setFocusedField(`${index}`);
+                      }}
+                      onBlur={(e) => {
+                        const num = parseFloat(e.target.value);
+
+                        handleInputChange(
+                          isNaN(num) ? 0 : Number(num.toFixed(2)),
+                          index,
+                          "price",
+                        );
+                        setFocusedField(null);
+                      }}
                     />
                   </div>
                 </td>
