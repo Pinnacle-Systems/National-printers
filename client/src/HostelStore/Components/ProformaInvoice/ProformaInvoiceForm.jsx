@@ -125,7 +125,11 @@ const ProformaInvoiceForm = ({
       const data = singleData.data;
       setDocId(data.docId);
       setDocDate(moment(data.docDate).format("YYYY-MM-DD"));
-      setUserDate(data.userDate ? moment(data.userDate).format("YYYY-MM-DD") : moment().format("YYYY-MM-DD"));
+      setUserDate(
+        data.userDate
+          ? moment(data.userDate).format("YYYY-MM-DD")
+          : moment().format("YYYY-MM-DD"),
+      );
       setCustomerId(data.customerId);
       setOrderEntryId(data.orderEntryId || "");
       setRemarks(data.remarks || "");
@@ -135,14 +139,24 @@ const ProformaInvoiceForm = ({
 
       let loadedVersions = [];
       if (data.items?.length > 0) {
-        loadedVersions = [...new Set(data.items.map(i => i.quoteVersion).filter(Boolean))].sort((a,b) => b - a);
+        loadedVersions = [
+          ...new Set(data.items.map((i) => i.quoteVersion).filter(Boolean)),
+        ].sort((a, b) => b - a);
       }
       setAvailableVersions(loadedVersions);
       setSelectedQuoteVersion("Latest");
 
-      const targetVersion = loadedVersions.length > 0 ? Math.max(...loadedVersions, 1) : 1;
-      const filteredItems = (data.items || []).filter(i => (i.quoteVersion || 1) === targetVersion);
-      setItems(padItems(filteredItems));
+      const targetVersion =
+        loadedVersions.length > 0 ? Math.max(...loadedVersions, 1) : 1;
+      const filteredItems = (data.items || []).filter(
+        (i) => (i.quoteVersion || 1) === targetVersion,
+      );
+      const formattedItems = filteredItems.map((item) => ({
+        ...item,
+        price: Number(item.price || 0), // ✅ keep number
+      }));
+      console.log("filteredItems", filteredItems);
+      setItems(padItems(formattedItems));
 
       const cust = data.customer || data.OrderEntry?.customer;
       if (cust) {
@@ -158,14 +172,17 @@ const ProformaInvoiceForm = ({
   useEffect(() => {
     if (singleData?.data?.items && id) {
       const itemsArr = singleData.data.items;
-      const maxVersion = availableVersions.length > 0 ? Math.max(...availableVersions, 1) : 1;
+      const maxVersion =
+        availableVersions.length > 0 ? Math.max(...availableVersions, 1) : 1;
       let targetVersion = maxVersion;
-      
+
       if (selectedQuoteVersion !== "Latest") {
         targetVersion = parseInt(selectedQuoteVersion.replace("V", ""));
       }
 
-      const filteredItems = itemsArr.filter(i => (i.quoteVersion || 1) === targetVersion);
+      const filteredItems = itemsArr.filter(
+        (i) => (i.quoteVersion || 1) === targetVersion,
+      );
       setItems(padItems(filteredItems));
     }
   }, [selectedQuoteVersion, singleData, id, availableVersions]);
@@ -220,25 +237,47 @@ const ProformaInvoiceForm = ({
 
   const handleSave = async (pendingAction = null) => {
     if (!orderEntryId) {
-      Swal.fire({ title: "Warning", text: "Please select an Order No.", icon: "warning", confirmButtonColor: "#3085d6" });
+      Swal.fire({
+        title: "Warning",
+        text: "Please select an Order No.",
+        icon: "warning",
+        confirmButtonColor: "#3085d6",
+      });
       return;
     }
 
     if (!taxTemplateId) {
-      Swal.fire({ title: "Warning", text: "Please select a Tax Template.", icon: "warning", confirmButtonColor: "#3085d6" });
+      Swal.fire({
+        title: "Warning",
+        text: "Please select a Tax Template.",
+        icon: "warning",
+        confirmButtonColor: "#3085d6",
+      });
       return;
     }
 
     const filteredItems = items.filter((item) => item.styleItemId);
 
     if (filteredItems.length === 0) {
-      Swal.fire({ title: "Warning", text: "Please add at least one item.", icon: "warning", confirmButtonColor: "#3085d6" });
+      Swal.fire({
+        title: "Warning",
+        text: "Please add at least one item.",
+        icon: "warning",
+        confirmButtonColor: "#3085d6",
+      });
       return;
     }
 
-    const hasMissingPrice = filteredItems.some((item) => !item.price || parseFloat(item.price) <= 0);
+    const hasMissingPrice = filteredItems.some(
+      (item) => !item.price || parseFloat(item.price) <= 0,
+    );
     if (hasMissingPrice) {
-      Swal.fire({ title: "Warning", text: "Please enter a valid price for all selected items.", icon: "warning", confirmButtonColor: "#3085d6" });
+      Swal.fire({
+        title: "Warning",
+        text: "Please enter a valid price for all selected items.",
+        icon: "warning",
+        confirmButtonColor: "#3085d6",
+      });
       return;
     }
 
@@ -263,12 +302,24 @@ const ProformaInvoiceForm = ({
       let savedId = id;
       if (id) {
         await updateData({ id, body: payload }).unwrap();
-        Swal.fire({ title: "Success", text: "Proforma Invoice updated successfully", icon: "success", timer: 1500, showConfirmButton: false });
+        Swal.fire({
+          title: "Success",
+          text: "Proforma Invoice updated successfully",
+          icon: "success",
+          timer: 1500,
+          showConfirmButton: false,
+        });
       } else {
         const res = await addData(payload).unwrap();
         savedId = res.data.id;
         setId(savedId);
-        Swal.fire({ title: "Success", text: "Proforma Invoice created successfully", icon: "success", timer: 1500, showConfirmButton: false });
+        Swal.fire({
+          title: "Success",
+          text: "Proforma Invoice created successfully",
+          icon: "success",
+          timer: 1500,
+          showConfirmButton: false,
+        });
       }
       setReadOnly(true);
 
@@ -278,7 +329,12 @@ const ProformaInvoiceForm = ({
         onClose();
       }
     } catch (error) {
-      Swal.fire({ title: "Error", text: error.data?.message || "Failed to save Proforma Invoice", icon: "error", confirmButtonColor: "#d33" });
+      Swal.fire({
+        title: "Error",
+        text: error.data?.message || "Failed to save Proforma Invoice",
+        icon: "error",
+        confirmButtonColor: "#d33",
+      });
     }
   };
 
@@ -377,7 +433,12 @@ const ProformaInvoiceForm = ({
       iconOnly: true,
       onClick: () => {
         if (!taxTemplateId) {
-          Swal.fire({ title: "Information", text: "Please Select Tax Template !", icon: "info", confirmButtonColor: "#3085d6" });
+          Swal.fire({
+            title: "Information",
+            text: "Please Select Tax Template !",
+            icon: "info",
+            confirmButtonColor: "#3085d6",
+          });
           return;
         }
         setSummary(true);
@@ -523,7 +584,12 @@ const ProformaInvoiceForm = ({
         >
           {availableVersions.length > 0 ? (
             availableVersions.map((v) => (
-              <option key={v} value={Math.max(...availableVersions) === v ? "Latest" : `V${v}`}>
+              <option
+                key={v}
+                value={
+                  Math.max(...availableVersions) === v ? "Latest" : `V${v}`
+                }
+              >
                 {Math.max(...availableVersions) === v ? "Latest" : `V${v}`}
               </option>
             ))
@@ -574,7 +640,7 @@ const ProformaInvoiceForm = ({
           {
             key: "totalQty",
             label: "Total Qty",
-            value: totalQty.toFixed(2),
+            value: totalQty.toFixed(3),
             summaryColumn: "right",
           },
           {

@@ -47,6 +47,7 @@ import { useGetUnitOfMeasurementMasterQuery } from "../../../redux/uniformServic
 import ReusableFormFooter from "../../../Basic/components/Reuseable/ReuseableFormFooter.jsx";
 import { useGetUomQuery } from "../../../redux/services/UomMasterService.js";
 import { useGetGsmMasterQuery } from "../../../redux/services/GsmMasterService.js";
+import { useGetHsnMasterQuery } from "../../../redux/services/HsnMasterServices.js";
 const OrderEntryForm = ({
   onClose,
   id,
@@ -119,6 +120,8 @@ const OrderEntryForm = ({
   });
   const { data: uomList } = useGetUnitOfMeasurementMasterQuery({ params });
   const { data: sizeList } = useGetSizeMasterQuery({ params });
+  const { data: gsmList } = useGetGsmMasterQuery({ params: { companyId } });
+  const { data: hsnList } = useGetHsnMasterQuery({ params: { companyId } });
 
   const [addData] = useAddOrderEntryMutation();
   const [updateData] = useUpdateOrderEntryMutation();
@@ -628,6 +631,11 @@ const OrderEntryForm = ({
               )}
               branchData={branchList?.data?.find((b) => b.id === branchId)}
               qrCodeDataUrl={qrCodeDataUrl}
+              styleItemList={styleItemList?.data}
+              sizeList={sizeList?.data}
+              uomList={uomList?.data}
+              gsmList={gsmList?.data}
+              hsnList={hsnList?.data}
             />
           </PDFViewer>
         </Modal>

@@ -3550,6 +3550,7 @@ export default function FxSelect({
   options,
   placeholder = "",
   readOnly = false,
+  disabled = false,
   onBlur,
   onKeyDown,
   inputId,
@@ -3601,7 +3602,7 @@ export default function FxSelect({
         IndicatorSeparator: () => null, // remove separator
       }}
       isClearable
-      isDisabled={readOnly}
+      isDisabled={readOnly || disabled}
       options={options}
       value={options.find((opt) => opt.value === value) || null}
       onChange={(selected) => {
