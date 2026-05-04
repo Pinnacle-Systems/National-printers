@@ -308,6 +308,13 @@ async function getOne(id) {
           Uom: true,
           Gsm: true,
           Hsn: true,
+          ItemGroup: true,
+          SizeTemplate: true,
+          sizeBreakup: {
+            include: {
+              Size: true,
+            },
+          },
         },
       },
       Branch: {
@@ -389,12 +396,22 @@ async function create(body) {
           StyleItem: item?.styleItemId
             ? { connect: { id: parseInt(item.styleItemId) } }
             : undefined,
+          ItemGroup: item?.itemGroupId
+            ? { connect: { id: parseInt(item.itemGroupId) } }
+            : undefined,
+          trackingType: item?.trackingType,
+          barcodeFrom: item?.barcodeFrom,
+          barcodeTo: item?.barcodeTo,
+          remarks: item?.remarks,
           orderQty:
             item?.orderQty && !isNaN(Number(item.orderQty))
               ? parseInt(item.orderQty)
               : null,
           Size: item?.sizeId
             ? { connect: { id: parseInt(item.sizeId) } }
+            : undefined,
+          SizeTemplate: item?.sizeTemplateId
+            ? { connect: { id: parseInt(item.sizeTemplateId) } }
             : undefined,
           Uom: item?.uomId
             ? { connect: { id: parseInt(item.uomId) } }
@@ -405,6 +422,17 @@ async function create(body) {
           Hsn: item?.hsnId
             ? { connect: { id: parseInt(item.hsnId) } }
             : undefined,
+          sizeBreakup:
+            item?.sizeBreakup?.length > 0
+              ? {
+                  create: item.sizeBreakup.map((s) => ({
+                    sizeId: s.sizeId ? parseInt(s.sizeId) : null,
+                    qty: s.qty ? parseInt(s.qty) : null,
+                    barcodeFrom: s.barcodeFrom,
+                    barcodeTo: s.barcodeTo,
+                  })),
+                }
+              : undefined,
         }))
       : [];
   await prisma.$transaction(async (tx) => {
@@ -585,9 +613,19 @@ async function update(id, body, files) {
                 StyleItem: item.styleItemId
                   ? { connect: { id: parseInt(item.styleItemId) } }
                   : undefined,
+                ItemGroup: item.itemGroupId
+                  ? { connect: { id: parseInt(item.itemGroupId) } }
+                  : undefined,
+                trackingType: item.trackingType,
+                barcodeFrom: item.barcodeFrom,
+                barcodeTo: item.barcodeTo,
+                remarks: item.remarks,
                 orderQty: item.orderQty ? parseInt(item.orderQty) : null,
                 Size: item.sizeId
                   ? { connect: { id: parseInt(item.sizeId) } }
+                  : undefined,
+                SizeTemplate: item.sizeTemplateId
+                  ? { connect: { id: parseInt(item.sizeTemplateId) } }
                   : undefined,
                 Uom: item.uomId
                   ? { connect: { id: parseInt(item.uomId) } }
@@ -598,6 +636,18 @@ async function update(id, body, files) {
                 Hsn: item.hsnId
                   ? { connect: { id: parseInt(item.hsnId) } }
                   : undefined,
+                sizeBreakup: {
+                  deleteMany: {},
+                  create:
+                    item.sizeBreakup?.length > 0
+                      ? item.sizeBreakup.map((s) => ({
+                          sizeId: s.sizeId ? parseInt(s.sizeId) : null,
+                          qty: s.qty ? parseInt(s.qty) : null,
+                          barcodeFrom: s.barcodeFrom,
+                          barcodeTo: s.barcodeTo,
+                        }))
+                      : [],
+                },
               },
             })),
 
@@ -607,9 +657,19 @@ async function update(id, body, files) {
               StyleItem: item.styleItemId
                 ? { connect: { id: parseInt(item.styleItemId) } }
                 : undefined,
+              ItemGroup: item.itemGroupId
+                ? { connect: { id: parseInt(item.itemGroupId) } }
+                : undefined,
+              trackingType: item.trackingType,
+              barcodeFrom: item.barcodeFrom,
+              barcodeTo: item.barcodeTo,
+              remarks: item.remarks,
               orderQty: item.orderQty ? parseInt(item.orderQty) : null,
               Size: item.sizeId
                 ? { connect: { id: parseInt(item.sizeId) } }
+                : undefined,
+              SizeTemplate: item.sizeTemplateId
+                ? { connect: { id: parseInt(item.sizeTemplateId) } }
                 : undefined,
               Uom: item.uomId
                 ? { connect: { id: parseInt(item.uomId) } }
@@ -620,6 +680,17 @@ async function update(id, body, files) {
               Hsn: item.hsnId
                 ? { connect: { id: parseInt(item.hsnId) } }
                 : undefined,
+              sizeBreakup:
+                item.sizeBreakup?.length > 0
+                  ? {
+                      create: item.sizeBreakup.map((s) => ({
+                        sizeId: s.sizeId ? parseInt(s.sizeId) : null,
+                        qty: s.qty ? parseInt(s.qty) : null,
+                        barcodeFrom: s.barcodeFrom,
+                        barcodeTo: s.barcodeTo,
+                      })),
+                    }
+                  : undefined,
             })),
         },
         attachments: {

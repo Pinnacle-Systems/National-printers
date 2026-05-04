@@ -106,29 +106,32 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "#1a1a2e",
     color: "#fff",
-    padding: "6 4",
-    fontSize: 7.5,
+    padding: "6 2",
+    fontSize: 6.5,
     fontWeight: "bold",
   },
   tableRow: {
     flexDirection: "row",
     borderBottom: "1 solid #f0f0f0",
-    padding: "6 4",
+    padding: "4 2",
     alignItems: "center",
     minHeight: 25,
   },
-  colSno: { width: 25, textAlign: "center" },
-  colDesc: { flex: 1, paddingRight: 10 },
-  colSize: { width: 60, textAlign: "center" },
-  colGSM: { width: 45, textAlign: "center" },
-  colHSN: { width: 50, textAlign: "center" },
-  colUOM: { width: 45, textAlign: "center" },
-  colQty: { width: 50, textAlign: "right" },
+  colSno: { width: 18, textAlign: "center" },
+  colItemGroup: { width: 55, textAlign: "left", paddingLeft: 2 },
+  colDesc: { flex: 1, paddingLeft: 2 },
+  colTracking: { width: 45, textAlign: "center" },
+  colBarcode: { width: 65, textAlign: "center" },
+  colSize: { width: 40, textAlign: "center" },
+  colGSM: { width: 30, textAlign: "center" },
+  colHSN: { width: 35, textAlign: "center" },
+  colUOM: { width: 30, textAlign: "center" },
+  colQty: { width: 40, textAlign: "right", paddingRight: 2 },
 
   totalRow: {
     flexDirection: "row",
     backgroundColor: "#f8f9fa",
-    padding: "6 4",
+    padding: "6 2",
     borderTop: "1 solid #eee",
     fontWeight: "bold",
   },
@@ -168,14 +171,21 @@ const OrderEntryPrintFormat = ({
   uomList,
   gsmList,
   hsnList,
+  itemGroupList,
 }) => {
   if (!data) return null;
-  console.log(branchData, "branchData");
 
   const getName = (id, list) => {
     if (!id || !list) return "-";
     const item = list.find((i) => i.id === id);
     return item ? item.name : "-";
+  };
+
+  const getBarcodeRange = (item) => {
+    if (item.trackingType === "Barcode") {
+      return `${item.barcodeFrom || ""} - ${item.barcodeTo || ""}`;
+    }
+    return "-";
   };
 
   return (
@@ -265,8 +275,8 @@ const OrderEntryPrintFormat = ({
                 <Text style={styles.value}>
                   :{" "}
                   {data?.deliveryDate
-                    ? moment(data.deliveryDate).format("DD-MM-YYYY")
-                    : "N/A"}
+                      ? moment(data.deliveryDate).format("DD-MM-YYYY")
+                      : "N/A"}
                 </Text>
               </View>
               <View style={styles.labelValueRow}>
@@ -283,7 +293,10 @@ const OrderEntryPrintFormat = ({
         <View style={styles.table}>
           <View style={styles.tableHeader}>
             <Text style={styles.colSno}>S.No</Text>
+            <Text style={styles.colItemGroup}>Item Group</Text>
             <Text style={styles.colDesc}>Description of Goods</Text>
+            <Text style={styles.colTracking}>Tracking</Text>
+            <Text style={styles.colBarcode}>Barcode Range</Text>
             <Text style={styles.colSize}>Size</Text>
             <Text style={styles.colGSM}>GSM</Text>
             <Text style={styles.colHSN}>HSN</Text>
@@ -291,33 +304,83 @@ const OrderEntryPrintFormat = ({
             <Text style={styles.colQty}>Qty</Text>
           </View>
           {data?.orderItems?.map((item, index) => (
-            <View key={index} style={styles.tableRow}>
-              <Text style={styles.colSno}>{index + 1}</Text>
-              <Text style={[styles.colDesc, { fontWeight: "bold" }]}>
-                {getName(item.styleItemId, styleItemList)}
-              </Text>
-              <Text style={styles.colSize}>
-                {getName(item.sizeId, sizeList)}
-              </Text>
-              <Text style={styles.colGSM}>{getName(item.gsmId, gsmList)}</Text>
-              <Text style={styles.colHSN}>{getName(item.hsnId, hsnList)}</Text>
-              <Text style={styles.colUOM}>{getName(item.uomId, uomList)}</Text>
-              <Text style={styles.colQty}>
-                {Number(item.orderQty || 0).toFixed(3)}
-              </Text>
+            <View key={index} wrap={false}>
+              <View style={styles.tableRow}>
+                <Text style={styles.colSno}>{index + 1}</Text>
+                <Text style={styles.colItemGroup}>
+                  {getName(item.itemGroupId, itemGroupList)}
+                </Text>
+                <View style={styles.colDesc}>
+                  <Text style={{ fontWeight: "bold" }}>
+                    {getName(item.styleItemId, styleItemList)}
+                  </Text>
+                  {item.remarks && (
+                    <Text
+                      style={{ fontSize: 6, color: "#666", marginTop: 2 }}
+                    >
+                      Rem: {item.remarks}
+                    </Text>
+                  )}
+                </View>
+                <Text style={styles.colTracking}>
+                  {item.trackingType || "None"}
+                </Text>
+                <Text style={styles.colBarcode}>{getBarcodeRange(item)}</Text>
+                <Text style={styles.colSize}>
+                  {getName(item.sizeId, sizeList)}
+                </Text>
+                <Text style={styles.colGSM}>
+                  {getName(item.gsmId, gsmList)}
+                </Text>
+                <Text style={styles.colHSN}>
+                  {getName(item.hsnId, hsnList)}
+                </Text>
+                <Text style={styles.colUOM}>
+                  {getName(item.uomId, uomList)}
+                </Text>
+                <Text style={styles.colQty}>
+                  {Number(item.orderQty || 0).toFixed(3)}
+                </Text>
+              </View>
+              {/* Size Breakup Summary Row */}
+              {item.sizeBreakup?.length > 0 && (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    padding: "2 18 4 73",
+                    backgroundColor: "#fafafa",
+                    borderBottom: "1 solid #f0f0f0",
+                  }}
+                >
+                  <Text style={{ fontSize: 6, color: "#444", flex: 1 }}>
+                    Breakup:{" "}
+                    {item.sizeBreakup
+                      .map(
+                        (sb) =>
+                          `${getName(sb.sizeId, sizeList)}: ${sb.qty}${
+                            sb.barcodeFrom
+                              ? ` (${sb.barcodeFrom}-${sb.barcodeTo})`
+                              : ""
+                          }`,
+                      )
+                      .join(" | ")}
+                  </Text>
+                </View>
+              )}
             </View>
           ))}
           <View style={styles.totalRow}>
-            <Text style={{ flex: 1, textAlign: "right", paddingRight: 10 }}>
+            <Text style={{ flex: 1, textAlign: "right", paddingRight: 10, fontSize: 7.5 }}>
               Total Quantity :
             </Text>
-            <Text style={[styles.colQty, { fontWeight: "bold" }]}>
+            <Text style={[styles.colQty, { fontWeight: "bold", fontSize: 7.5 }]}>
               {data?.orderItems
                 ?.reduce((sum, item) => sum + (Number(item.orderQty) || 0), 0)
                 .toFixed(3)}
             </Text>
           </View>
         </View>
+
 
         {/* Terms and Remarks */}
         <View style={styles.notesSection}>
