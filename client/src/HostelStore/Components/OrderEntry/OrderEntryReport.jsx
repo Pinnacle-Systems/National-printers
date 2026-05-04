@@ -559,36 +559,6 @@ const OrderEntryReport = ({
                             {rowActions && (
                               <td className="px-2 py-1">
                                 <div className="flex items-center justify-center">
-                                  <div className="flex items-center gap-1.5 pr-2 border-r border-gray-300">
-                                    {onCreateJobCard && (
-                                      <Tooltip title="Create Job Card" arrow>
-                                        <button
-                                          disabled={
-                                            dataObj.childRecord > 0 ||
-                                            isDisabled
-                                          }
-                                          onClick={() => {
-                                            dispatch(
-                                              push({
-                                                name: "JOB CARD", // ⬅️ must match your tabs key exactly
-                                                params: {
-                                                  customerId:
-                                                    dataObj.customerId,
-                                                  orderEntryId: dataObj.id,
-                                                  orderType: dataObj.orderType,
-                                                  orderQty: dataObj.orderQty,
-                                                  timestamp: Date.now(),
-                                                },
-                                              }),
-                                            );
-                                          }}
-                                          className={`p-1.5 rounded-md transition bg-indigo-50 text-indigo-600 hover:bg-indigo-100 ${dataObj.childRecord > 0 || isDisabled ? "cursor-not-allowed opacity-50" : ""}`}
-                                        >
-                                          <FileText size={16} />
-                                        </button>
-                                      </Tooltip>
-                                    )}
-                                  </div>
                                   {/* VIEW / EDIT / DELETE */}
                                   <div className="flex items-center gap-1 pl-2">
                                     {onView && (

@@ -58,6 +58,7 @@ import { useGetHsnMasterQuery } from "../../../redux/services/HsnMasterServices.
 // ── Approval imports (from File 2) ──────────────────────────────────────────
 import { MdKeyboardDoubleArrowLeft } from "react-icons/md";
 import { useAddApprovalStausMutation } from "../../../redux/uniformService/PoServices.js";
+import { useGetItemGroupMasterQuery } from "../../../redux/services/ItemGroupMasterService.js";
 
 const OrderEntryForm = ({
   onClose,
@@ -146,6 +147,9 @@ const OrderEntryForm = ({
   const { data: sizeList } = useGetSizeMasterQuery({ params });
   const { data: gsmList } = useGetGsmMasterQuery({ params: { companyId } });
   const { data: hsnList } = useGetHsnMasterQuery({ params: { companyId } });
+  const { data: itemGroupList } = useGetItemGroupMasterQuery({
+    params: { companyId },
+  });
 
   const [addData] = useAddOrderEntryMutation();
   const [updateData] = useUpdateOrderEntryMutation();
@@ -178,14 +182,26 @@ const OrderEntryForm = ({
       childRecord.current = data?.childRecord ? data?.childRecord : 0;
       setOrderItems(
         data?.orderItems && data.orderItems.length > 0
-          ? data.orderItems
+          ? data.orderItems.map((item) => ({
+              ...item,
+              itemGroupId: item.itemGroupId || "",
+              trackingType: item.trackingType || "None",
+              sizeBreakup: item.sizeBreakup || [],
+            }))
           : Array.from({ length: 4 }, () => ({
+              itemGroupId: "",
               styleItemId: "",
+              trackingType: "None",
               sizeId: "",
+              sizeTemplateId: "",
+              barcodeFrom: "",
+              barcodeTo: "",
               uomId: "",
               gsmId: "",
               hsnId: "",
               orderQty: "",
+              remarks: "",
+              sizeBreakup: [],
             })),
       );
     },
@@ -321,9 +337,7 @@ const OrderEntryForm = ({
       if (!item.styleItemId) {
         errors.push(`Row ${index + 1}: Style is required`);
       }
-      if (!item.sizeId) {
-        errors.push(`Row ${index + 1}: Size is required`);
-      }
+
       if (!item.uomId) {
         errors.push(`Row ${index + 1}: UOM is required`);
       }
@@ -910,6 +924,7 @@ const OrderEntryForm = ({
               uomList={uomList?.data}
               gsmList={gsmList?.data}
               hsnList={hsnList?.data}
+              itemGroupList={itemGroupList?.data}
             />
           </PDFViewer>
         </Modal>
@@ -1121,7 +1136,7 @@ const OrderEntryForm = ({
                 const qty = parseFloat(item.orderQty) || 0;
                 return acc + qty;
               }, 0)
-              .toFixed(2),
+              .toFixed(3),
             summaryColumn: "left",
           },
         ]}
