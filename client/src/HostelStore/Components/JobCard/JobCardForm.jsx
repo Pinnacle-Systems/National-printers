@@ -523,7 +523,7 @@ const JobCardForm = ({
 
   const validateData = (data) => {
     const checks = [
-      { condition: !data.orderEntryId, title: "Order No is required!" },
+      // { condition: !data.orderEntryId, title: "Order No is required!" },
       { condition: !data.docDate, title: "Document Date is required!" },
       { condition: !data.orderType, title: "Order Type is required!" },
       { condition: !data.orderQty, title: "Order Quantity is required!" },
@@ -827,40 +827,60 @@ const JobCardForm = ({
                     />
                   </Field>
 
-                  {/* ✅ Proforma / Order No conditional dropdown — added back from file 1 */}
-                  <div className="w-[135px]">
-                    <Field
-                      label={
-                        isProformaEnabled ? "Proforma Invoice" : "Order No"
-                      }
-                    >
+                  {/* ✅ Proforma / Order No conditional dropdown */}
+                  <div className="w-[145px]">
+                    <Field label="Order No">
                       {isProformaEnabled ? (
                         <DropdownNew
                           name=""
-                          dataList={proformaList?.data?.filter((item) => {
-                            if (isApprovalEnabled)
-                              return item.isApproved === true;
-                            return true;
-                          })}
+                          dataList={proformaList?.data
+                            ?.filter((item) => {
+                              const approvedCheck = isApprovalEnabled
+                                ? item.isApproved === true
+                                : true;
+                              return item.orderEntryId && approvedCheck;
+                            })
+                            ?.map((item) => ({
+                              ...item,
+                              orderDocId: item.OrderEntry?.docId || item.docId,
+                            }))}
                           value={proformaInvoiceId}
-                          setValue={setProformaInvoiceId}
+                          setValue={(val) => {
+                            setProformaInvoiceId(val);
+                            const selected = proformaList?.data?.find(
+                              (p) => p.id === val,
+                            );
+                            if (selected) {
+                              setOrderEntryId(selected.orderEntryId);
+                              setCustomerId(selected.customerId);
+                            }
+                          }}
                           required
                           readOnly={readOnly}
                           disabled={readOnly}
-                          otherField={"docId"}
+                          otherField={"orderDocId"}
                           ref={customerRef}
                         />
                       ) : (
                         <DropdownNew
                           name=""
-                          dataList={orderList?.data?.filter(
-                            (item) =>
-                              !item?.approvalStatus ||
-                              item?.approvalStatus?.status === "APPROVED" ||
-                              item?.approvalStatus?.status === "NOT_CONFIGURED",
-                          )}
+                          dataList={orderList?.data?.filter((item) => {
+                            if (isApprovalEnabled)
+                              return item.isApproved === true;
+                            return true;
+                          })}
                           value={orderEntryId}
-                          setValue={setOrderEntryId}
+                          setValue={(val) => {
+                            setOrderEntryId(val);
+                            const selected = orderList?.data?.find(
+                              (o) => o.id === val,
+                            );
+                            if (selected) {
+                              setCustomerId(selected.customerId);
+                              setOrderType(selected.orderType || "ORDER");
+                              setOrderQty(selected.orderQty || "");
+                            }
+                          }}
                           required
                           readOnly={readOnly}
                           disabled={readOnly}

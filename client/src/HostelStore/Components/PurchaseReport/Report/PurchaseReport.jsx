@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
-//  PurchaseReport.jsx — S.No col, fixed 2dp qty, PDF fix, inward bar-first,
-//                       expanded border, group qty summary
+//  PurchaseReport.jsx — S.No col, fixed 2dp qty, PDF via @react-pdf/renderer,
+//                       inward bar-first, expanded border, group qty summary
 // ─────────────────────────────────────────────────────────────────────────────
 import React, { useMemo, useRef, useState } from "react";
 import { useGetPurchaseReportQuery } from "../../../../redux/services/purchaseReportApi";
@@ -17,9 +17,13 @@ import {
 import { dummyData } from "./dummyPurchaseReport";
 import XLSXStyle from "xlsx-js-style";
 import mpLogo from "../../../../assets/NationalPrintLogo.jpeg";
+
+// ── NEW: PDF modal ────────────────────────────────────────────────────────────
+import PDFPreviewModal from "./PDFPreviewModal";
+
 const PAGE_SIZE = 40;
 
-// ── fixed 2-decimal formatter (no UOM logic) ─────────────────────────────────
+// ── fixed 3-decimal formatter ─────────────────────────────────────────────────
 function fmt2(val) {
   const n = typeof val === "number" ? val : parseFloat(val) || 0;
   return n.toLocaleString("en-IN", {
@@ -27,13 +31,13 @@ function fmt2(val) {
     maximumFractionDigits: 3,
   });
 }
-// ── Inward type short codes for PDF ──────────────────────────────────────────
+// ── Inward type short codes ───────────────────────────────────────────────────
 const INWARD_SHORT = {
   "Order Purchase Inward": "OPI",
   "General Purchase Inward": "GPI",
   "Direct Inward": "DI",
 };
-// ── Excel number format: always 2dp ──────────────────────────────────────────
+// ── Excel number format ───────────────────────────────────────────────────────
 const EXCEL_NUM_FMT = "#,##0.000";
 
 export default function PurchaseReport() {
@@ -50,6 +54,7 @@ export default function PurchaseReport() {
   //   [apiData],
   // );
   const allData = useMemo(() => dummyData.map(computePORow), []);
+
   const [colOrder, setColOrder] = useState(() => COLUMNS.map((c) => c.key));
   const [groupKeys, setGroupKeys] = useState([]);
   const [groupDirs, setGroupDirs] = useState({});
@@ -60,6 +65,9 @@ export default function PurchaseReport() {
   const [sortDir, setSortDir] = useState(1);
   const [expanded, setExpanded] = useState({});
   const [page, setPage] = useState(1);
+
+  // ── NEW: PDF preview state ────────────────────────────────────────────────
+  const [pdfOpen, setPdfOpen] = useState(false);
 
   const dragColRef = useRef(null);
   const dragGbOver = useRef(false);
@@ -135,6 +143,13 @@ export default function PurchaseReport() {
         ? buildGroups(paginated, groupKeys, groupDirs)
         : paginated,
     [paginated, groupKeys, groupDirs],
+  );
+
+  // ── full sorted tree for PDF (all pages, not just current page) ────────────
+  const fullTree = useMemo(
+    () =>
+      groupKeys.length ? buildGroups(sorted, groupKeys, groupDirs) : sorted,
+    [sorted, groupKeys, groupDirs],
   );
 
   const metrics = useMemo(
@@ -279,20 +294,11 @@ export default function PurchaseReport() {
           "bg-gray-100 text-gray-500 border border-gray-200";
         const short = INWARD_SHORT[row.inwardType];
         return row.inwardType && row.inwardType !== "—" ? (
-          <>
-            {/* screen: full label */}
-            <span
-              className={`print-hide inline-flex items-center px-2 py-0.5 rounded-full text-xs ${cls}`}
-            >
-              {row.inwardType}
-            </span>
-            {/* print: short code only */}
-            <span
-              className={`print-only-inline items-center px-1.5 py-0.5 rounded text-xs font-semibold ${cls}`}
-            >
-              {short ?? row.inwardType}
-            </span>
-          </>
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${cls}`}
+          >
+            {row.inwardType}
+          </span>
         ) : (
           <span className="text-xs text-gray-600">—</span>
         );
@@ -302,7 +308,6 @@ export default function PurchaseReport() {
           <span className="text-xs text-gray-600">{row.branch ?? "—"}</span>
         );
 
-      // ── qty columns — all fixed 2dp, bar FIRST then number ────────────────
       case "poQty":
         return (
           <div className="text-xs text-right text-gray-600">
@@ -315,7 +320,6 @@ export default function PurchaseReport() {
             ? Math.min(100, Math.round((row.inwardQty / row.poQty) * 100))
             : 0;
         return (
-          // Progress bar FIRST, then qty number
           <div className="flex items-center gap-1.5">
             <div className="inward-bar h-1.5 rounded-full bg-gray-200 flex-1 min-w-[32px]">
               <div
@@ -404,7 +408,6 @@ export default function PurchaseReport() {
   ];
 
   let rowIndex = 0;
-  // globalSno tracks absolute serial number across pages
   const globalSnoStart = (safePage - 1) * PAGE_SIZE;
 
   function renderNode(node, vc, localIdx) {
@@ -412,7 +415,6 @@ export default function PurchaseReport() {
       const gid = `${node._key}:${node._val}:${node._depth}`;
       const col = COLUMNS.find((c) => c.key === node._key);
 
-      // ── compute qty totals for this group ──────────────────────────────────
       function collectRows(n) {
         if (n._group) return n._children.flatMap(collectRows);
         return [n];
@@ -429,9 +431,7 @@ export default function PurchaseReport() {
       return (
         <React.Fragment key={gid}>
           <tr className="bg-indigo-50 hover:bg-indigo-100">
-            {/* S.No cell for group row — blank */}
             <td className="px-2 py-1.5 border-r border-b border-gray-200 w-10 text-center text-xs text-gray-400" />
-            {/* expand col — hidden in print */}
             <td className="col-expand px-2 border-r border-b border-gray-200 w-8" />
             <td
               colSpan={vc.length + 1}
@@ -449,7 +449,6 @@ export default function PurchaseReport() {
               <span className="ml-2 text-indigo-400 font-normal">
                 — {node._count} item{node._count !== 1 ? "s" : ""}
               </span>
-              {/* qty summary badges */}
               <span className="ml-3 inline-flex flex-wrap gap-2">
                 {QTY_KEYS.filter((k) => qtyTotals[k] > 0).map((k) => {
                   const label = COLUMNS.find((c) => c.key === k)?.label || k;
@@ -482,11 +481,9 @@ export default function PurchaseReport() {
         <tr
           className={`${isOverdue ? "row-overdue bg-red-50 hover:bg-red-100" : `${stripe} hover:bg-indigo-50`} transition-colors`}
         >
-          {/* S.No */}
           <td className="px-2 py-1.5 w-10 text-center border-r border-b border-gray-100 text-xs text-gray-400 select-none">
             {sno}
           </td>
-          {/* Expand toggle */}
           <td
             className={`col-expand px-2 py-1.5 w-8 border-r border-b border-gray-100 ${isOverdue ? "border-l-2 border-l-red-500" : ""}`}
           >
@@ -502,7 +499,6 @@ export default function PurchaseReport() {
               key={col.key}
               className={`px-2.5 py-1.5 whitespace-nowrap border-r border-b border-gray-100 last:border-r-0
                   ${col.key === "inwardQty" ? "col-inward" : ""}
-    ${col.key === "inwardQty" ? "col-inward" : ""}
     ${["poQty", "inwardQty", "cancelQty", "returnQty", "billedQty", "balanceQty"].includes(col.key) ? "col-qty" : ""}`}
             >
               {renderCellValue(r, col.key)}
@@ -510,7 +506,6 @@ export default function PurchaseReport() {
           ))}
         </tr>
 
-        {/* ── expanded detail with full border ────────────────────────────── */}
         {expanded[r.id] && (
           <tr className={stripe}>
             <td colSpan={vc.length + 2} className="p-0">
@@ -537,7 +532,7 @@ export default function PurchaseReport() {
       </div>
     );
 
-  // ─── Excel export ───────────────────────────────────────────────────────────
+  // ─── Excel export (unchanged) ───────────────────────────────────────────────
   function exportExcel() {
     const keys = colOrder;
     const labels = keys.map(
@@ -606,11 +601,9 @@ export default function PurchaseReport() {
       return c;
     }
 
-    // All qty cells now use fixed 2dp — no UOM logic
     function qtyCell(k, row, bg = null) {
       const raw = row[k];
       const numVal = typeof raw === "number" ? raw : parseFloat(raw) || 0;
-      // if value is 0 — same style as inward qty (plain gray)
       if (numVal === 0) {
         return cell(numVal, {
           fontColor: "000000",
@@ -618,7 +611,7 @@ export default function PurchaseReport() {
           align: "right",
           indent: 0,
           numFmt: EXCEL_NUM_FMT,
-          fgColor: bg, // ← this was missing
+          fgColor: bg,
         });
       }
       const colorMap = {
@@ -691,7 +684,6 @@ export default function PurchaseReport() {
       });
     }
 
-    // S.No column prepended
     const allKeys = ["sno", ...keys];
     const allLabels = ["S.No", ...labels];
 
@@ -702,8 +694,6 @@ export default function PurchaseReport() {
     function flattenNode(node, depth) {
       if (node._group) {
         const col = COLUMNS.find((c) => c.key === node._key);
-
-        // group qty totals
         function collectRows(n) {
           return n._group ? n._children.flatMap(collectRows) : [n];
         }
@@ -718,14 +708,11 @@ export default function PurchaseReport() {
               `${COLUMNS.find((c) => c.key === k)?.label || k}: ${Number(qtyTotals[k]).toFixed(3)}`,
           )
           .join("  |  ");
-
         const label = `${col?.label || node._key}: ${node._val || "(blank)"}  —  ${node._count} item${node._count !== 1 ? "s" : ""}${qtyStr ? "  |  " + qtyStr : ""}`;
         const bg = GROUP_BG[depth] || "F6F6F6";
         const fs = depth === 0 ? 10 : 9;
-
-        // S.No cell blank for group; label at depth+1 offset (accounting for sno col)
         const groupRow = allKeys.map((_, ci) => {
-          const labelColIndex = depth + 1; // +1 because sno is col 0
+          const labelColIndex = depth + 1;
           return cell(ci === labelColIndex ? label : "", {
             fontColor: "1F2937",
             fgColor: bg,
@@ -734,7 +721,6 @@ export default function PurchaseReport() {
             indent: 1,
           });
         });
-
         allSheetRows.push({ cells: groupRow, isGroup: true, depth: depth + 1 });
         node._children.forEach((child) => flattenNode(child, depth + 1));
       } else {
@@ -742,9 +728,8 @@ export default function PurchaseReport() {
         dataRowCount++;
         const isOdd = dataRowCount % 2 === 1;
         const isOverdue = r.dueAlert === "overdue";
-        const bg = isOverdue ? "FEF2F2 " : isOdd ? "FFFFFF" : "F9FAFB";
-
-        const dataRow = allKeys.map((k, ki) => {
+        const bg = isOverdue ? "FEF2F2" : isOdd ? "FFFFFF" : "F9FAFB";
+        const dataRow = allKeys.map((k) => {
           if (k === "sno")
             return cell(dataRowCount, {
               fontColor: "9CA3AF",
@@ -754,28 +739,25 @@ export default function PurchaseReport() {
             });
           if (DATE_KEYS.has(k))
             return cell(fmtExcelDate(r[k]), { fgColor: bg });
-          if (k === "dueStatus") return dueStatusCell(r, bg); // ← pass bg
-          if (k === "poType") return poTypeCell(r, bg); // ← pass bg
-          if (k === "inwardType") return inwardTypeCell(r, bg); // ← pass bg
-          if (k === "status") return statusCell(r, bg); // ← pass bg
+          if (k === "dueStatus") return dueStatusCell(r, bg);
+          if (k === "poType") return poTypeCell(r, bg);
+          if (k === "inwardType") return inwardTypeCell(r, bg);
+          if (k === "status") return statusCell(r, bg);
           if (RIGHT_KEYS.has(k)) return qtyCell(k, r, bg);
           if (k === "docId")
             return cell(String(r[k] ?? ""), {
               fontColor: "1F2937",
               bold: false,
-
               fgColor: bg,
             });
           if (k === "supplier")
             return cell(String(r[k] ?? ""), {
               fontColor: "1F2937",
               bold: false,
-
               fgColor: bg,
             });
           return cell(String(r[k] ?? ""), { fgColor: bg });
         });
-
         allSheetRows.push({ cells: dataRow, isGroup: false, depth: 0 });
       }
     }
@@ -791,7 +773,7 @@ export default function PurchaseReport() {
     const headerRow = allLabels.map((label, i) =>
       cell(label, {
         bold: true,
-        fgColor: "F3F4F6", // ← change this
+        fgColor: "F3F4F6",
         fontColor: "000000",
         align:
           RIGHT_KEYS.has(allKeys[i]) || allKeys[i] === "sno"
@@ -867,114 +849,20 @@ export default function PurchaseReport() {
   // ─── JSX ───────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* ── print styles ──────────────────────────────────────────────────── */}
-      {/* <style>{`
-        @media print {
-          body * { visibility: hidden !important; }
-          .purchase-report-print, .purchase-report-print * { visibility: visible !important; }
-          .purchase-report-print { position: absolute; top: 0; left: 0; width: 100%; }
-          .no-print { display: none !important; }
-          .purchase-report-table { overflow: visible !important; height: auto !important; }
-          table { width: 100% !important; page-break-inside: auto; font-size: 9pt; }
-          thead { display: table-header-group; }
-          tr { page-break-inside: avoid; page-break-after: auto; }
-          @page { size: A4 landscape; margin: 10mm; }
-        }
-      `}</style> */}
-
-      <style>{`
-  @media print {
-    body * { visibility: hidden !important; }
-    .purchase-report-print, .purchase-report-print * { visibility: visible !important; }
-    .purchase-report-print { position: absolute; top: 0; left: 0; width: 100%; padding: 0; }
-
-    .no-print { display: none !important; }
-    .print-header { display: flex !important; }
-    .print-only-inline { display: inline-flex !important; }
-    .print-only-block  { display: block !important; }
-    .print-hide        { display: none !important; }
-
-    .purchase-report-table {
-      overflow: visible !important;
-      height: auto !important;
-      max-height: none !important;
-      border: none !important;
-    }
-
-    .inward-bar { display: none !important; }
-    .inward-pct { display: none !important; }
-    .inward-num { display: block !important; width: 100% !important; text-align: right !important; min-width: unset !important; }
-
-    /* hide expand column — no border override so it doesn't bleed */
-    .col-expand { display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; padding: 0 !important; overflow: hidden !important; }
-
-    thead button { display: none !important; }
-
-    table { width: 100% !important; border-collapse: collapse !important; table-layout: auto !important; font-size: 8pt; }
-    thead { display: table-header-group; }
-    tr { page-break-inside: avoid; page-break-after: auto; }
-
-    /* unified border for all cells including th */
-    th, td {
-       border: 1px solid #374151 !important;  
-      padding: 3px 5px !important;
-      white-space: normal !important;
-      word-break: break-word !important;
-    }
-
-    th {
-      background-color: #F3F4F6 !important;
-      color: #000000 !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-      border: 1px solid #374151 !important;  /* ← darker border for th */
-      outline: 1px solid #374151 !important;
-    }
-
-    tr.row-overdue td {
-      background-color: #FFF5F5 !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-
-    th.col-inward, td.col-inward {
-      width: 65px !important;
-      min-width: 65px !important;
-      max-width: 65px !important;
-      white-space: nowrap !important;
-      word-break: keep-all !important;
-      text-align: right !important;
-    }
-
-    th.col-inwardtype, td.col-inwardtype {
-      width: 55px !important;
-      min-width: 55px !important;
-      max-width: 55px !important;
-      text-align: center !important;
-      white-space: nowrap !important;
-      word-break: keep-all !important;
-      overflow: visible !important;
-    }
-
-    td.col-qty { text-align: right !important; }
-
-    @page { size: A4 landscape; margin: 8mm 10mm; }
-  }
-
-  @media screen {
-    .print-header      { display: none; }
-    .print-only-inline { display: none; }
-    .print-only-block  { display: none; }
-    .print-only        { display: none; }
-  }
-`}</style>
+      {/* ── PDF Preview Modal ────────────────────────────────────────────── */}
+      <PDFPreviewModal
+        open={pdfOpen}
+        onClose={() => setPdfOpen(false)}
+        tree={fullTree}
+        colOrder={colOrder}
+      />
 
       <div
         className="p-4 space-y-3 purchase-report-print overflow-y-auto"
         style={{ height: "90vh" }}
       >
         {/* top bar */}
-        <div className="flex items-center justify-between flex-wrap gap-3 bg-white py-0.5 px-2 rounded-lg no-print">
+        <div className="flex items-center justify-between flex-wrap gap-3 bg-white py-0.5 px-2 rounded-lg">
           <h2 className="text-base font-medium text-gray-800">
             Purchase Report
           </h2>
@@ -985,83 +873,32 @@ export default function PurchaseReport() {
             >
               Download Excel
             </button>
+
+            {/* ── CHANGED: opens PDF preview modal instead of window.print() ── */}
             <button
-              onClick={() => {
-                const today = new Date()
-                  .toLocaleDateString("en-IN", {
-                    day: "2-digit",
-                    month: "2-digit",
-                    year: "numeric",
-                  })
-                  .replace(/\//g, "-");
-                const prev = document.title;
-                document.title = `Purchase Report ${today}`;
-                window.print();
-                document.title = prev; // restore after print
-              }}
-              className="h-8 px-3 text-xs border border-red-300 rounded-lg text-red-600 hover:bg-red-50"
+              onClick={() => setPdfOpen(true)}
+              className="h-8 px-3 text-xs border border-red-300 rounded-lg text-red-600 hover:bg-red-50 flex items-center gap-1.5"
             >
-              Print PDF
+              <svg
+                className="w-3.5 h-3.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="9" y1="15" x2="15" y2="15" />
+              </svg>
+              Preview / Save PDF
             </button>
           </div>
         </div>
 
-        {/* print header (visible only in print) */}
-        {/* print header — logo left, title centre, date right */}
-        <div
-          className="print-header items-center justify-between mb-3 pb-2"
-          style={{ borderBottom: "2px solid #1E3A5F" }}
-        >
-          <img
-            src={mpLogo}
-            alt="Muthu Printers"
-            style={{ height: "52px", objectFit: "contain" }}
-          />
-          <div style={{ textAlign: "center", flex: 1 }}>
-            <div
-              style={{
-                fontSize: "16pt",
-                fontWeight: "800",
-                letterSpacing: "0.1em",
-                color: "#1E3A5F",
-              }}
-            >
-              PURCHASE REPORT
-            </div>
-          </div>
-          <div style={{ textAlign: "right", minWidth: "120px" }}>
-            <div style={{ fontSize: "8pt", color: "#6B7280" }}>
-              {/* Downloaded on */}
-            </div>
-            <div
-              style={{ fontSize: "10pt", fontWeight: "700", color: "#111827" }}
-            >
-              {new Date().toLocaleDateString("en-IN", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })}
-            </div>
-          </div>
-        </div>
-        {/* print-only inward type legend */}
-        <div
-          className="print-only-block mb-2 p-2"
-          style={{
-            border: "1px solid #e5e7eb",
-            borderRadius: "6px",
-            fontSize: "8pt",
-          }}
-        >
-          <strong style={{ color: "#1E3A5F" }}>Inward Type: </strong>
-          {Object.entries(INWARD_SHORT).map(([full, short]) => (
-            <span key={short} style={{ marginRight: "16px" }}>
-              <strong>{short}</strong> = {full}
-            </span>
-          ))}
-        </div>
         {/* summary cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 no-print">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {[
             {
               label: "Total POs",
@@ -1190,7 +1027,7 @@ export default function PurchaseReport() {
 
         {/* active filter chips */}
         {Object.keys(colFilters).length > 0 && (
-          <div className="flex gap-2 flex-wrap no-print">
+          <div className="flex gap-2 flex-wrap">
             {Object.entries(colFilters).map(([k, vals]) => {
               const col = COLUMNS.find((c) => c.key === k);
               const allV = uniqueVals[k] || [];
@@ -1218,7 +1055,7 @@ export default function PurchaseReport() {
 
         {/* group-by bar */}
         <div
-          className="min-h-10 bg-indigo-50 border-2 border-dashed border-indigo-300 rounded-xl flex items-center px-3 py-2 gap-2 flex-wrap no-print"
+          className="min-h-10 bg-indigo-50 border-2 border-dashed border-indigo-300 rounded-xl flex items-center px-3 py-2 gap-2 flex-wrap"
           onDragOver={onGbDragOver}
           onDrop={onGbDrop}
           onDragLeave={() => {
@@ -1258,7 +1095,7 @@ export default function PurchaseReport() {
 
         {/* ── TABLE ──────────────────────────────────────────────────────────── */}
         <div
-          className="border border-gray-400 rounded-xl overflow-auto  purchase-report-table"
+          className="border border-gray-400 rounded-xl overflow-auto purchase-report-table"
           style={{ height: "60vh" }}
         >
           <table
@@ -1267,20 +1104,17 @@ export default function PurchaseReport() {
           >
             <thead className="bg-gray-100 sticky top-0 z-10">
               <tr>
-                {/* S.No header */}
                 <th
                   style={{ width: "40px", minWidth: "40px" }}
                   className="px-2 py-2.5 text-center text-xs font-medium text-black border-r border-b border-gray-200 select-none"
                 >
                   S.No
                 </th>
-                {/* expand toggle header */}
                 <th
                   style={{ width: "32px", minWidth: "32px" }}
                   className="col-expand px-2 border-r border-b border-gray-200"
                 />
-
-                {/* {visibleCols.map((col) => (
+                {visibleCols.map((col) => (
                   <th
                     key={col.key}
                     draggable
@@ -1288,7 +1122,7 @@ export default function PurchaseReport() {
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => onColDrop(e, col.key)}
                     style={{ width: col.w, minWidth: col.w }}
-                    className={`px-2.5 py-2.5 text-center text-xs font-medium text-black whitespace-nowrap cursor-grab select-none relative border-r border-b border-gray-200 last:border-r-0 
+                    className={`px-2.5 py-2.5 text-center text-xs font-medium text-black whitespace-nowrap cursor-grab select-none relative border-r border-b border-gray-200 last:border-r-0
                       ${col.key === "inwardType" ? "col-inwardtype" : ""}
                       ${col.key === "inwardQty" ? "col-inward" : ""}`}
                   >
@@ -1302,61 +1136,6 @@ export default function PurchaseReport() {
                         )}
                         {colFilters[col.key] && (
                           <span className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-500 ml-1 align-middle" />
-                        )}
-                      </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenMenuCol(
-                            openMenuCol === col.key ? null : col.key,
-                          );
-                        }}
-                        className={`text-[11px] px-0.5 rounded hover:bg-blue-100 hover:text-blue-600 ${colFilters[col.key] ? "text-indigo-500" : "text-gray-400"}`}
-                      >
-                        ⇅
-                      </button>
-                    </div>
-                    {openMenuCol === col.key && (
-                      <ColumnFilterMenu
-                        colKey={col.key}
-                        allValues={uniqueVals[col.key] || []}
-                        activeFilter={colFilters[col.key]}
-                        onApply={handleFilterApply}
-                        onSort={handleSort}
-                        onClose={() => setOpenMenuCol(null)}
-                      />
-                    )}
-                  </th>
-                ))} */}
-                {visibleCols.map((col) => (
-                  <th
-                    key={col.key}
-                    draggable
-                    onDragStart={(e) => onColDragStart(e, col.key)}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => onColDrop(e, col.key)}
-                    style={{ width: col.w, minWidth: col.w }}
-                    className={`px-2.5 py-2.5 text-center text-xs font-medium text-black whitespace-nowrap cursor-grab select-none relative border-r border-b border-gray-200 last:border-r-0 
-      ${col.key === "inwardType" ? "col-inwardtype" : ""}
-      ${col.key === "inwardQty" ? "col-inward" : ""}`}
-                  >
-                    <div className="flex items-center gap-1">
-                      <span className="flex-1">
-                        {/* screen: full label | print: short label */}
-                        <span className="print-hide">{col.label}</span>
-                        {col.key === "inwardType" && (
-                          <span className="print-only-inline">Inw Type</span>
-                        )}
-                        {col.key !== "inwardType" && (
-                          <span className="print-only-inline">{col.label}</span>
-                        )}
-                        {sortKey === col.key && (
-                          <span className="text-indigo-500 ml-1 print-hide">
-                            {sortDir === 1 ? "↑" : "↓"}
-                          </span>
-                        )}
-                        {colFilters[col.key] && (
-                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-500 ml-1 align-middle print-hide" />
                         )}
                       </span>
                       <button
@@ -1407,7 +1186,7 @@ export default function PurchaseReport() {
         </div>
 
         {/* ── pagination + footer ──────────────────────────────────────────── */}
-        <div className="flex items-center justify-between flex-wrap gap-3 text-xs text-gray-600 no-print">
+        <div className="flex items-center justify-between flex-wrap gap-3 text-xs text-gray-600">
           <span>
             Showing {sorted.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1}–
             {Math.min(safePage * PAGE_SIZE, sorted.length)} of {sorted.length}{" "}
@@ -1473,21 +1252,6 @@ export default function PurchaseReport() {
               </button>
             </div>
           )}
-
-          <div className="flex gap-3 flex-wrap">
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-sm bg-red-200 inline-block" />
-              Overdue
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-sm bg-amber-200 inline-block" />
-              Due soon
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-sm bg-green-200 inline-block" />
-              On track
-            </span>
-          </div>
         </div>
       </div>
     </>
