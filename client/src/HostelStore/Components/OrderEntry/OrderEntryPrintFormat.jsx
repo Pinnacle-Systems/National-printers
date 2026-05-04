@@ -170,6 +170,7 @@ const OrderEntryPrintFormat = ({
   hsnList,
 }) => {
   if (!data) return null;
+  console.log(branchData, "branchData");
 
   const getName = (id, list) => {
     if (!id || !list) return "-";
@@ -190,7 +191,8 @@ const OrderEntryPrintFormat = ({
           <View style={styles.companyCenter}>
             <Text style={styles.companyName}>NATIONAL PRINTING PRESS</Text>
             <Text style={styles.companyAddr}>
-              {branchData?.address || "N/A"}
+              {branchData?.address ||
+                "9(1)-MAARIYAMMAN LAYOUT 2ND STREET,KUMARANATHA PURAM,TIRUPUR : 641602"}
             </Text>
           </View>
           <View style={styles.companyRight}>

@@ -377,19 +377,23 @@ async function create(body) {
           docId: newDocId,
           docDate: docDate ? new Date(docDate) : null,
 
-          createdById: Number(userId),
-          branchId: Number(branchId),
+          createdBy: userId ? { connect: { id: Number(userId) } } : undefined,
+          Branch: branchId ? { connect: { id: Number(branchId) } } : undefined,
 
-          orderEntryId: orderEntryId ? Number(orderEntryId) : null,
-          proformaInvoiceId: proformaInvoiceId
-            ? Number(proformaInvoiceId)
-            : null, // ✅ added back
+          OrderEntry: orderEntryId
+            ? { connect: { id: Number(orderEntryId) } }
+            : undefined,
+          ProformaInvoice: proformaInvoiceId
+            ? { connect: { id: Number(proformaInvoiceId) } }
+            : undefined,
           orderType: orderType || null,
           orderQty: orderQty ? Number(orderQty) : null,
-          customerId: customerId ? Number(customerId) : null,
+          customer: customerId
+            ? { connect: { id: Number(customerId) } }
+            : undefined,
 
-          gsmId: gsmId ? Number(gsmId) : null,
-          boardId: boardId ? Number(boardId) : null,
+          gsm: gsmId ? { connect: { id: Number(gsmId) } } : undefined,
+          Board: boardId ? { connect: { id: Number(boardId) } } : undefined,
 
           fullBoard: fullBoard ? Number(fullBoard) : null,
           noOfPockets: noOfPockets ? Number(noOfPockets) : null,
@@ -406,80 +410,70 @@ async function create(body) {
           isFrontMachine: !!isFrontMachine,
           isFrontBackMachine: !!isFrontBackMachine,
 
-          plateId: plateId ? Number(plateId) : null,
-          dieId: dieId ? Number(dieId) : null,
+          Plate: plateId ? { connect: { id: Number(plateId) } } : undefined,
+          Die: dieId ? { connect: { id: Number(dieId) } } : undefined,
           totalPlateSet: totalPlateSet ? Number(totalPlateSet) : null,
 
           remarks: remarks || null,
-          designerId: designerId ? Number(designerId) : null,
+          Designer: designerId
+            ? { connect: { id: Number(designerId) } }
+            : undefined,
           tagCardUps: tagCardUps || null,
           jobRunTime: jobRunTime || null,
 
           boardQualities: safeBoardItems.length
             ? {
-                createMany: {
-                  data: safeBoardItems.map((id) => ({
-                    boardId: Number(id),
-                  })),
-                },
+                create: safeBoardItems.map((id) => ({
+                  boardId: Number(id),
+                })),
               }
             : undefined,
 
           processDetails: safeProcesses.length
             ? {
-                createMany: {
-                  data: safeProcesses.map((id) => ({
-                    processId: Number(id),
-                  })),
-                },
+                create: safeProcesses.map((id) => ({
+                  processId: Number(id),
+                })),
               }
             : undefined,
 
           laminationDetails: safeLaminations.length
             ? {
-                createMany: {
-                  data: safeLaminations.map((l) => ({
-                    laminationId: Number(l.processId),
-                    isFront: !!l.isFront,
-                    isFrontAndBack: !!l.isFrontAndBack,
-                  })),
-                },
+                create: safeLaminations.map((l) => ({
+                  laminationId: Number(l.processId),
+                  isFront: !!l.isFront,
+                  isFrontAndBack: !!l.isFrontAndBack,
+                })),
               }
             : undefined,
 
           varnishDetails: safeVarnishes.length
             ? {
-                createMany: {
-                  data: safeVarnishes.map((v) => ({
-                    varnishId: Number(v.processId),
-                    isFront: !!v.isFront,
-                    isFrontAndBack: !!v.isFrontAndBack,
-                  })),
-                },
+                create: safeVarnishes.map((v) => ({
+                  varnishId: Number(v.processId),
+                  isFront: !!v.isFront,
+                  isFrontAndBack: !!v.isFrontAndBack,
+                })),
               }
             : undefined,
 
           machineDetails: safeMachines.length
             ? {
-                createMany: {
-                  data: safeMachines.map((id) => ({
-                    machineId: Number(id),
-                  })),
-                },
+                create: safeMachines.map((id) => ({
+                  machineId: Number(id),
+                })),
               }
             : undefined,
 
           processRoute: safeProcessRoute.length
             ? {
-                createMany: {
-                  data: safeProcessRoute.map((r, idx) => ({
-                    processId: Number(r.processId),
-                    type: r.type,
-                    sequence: idx + 1,
-                    isFront: !!r.isFront,
-                    isFrontAndBack: !!r.isFrontAndBack,
-                  })),
-                },
+                create: safeProcessRoute.map((r, idx) => ({
+                  processId: Number(r.processId),
+                  type: r.type,
+                  sequence: idx + 1,
+                  isFront: !!r.isFront,
+                  isFrontAndBack: !!r.isFrontAndBack,
+                })),
               }
             : undefined,
         },
@@ -590,17 +584,21 @@ async function update(id, body) {
         where: { id: parseInt(id) },
         data: {
           docDate: docDate ? new Date(docDate) : null,
-          updatedById: parseInt(userId),
-          branchId: parseInt(branchId),
-          orderEntryId: orderEntryId ? parseInt(orderEntryId) : null,
-          proformaInvoiceId: proformaInvoiceId
-            ? parseInt(proformaInvoiceId)
-            : null, // ✅ added back
+          updatedBy: userId ? { connect: { id: parseInt(userId) } } : undefined,
+          Branch: branchId ? { connect: { id: parseInt(branchId) } } : undefined,
+          OrderEntry: orderEntryId
+            ? { connect: { id: parseInt(orderEntryId) } }
+            : undefined,
+          ProformaInvoice: proformaInvoiceId
+            ? { connect: { id: parseInt(proformaInvoiceId) } }
+            : undefined,
           orderType: orderType || null,
           orderQty: orderQty ? parseInt(orderQty) : null,
-          customerId: customerId ? parseInt(customerId) : null,
-          gsmId: gsmId ? parseInt(gsmId) : null,
-          boardId: boardId ? parseInt(boardId) : null,
+          customer: customerId
+            ? { connect: { id: parseInt(customerId) } }
+            : undefined,
+          gsm: gsmId ? { connect: { id: parseInt(gsmId) } } : undefined,
+          Board: boardId ? { connect: { id: parseInt(boardId) } } : undefined,
           fullBoard: fullBoard ? parseInt(fullBoard) : null,
           noOfPockets: noOfPockets ? parseInt(noOfPockets) : null,
           cuttingSize: cuttingSize || null,
@@ -613,84 +611,74 @@ async function update(id, body) {
           isCutColMachine: Boolean(isCutColMachine),
           isFrontMachine: Boolean(isFrontMachine),
           isFrontBackMachine: Boolean(isFrontBackMachine),
-          plateId: plateId ? parseInt(plateId) : null,
-          dieId: dieId ? parseInt(dieId) : null,
+          Plate: plateId ? { connect: { id: parseInt(plateId) } } : undefined,
+          Die: dieId ? { connect: { id: parseInt(dieId) } } : undefined,
           totalPlateSet: totalPlateSet ? parseInt(totalPlateSet) : null,
           remarks: remarks || null,
-          designerId: designerId ? parseInt(designerId) : null,
+          Designer: designerId
+            ? { connect: { id: parseInt(designerId) } }
+            : undefined,
           tagCardUps: tagCardUps || null,
           jobRunTime: jobRunTime || null,
 
           boardQualities:
             boardItems.length > 0
               ? {
-                  createMany: {
-                    data: boardItems.map((bId) => ({
-                      boardId: parseInt(bId),
-                    })),
-                  },
+                  create: boardItems.map((bId) => ({
+                    boardId: parseInt(bId),
+                  })),
                 }
               : undefined,
 
           processDetails:
             selectedProcesses.length > 0
               ? {
-                  createMany: {
-                    data: selectedProcesses.map((pId) => ({
-                      processId: parseInt(pId),
-                    })),
-                  },
+                  create: selectedProcesses.map((pId) => ({
+                    processId: parseInt(pId),
+                  })),
                 }
               : undefined,
 
           laminationDetails:
             laminations.length > 0
               ? {
-                  createMany: {
-                    data: laminations.map((l) => ({
-                      laminationId: parseInt(l.processId),
-                      isFront: Boolean(l.isFront),
-                      isFrontAndBack: Boolean(l.isFrontAndBack),
-                    })),
-                  },
+                  create: laminations.map((l) => ({
+                    laminationId: parseInt(l.processId),
+                    isFront: Boolean(l.isFront),
+                    isFrontAndBack: Boolean(l.isFrontAndBack),
+                  })),
                 }
               : undefined,
 
           varnishDetails:
             varnishes.length > 0
               ? {
-                  createMany: {
-                    data: varnishes.map((v) => ({
-                      varnishId: parseInt(v.processId),
-                      isFront: Boolean(v.isFront),
-                      isFrontAndBack: Boolean(v.isFrontAndBack),
-                    })),
-                  },
+                  create: varnishes.map((v) => ({
+                    varnishId: parseInt(v.processId),
+                    isFront: Boolean(v.isFront),
+                    isFrontAndBack: Boolean(v.isFrontAndBack),
+                  })),
                 }
               : undefined,
 
           machineDetails:
             selectedMachines.length > 0
               ? {
-                  createMany: {
-                    data: selectedMachines.map((mId) => ({
-                      machineId: parseInt(mId),
-                    })),
-                  },
+                  create: selectedMachines.map((mId) => ({
+                    machineId: parseInt(mId),
+                  })),
                 }
               : undefined,
 
           processRoute: processRoute.length
             ? {
-                createMany: {
-                  data: processRoute.map((r, idx) => ({
-                    processId: parseInt(r.processId),
-                    type: r.type,
-                    sequence: idx + 1,
-                    isFront: Boolean(r.isFront),
-                    isFrontAndBack: Boolean(r.isFrontAndBack),
-                  })),
-                },
+                create: processRoute.map((r, idx) => ({
+                  processId: parseInt(r.processId),
+                  type: r.type,
+                  sequence: idx + 1,
+                  isFront: Boolean(r.isFront),
+                  isFrontAndBack: Boolean(r.isFrontAndBack),
+                })),
               }
             : undefined,
         },

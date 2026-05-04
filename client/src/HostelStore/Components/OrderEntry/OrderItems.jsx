@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import FxSelect from "../../../Inputs";
+import FxSelect, { FxSelectWithAdd } from "../../../Inputs";
 import { useGetGsmMasterQuery } from "../../../redux/services/GsmMasterService";
 import { useGetHsnMasterQuery } from "../../../redux/services/HsnMasterServices";
 import { getCommonParams } from "../../../Utils/helper";
+import { Gsm, Size, StyleItemMaster, UomMaster } from "..";
 
 const OrderItems = ({
   orderItems,
@@ -130,7 +131,7 @@ const OrderItems = ({
                   {index + 1}
                 </td>
                 <td className="border border-gray-300">
-                  <FxSelect
+                  <FxSelectWithAdd
                     inputId={`styleItemId-input-${index}`}
                     value={row.styleItemId}
                     onChange={(val) =>
@@ -141,6 +142,9 @@ const OrderItems = ({
                       .map((item) => ({ label: item.name, value: item.id }))}
                     readOnly={readOnly}
                     placeholder=""
+                    addNew={true}
+                    childComponent={StyleItemMaster}
+                    addNewModalWidth="w-[50%] h-[57%]"
                   />
                 </td>
                 <td className="border border-gray-300">
