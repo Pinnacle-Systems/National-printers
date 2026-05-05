@@ -13,6 +13,7 @@ import { FaPlus } from "react-icons/fa";
 import OrderEntryReport from "./OrderEntryReport.jsx";
 import OrderEntryForm from "./OrderEntryForm.jsx";
 import { useIsApprover } from "../../../CustomHooks/userIsApprover.js";
+import Swal from "sweetalert2";
 
 const index = () => {
   const [showForm, setShowForm] = useState(false);
@@ -153,7 +154,7 @@ const index = () => {
       </div>
 
       {showForm && (
-        <div className="h-[93vh] overflow-hidden">
+        <div className="h-[87vh] overflow-y-auto">
           <OrderEntryForm
             readOnly={readOnly}
             setReadOnly={setReadOnly}

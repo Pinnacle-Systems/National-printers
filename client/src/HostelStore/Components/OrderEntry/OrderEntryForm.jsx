@@ -121,7 +121,7 @@ const OrderEntryForm = ({
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState("");
   const [orderItems, setOrderItems] = useState(
-    Array.from({ length: 4 }, () => ({
+    Array.from({ length: 8 }, () => ({
       styleItemId: "",
       sizeId: "",
       uomId: "",
@@ -188,7 +188,7 @@ const OrderEntryForm = ({
               trackingType: item.trackingType || "None",
               sizeBreakup: item.sizeBreakup || [],
             }))
-          : Array.from({ length: 4 }, () => ({
+          : Array.from({ length: 8 }, () => ({
               itemGroupId: "",
               styleItemId: "",
               trackingType: "None",

@@ -114,7 +114,13 @@ export default function Form({ onSuccess, defaultName = "" }) {
   };
 
   const validateData = (data) => {
-    if (data.name && data.itemGroupId && data?.uomId) {
+    if (
+      data.name &&
+      data.itemGroupId &&
+      data?.uomId &&
+      data?.sizeTemplateId &&
+      data?.hsnId
+    ) {
       return true;
     }
     return false;
@@ -195,6 +201,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
       });
       return;
     }
+
     if (id) {
       if (!window.confirm("Are you sure save the details ...?")) {
         return;
@@ -353,26 +360,6 @@ export default function Form({ onSuccess, defaultName = "" }) {
                   />
                 </div>
                 <div className="mb-3">
-                  {/* <DropdownInput
-                            name="Item Group"
-                            options={dropDownListObject(
-                              id
-                                ? itemGroupList?.data
-                                : itemGroupList?.data?.filter(
-                                    (item) => item.active,
-                                  ),
-                              "name",
-                              "id",
-                            )}
-                            value={itemGroupId}
-                            setValue={(value) => {
-                              setItemGroupId(value);
-                            }}
-                            readOnly={readOnly}
-                            disabled={childRecord.current > 0}
-                            clear={true}
-                            required={true}
-                          /> */}
                   <DropdownWithModal
                     name="Item Group"
                     options={dropDownListObject(
@@ -394,23 +381,6 @@ export default function Form({ onSuccess, defaultName = "" }) {
                   />
                 </div>
                 <div className="mb-3">
-                  {/* <DropdownInput
-                            name="UOM"
-                            options={dropDownListObject(
-                              id
-                                ? uomList?.data
-                                : uomList?.data?.filter((item) => item.active),
-                              "name",
-                              "id",
-                            )}
-                            value={uomId}
-                            setValue={(value) => {
-                              setUomId(value);
-                            }}
-                            required={true}
-                            disabled={childRecord.current > 0}
-                            readOnly={readOnly}
-                          /> */}
                   <DropdownWithModal
                     name="Uom"
                     options={dropDownListObject(
@@ -446,50 +416,15 @@ export default function Form({ onSuccess, defaultName = "" }) {
                     value={sizeTemplateId}
                     setValue={setSizeTemplateId}
                     readOnly={readOnly}
+                    required={true}
                     className={`w-[150px]`}
                     disabled={childRecord.current > 0}
                     addNewLabel="+ Add New Size Template"
                     childComponent={SizeTemplate}
                     addNewModalWidth="w-[40%] h-[62%]"
                   />
-                  {/* <DropdownInput
-                            name="Size Template"
-                            options={dropDownListObject(
-                              id
-                                ? sizeTemplateList?.data
-                                : sizeTemplateList?.data?.filter(
-                                    (item) => item.active,
-                                  ),
-                              "name",
-                              "id",
-                            )}
-                            value={sizeTemplateId}
-                            setValue={(value) => {
-                              setSizeTemplateId(value);
-                            }}
-                            readOnly={readOnly}
-                            clear={true}
-                            disabled={childRecord.current > 0}
-                          /> */}
                 </div>
                 <div className="mb-3">
-                  {/* <DropdownInput
-                            name="HSN"
-                            options={dropDownListObject(
-                              id
-                                ? hsnList?.data
-                                : hsnList?.data?.filter((item) => item.active),
-                              "name",
-                              "id",
-                            )}
-                            value={hsnId}
-                            setValue={(value) => {
-                              setHsnId(value);
-                            }}
-                            readOnly={readOnly}
-                            clear={true}
-                            disabled={childRecord.current > 0}
-                          /> */}
                   <DropdownWithModal
                     name="Hsn"
                     options={dropDownListObject(
@@ -501,6 +436,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
                     )}
                     value={hsnId}
                     setValue={setHsnId}
+                    required={true}
                     readOnly={readOnly}
                     className={`w-[150px]`}
                     disabled={childRecord.current > 0}

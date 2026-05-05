@@ -14,6 +14,8 @@ import Modal from "../../../UiComponents/Modal";
 import { MdKeyboardDoubleArrowLeft } from "react-icons/md";
 import { FiCheck } from "react-icons/fi";
 import { toast } from "react-toastify";
+import Swal from "sweetalert2";
+
 const OrderEntryReport = ({
   onClick,
   onView,
