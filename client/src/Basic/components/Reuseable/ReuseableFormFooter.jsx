@@ -188,6 +188,7 @@ const ReusableFormFooter = ({
               </div>
 
               <textarea
+                id={sec.id}
                 ref={(el) => (textareaRefs.current[index] = el)}
                 disabled={readOnly || sec.readOnly}
                 value={sec.value || ""}

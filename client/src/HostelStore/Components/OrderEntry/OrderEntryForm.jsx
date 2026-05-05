@@ -1107,6 +1107,7 @@ const OrderEntryForm = ({
         sections={[
           {
             title: "Customer Requirements",
+            id: "customerRequirements",
             value: requirements,
             onChange: setRequirements,
             placeholder: "Enter requirements...",
