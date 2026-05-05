@@ -53,10 +53,23 @@ const OrderItems = ({
   const [focusedField, setFocusedField] = useState(null);
   const [sizeModalOpen, setSizeModalOpen] = useState(false);
   const [activeRowIndex, setActiveRowIndex] = useState(null);
+  const [pendingFocus, setPendingFocus] = useState(null);
+
+  useEffect(() => {
+    if (!sizeModalOpen && pendingFocus !== null) {
+      const element = document.getElementById(`remarks-input-${pendingFocus}`);
+      if (element) {
+        element.focus();
+        element.select();
+      }
+      setPendingFocus(null);
+    }
+  }, [sizeModalOpen, pendingFocus]);
 
   const handleOpenSizeModal = async (index) => {
     setActiveRowIndex(index);
     setSizeModalOpen(true);
+    setPendingFocus(index);
 
     const currentRow = orderItems[index];
     const hasEmptyBreakup =
@@ -359,9 +372,6 @@ const OrderItems = ({
               <th className="w-40 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Remarks
               </th>
-              <th className="w-10 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
-                Actions
-              </th>
             </tr>
           </thead>
           <tbody>
@@ -381,9 +391,19 @@ const OrderItems = ({
                   <FxSelectWithAdd
                     inputId={`styleItemId-input-${index}`}
                     value={row.styleItemId}
-                    onChange={(val) =>
-                      handleInputChange(val, index, "styleItemId")
-                    }
+                    onChange={(val) => {
+                      handleInputChange(val, index, "styleItemId");
+                      // Automatically focus tracking type after style selection
+                      // Use a slightly longer timeout to avoid Enter bubbling
+                      setTimeout(() => {
+                        const nextEl = document.getElementById(
+                          `trackingType-input-${index}`,
+                        );
+                        if (nextEl) {
+                          nextEl.focus();
+                        }
+                      }, 100);
+                    }}
                     options={(styleItemList?.data || [])
                       .filter((item) => (id ? true : item.active))
                       .map((item) => ({ label: item.name, value: item.id }))}
@@ -412,33 +432,44 @@ const OrderItems = ({
                   />
                 </td> */}
                 <td className="border border-gray-300">
-                  <input
-                    type="text"
-                    value={
-                      findFromList(
-                        row.itemGroupId,
-                        itemGroupList?.data,
-                        "name",
-                      ) || ""
-                    }
-                    className="w-full text-[11px] text-left pl-1 outline-none bg-transparent"
-                  />
+                  <span className="w-full text-[11px] text-left pl-1 outline-none bg-transparent">
+                    {findFromList(
+                      row.itemGroupId,
+                      itemGroupList?.data,
+                      "name",
+                    ) || ""}
+                  </span>
                 </td>
                 <td className="border border-gray-300">
-                  <input
-                    type="text"
-                    value={findFromList(row.hsnId, hsnList?.data, "name") || ""}
-                    className="w-full text-[11px] text-right px-1 outline-none bg-transparent"
-                  />
+                  <span className="w-full text-[11px] text-left pl-1 outline-none bg-transparent">
+                    {findFromList(row.hsnId, hsnList?.data, "name") || ""}
+                  </span>
                 </td>
-                <td className="border border-gray-300">
+                <td className="border border-gray-300 ">
                   <select
+                    id={`trackingType-input-${index}`}
                     value={row.trackingType || "None"}
                     onChange={(e) =>
                       handleInputChange(e.target.value, index, "trackingType")
                     }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (row.trackingType === "None") {
+                          const qtyEl = document.getElementById(
+                            `orderQty-input-${index}`,
+                          );
+                          if (qtyEl) qtyEl.focus();
+                        } else {
+                          const breakupEl = document.getElementById(
+                            `breakup-btn-${index}`,
+                          );
+                          if (breakupEl) breakupEl.focus();
+                        }
+                      }
+                    }}
                     disabled={readOnly}
-                    className={`pl-2 h-full text-[11px] cursor-pointer outline-none w-full bg-transparent`}
+                    className={`table-data-input  pl-2 h-full text-[11px] cursor-pointer outline-none w-full bg-transparent focus:bg-white focus:ring-1 focus:ring-indigo-500 rounded-sm transition-all `}
                   >
                     <option value="None">None</option>
                     <option value="Barcode">Barcode</option>
@@ -450,8 +481,15 @@ const OrderItems = ({
                 </td>
                 <td className="border border-gray-300 text-center items-center">
                   <button
+                    id={`breakup-btn-${index}`}
                     type="button"
                     onClick={() => handleOpenSizeModal(index)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !readOnly) {
+                        e.preventDefault();
+                        handleOpenSizeModal(index);
+                      }
+                    }}
                     disabled={
                       !row.styleItemId ||
                       readOnly ||
@@ -475,11 +513,9 @@ const OrderItems = ({
                   />
                 </td> */}
                 <td className="border border-gray-300">
-                  <input
-                    type="text"
-                    value={findFromList(row.uomId, uomList?.data, "name") || ""}
-                    className="w-full text-[11px] text-left pl-1 outline-none bg-transparent"
-                  />
+                  <span className="w-full text-[11px] text-left pl-1 outline-none bg-transparent">
+                    {findFromList(row.uomId, uomList?.data, "name") || ""}
+                  </span>
                 </td>
                 {/* <td className="border border-gray-300">
                   <FxSelect
@@ -497,7 +533,7 @@ const OrderItems = ({
                   <input
                     id={`orderQty-input-${index}`}
                     type="number"
-                    className="w-full h-full text-[11px] text-right px-1 outline-none bg-transparent"
+                    className="w-full h-full table-data-input text-[11px] text-right px-1 outline-none bg-transparent"
                     onFocus={(e) => {
                       e.target.select();
                       setFocusedField(`${index}`);
@@ -521,6 +557,29 @@ const OrderItems = ({
                       );
                       setFocusedField(null);
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (!row.styleItemId) {
+                          const reqEl = document.getElementById(
+                            "customerRequirements",
+                          );
+                          if (reqEl) {
+                            reqEl.focus();
+                            reqEl.select?.();
+                          }
+                        } else {
+                          if (index === orderItems.length - 1) {
+                            addRow();
+                          } else {
+                            const nextStyleEl = document.getElementById(
+                              `styleItemId-input-${index + 1}`,
+                            );
+                            if (nextStyleEl) nextStyleEl.focus();
+                          }
+                        }
+                      }
+                    }}
                     disabled={
                       readOnly ||
                       [
@@ -541,28 +600,38 @@ const OrderItems = ({
                 </td>
                 <td className="border border-gray-300">
                   <input
+                    id={`remarks-input-${index}`}
                     type="text"
-                    className="w-full h-full text-[11px] outline-none px-1 bg-transparent"
+                    className="w-full h-full text-[11px] table-data-input outline-none px-1 bg-transparent"
                     value={row.remarks || ""}
                     onChange={(e) =>
                       handleInputChange(e.target.value, index, "remarks")
                     }
-                    disabled={readOnly}
-                    placeholder="Remarks"
-                  />
-                </td>
-                <td className="border border-gray-300 text-center">
-                  <input
-                    className="w-full bg-transparent outline-none"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
-                        if (index === orderItems.length - 1) {
-                          addRow();
+                        if (!row.styleItemId) {
+                          const reqEl = document.getElementById(
+                            "customerRequirements",
+                          );
+                          if (reqEl) {
+                            reqEl.focus();
+                            reqEl.select?.();
+                          }
+                        } else {
+                          if (index === orderItems.length - 1) {
+                            addRow();
+                          } else {
+                            const nextStyleEl = document.getElementById(
+                              `styleItemId-input-${index + 1}`,
+                            );
+                            if (nextStyleEl) nextStyleEl.focus();
+                          }
                         }
                       }
                     }}
                     disabled={readOnly}
+                    placeholder="Remarks"
                   />
                 </td>
               </tr>
@@ -581,7 +650,7 @@ const OrderItems = ({
                   ?.reduce((sum, row) => sum + (Number(row.orderQty) || 0), 0)
                   .toFixed(3)}
               </td>
-              <td className="border border-gray-300" colSpan={2}></td>
+              <td className="border border-gray-300"></td>
             </tr>
           </tfoot>
         </table>
