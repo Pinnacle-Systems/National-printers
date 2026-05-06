@@ -80,8 +80,6 @@ const index = () => {
           timer: 1000,
         });
         setShowForm(false);
-        dispatchInvalidate();
-        invalidatePurchaseModule();
       } catch (error) {
         Swal.fire({
           icon: "error",
@@ -154,7 +152,7 @@ const index = () => {
       </div>
 
       {showForm && (
-        <div className="h-[87vh] overflow-y-auto">
+        <div className="h-[85vh] overflow-y-auto">
           <OrderEntryForm
             readOnly={readOnly}
             setReadOnly={setReadOnly}

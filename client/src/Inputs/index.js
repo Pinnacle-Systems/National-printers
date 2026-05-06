@@ -3781,6 +3781,15 @@ export function FxSelectWithAdd({
         onBlur={onBlur}
         filterOption={() => true}
         onKeyDown={(e) => {
+          // If menu is open, let react-select handle Enter/Tab for selection/navigation
+          if (
+            onKeyDown &&
+            !((e.key === "Enter" || e.key === "Tab") && menuIsOpen)
+          ) {
+            onKeyDown(e);
+          }
+          if (e.defaultPrevented) return;
+
           // ✅ Handle Enter key - focus next field
           if (e.key === "Enter" && advanceOnEnter && !menuIsOpen) {
             // If a value is selected, focus next field
@@ -3804,8 +3813,6 @@ export function FxSelectWithAdd({
             }
             return;
           }
-
-          if (onKeyDown) onKeyDown(e);
         }}
         placeholder={placeholder}
         menuPortalTarget={document.body}

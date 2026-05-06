@@ -109,7 +109,10 @@ async function getOne(id) {
           Uom: true,
           Gsm: true,
           Hsn: true,
-        }
+          SizeTemplate: true,
+          sizeBreakup: { include: { Size: true } },
+        },
+        orderBy: { itemOrder: "asc" },
       },
       attachments: true,
       Branch: true,
@@ -120,17 +123,53 @@ async function getOne(id) {
           orderItems: {
             include: {
               StyleItem: true,
-              Size: true,
+              SizeTemplate: true,
+              sizeBreakup: { include: { Size: true } },
               Uom: true,
               Gsm: true,
               Hsn: true,
-            }
+            },
+            orderBy: { itemOrder: "asc" },
           }
         }
       },
     },
   });
   if (!data) return NoRecordFound("Proforma Invoice");
+
+  if (data && data.OrderEntry && data.items) {
+    const styleItemCounts = {};
+    data.items = data.items.map((item) => {
+      // If trackingType is already present, it means it's newly saved data
+      if (item.trackingType) return item;
+
+      const styleId = item.styleItemId;
+      styleItemCounts[styleId] = (styleItemCounts[styleId] || 0) + 1;
+      const count = styleItemCounts[styleId];
+
+      let matchCount = 0;
+      const orderItem = data.OrderEntry.orderItems.find((oi) => {
+        if (oi.styleItemId === styleId) {
+          matchCount++;
+          return matchCount === count;
+        }
+        return false;
+      });
+
+      if (orderItem) {
+        return {
+          ...item,
+          trackingType: orderItem.trackingType,
+          sizeTemplateId: orderItem.sizeTemplateId,
+          SizeTemplate: orderItem.SizeTemplate,
+          sizeBreakup: orderItem.sizeBreakup,
+          remarks: orderItem.remarks,
+        };
+      }
+      return item;
+    });
+  }
+
   return { statusCode: 0, data };
 }
 
@@ -185,21 +224,33 @@ async function create(body) {
       termsAndCondition,
       termsId: termsId ? parseInt(termsId) : null,
       items: {
-        createMany: {
-          data: JSON.parse(items || "[]").map((item) => ({
-            styleItemId: item.styleItemId ? parseInt(item.styleItemId) : null,
-            sizeId: item.sizeId ? parseInt(item.sizeId) : null,
-            uomId: item.uomId ? parseInt(item.uomId) : null,
-            gsmId: item.gsmId ? parseInt(item.gsmId) : null,
-            hsnId: item.hsnId ? parseInt(item.hsnId) : null,
-            qty: parseFloat(item.qty || 0),
-            price: parseFloat(item.price || 0),
-            taxPercent: parseFloat(item.taxPercent || 0),
-            discountType: item.discountType,
-            discountValue: parseFloat(item.discountValue || 0),
-            amount: parseFloat(item.amount || 0),
-          })),
-        },
+        create: JSON.parse(items || "[]").map((item, idx) => ({
+          StyleItem: item.styleItemId ? { connect: { id: parseInt(item.styleItemId) } } : undefined,
+          Size: item.sizeId ? { connect: { id: parseInt(item.sizeId) } } : undefined,
+          Uom: item.uomId ? { connect: { id: parseInt(item.uomId) } } : undefined,
+          Gsm: item.gsmId ? { connect: { id: parseInt(item.gsmId) } } : undefined,
+          Hsn: item.hsnId ? { connect: { id: parseInt(item.hsnId) } } : undefined,
+          SizeTemplate: item.sizeTemplateId ? { connect: { id: parseInt(item.sizeTemplateId) } } : undefined,
+          qty: parseFloat(item.qty || 0),
+          price: parseFloat(item.price || 0),
+          taxPercent: parseFloat(item.taxPercent || 0),
+          discountType: item.discountType,
+          discountValue: parseFloat(item.discountValue || 0),
+          amount: parseFloat(item.amount || 0),
+          trackingType: item.trackingType,
+          remarks: item.remarks,
+          itemOrder: idx,
+          sizeBreakup: {
+            create: (item.sizeBreakup || [])
+              .filter((sb) => (parseFloat(sb.qty) || 0) > 0)
+              .map((sb) => ({
+                Size: sb.sizeId ? { connect: { id: parseInt(sb.sizeId) } } : undefined,
+                qty: parseFloat(sb.qty || 0),
+                barcodeFrom: sb.barcodeFrom,
+                barcodeTo: sb.barcodeTo,
+              })),
+          },
+        })),
       },
       attachments: attachments && JSON.parse(attachments)?.length > 0
         ? {
@@ -334,22 +385,35 @@ async function update(id, body, files) {
       quoteVersion: nextQuoteVersion,
       ...(isApproved !== undefined && { isApproved: isApproved === "true" || isApproved === true }),
       items: isTableChanged ? {
-        createMany: {
-          data: parseItems.map((item) => ({
-            styleItemId: item.styleItemId ? parseInt(item.styleItemId) : null,
-            sizeId: item.sizeId ? parseInt(item.sizeId) : null,
-            uomId: item.uomId ? parseInt(item.uomId) : null,
-            gsmId: item.gsmId ? parseInt(item.gsmId) : null,
-            hsnId: item.hsnId ? parseInt(item.hsnId) : null,
-            qty: parseFloat(item.qty || 0),
-            price: parseFloat(item.price || 0),
-            taxPercent: parseFloat(item.taxPercent || 0),
-            discountType: item.discountType,
-            discountValue: parseFloat(item.discountValue || 0),
-            amount: parseFloat(item.amount || 0),
-            quoteVersion: nextQuoteVersion,
-          })),
-        },
+        deleteMany: {},
+        create: parseItems.map((item, idx) => ({
+          StyleItem: item.styleItemId ? { connect: { id: parseInt(item.styleItemId) } } : undefined,
+          Size: item.sizeId ? { connect: { id: parseInt(item.sizeId) } } : undefined,
+          Uom: item.uomId ? { connect: { id: parseInt(item.uomId) } } : undefined,
+          Gsm: item.gsmId ? { connect: { id: parseInt(item.gsmId) } } : undefined,
+          Hsn: item.hsnId ? { connect: { id: parseInt(item.hsnId) } } : undefined,
+          SizeTemplate: item.sizeTemplateId ? { connect: { id: parseInt(item.sizeTemplateId) } } : undefined,
+          qty: parseFloat(item.qty || 0),
+          price: parseFloat(item.price || 0),
+          taxPercent: parseFloat(item.taxPercent || 0),
+          discountType: item.discountType,
+          discountValue: parseFloat(item.discountValue || 0),
+          amount: parseFloat(item.amount || 0),
+          quoteVersion: nextQuoteVersion,
+          trackingType: item.trackingType,
+          remarks: item.remarks,
+          itemOrder: idx,
+          sizeBreakup: {
+            create: (item.sizeBreakup || [])
+              .filter((sb) => (parseFloat(sb.qty) || 0) > 0)
+              .map((sb) => ({
+                Size: sb.sizeId ? { connect: { id: parseInt(sb.sizeId) } } : undefined,
+                qty: parseFloat(sb.qty || 0),
+                barcodeFrom: sb.barcodeFrom,
+                barcodeTo: sb.barcodeTo,
+              })),
+          },
+        })),
       } : undefined,
       attachments: {
         deleteMany: {

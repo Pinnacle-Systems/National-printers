@@ -227,7 +227,7 @@ const ProformaInvoiceReport = ({
                 <th className="w-14   px-3  font-medium text-[13px]  text-gray-900  text-center "></th>
               </tr>
             </thead>
-            <tbody className="bg-white">
+            <tbody className="bg-transparent">
               {isLoadingIndicator ? (
                 <tr>
                   <td
@@ -242,9 +242,7 @@ const ProformaInvoiceReport = ({
                   <td
                     colSpan={showApprovalColumn ? 8 : 7}
                     className="px-6 py-10 text-center text-gray-500 italic"
-                  >
-                    No records found
-                  </td>
+                  ></td>
                 </tr>
               ) : (
                 allData?.data?.map((item, index) => {
@@ -287,11 +285,19 @@ const ProformaInvoiceReport = ({
                               const fd = new FormData();
                               fd.append("approvalStatus", newStatus);
                               try {
-                                await updateProformaInvoice({ id: item.id, body: fd }).unwrap();
-                                const msg = newStatus === "APPROVED" ? "Proforma Invoice approved!" : "Approval revoked";
+                                await updateProformaInvoice({
+                                  id: item.id,
+                                  body: fd,
+                                }).unwrap();
+                                const msg =
+                                  newStatus === "APPROVED"
+                                    ? "Proforma Invoice approved!"
+                                    : "Approval revoked";
                                 toast.success(msg);
                               } catch {
-                                toast.error("Failed to update approval status.");
+                                toast.error(
+                                  "Failed to update approval status.",
+                                );
                               } finally {
                                 setApprovingId(null);
                               }
@@ -307,7 +313,11 @@ const ProformaInvoiceReport = ({
                                       onClick={() => sendUpdate("REVOKED")}
                                       className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-50 border border-red-300 text-red-600 hover:bg-red-100 disabled:opacity-40"
                                     >
-                                      {isLoading ? <span className="text-[8px]">…</span> : <XCircle size={14} />}
+                                      {isLoading ? (
+                                        <span className="text-[8px]">…</span>
+                                      ) : (
+                                        <XCircle size={14} />
+                                      )}
                                     </button>
                                   </Tooltip>
                                   {/* Status */}
@@ -328,7 +338,11 @@ const ProformaInvoiceReport = ({
                                       onClick={() => sendUpdate("APPROVED")}
                                       className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-50 border border-green-300 text-green-600 hover:bg-green-100 disabled:opacity-40"
                                     >
-                                      {isLoading ? <span className="text-[8px]">…</span> : <CheckCircle size={14} />}
+                                      {isLoading ? (
+                                        <span className="text-[8px]">…</span>
+                                      ) : (
+                                        <CheckCircle size={14} />
+                                      )}
                                     </button>
                                   </Tooltip>
                                   {/* Status */}
@@ -349,7 +363,11 @@ const ProformaInvoiceReport = ({
                                     onClick={() => sendUpdate("APPROVED")}
                                     className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-50 border border-green-300 text-green-600 hover:bg-green-100 disabled:opacity-40"
                                   >
-                                    {isLoading ? <span className="text-[8px]">…</span> : <CheckCircle size={14} />}
+                                    {isLoading ? (
+                                      <span className="text-[8px]">…</span>
+                                    ) : (
+                                      <CheckCircle size={14} />
+                                    )}
                                   </button>
                                 </Tooltip>
                                 {/* Status */}

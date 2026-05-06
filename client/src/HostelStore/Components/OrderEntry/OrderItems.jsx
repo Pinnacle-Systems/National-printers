@@ -37,10 +37,7 @@ const OrderItems = ({
     itemGroupId: "",
     styleItemId: "",
     trackingType: "None",
-    sizeId: "",
     sizeTemplateId: "",
-    barcodeFrom: "",
-    barcodeTo: "",
     uomId: "",
     gsmId: "",
     hsnId: "",
@@ -387,7 +384,7 @@ const OrderItems = ({
                   {index + 1}
                 </td>
 
-                <td className="border border-gray-300">
+                <td className="border border-gray-300 ">
                   <FxSelectWithAdd
                     inputId={`styleItemId-input-${index}`}
                     value={row.styleItemId}
@@ -403,6 +400,27 @@ const OrderItems = ({
                           nextEl.focus();
                         }
                       }, 100);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === "Tab") {
+                        if (!row.styleItemId) {
+                          e.preventDefault();
+                          const reqEl = document.getElementById(
+                            "customerRequirements",
+                          );
+                          if (reqEl) {
+                            reqEl.focus();
+                            reqEl.select?.();
+                          }
+                        } else {
+                          // If value exists, move to Tracking Type
+                          e.preventDefault();
+                          const nextEl = document.getElementById(
+                            `trackingType-input-${index}`,
+                          );
+                          if (nextEl) nextEl.focus();
+                        }
+                      }
                     }}
                     options={(styleItemList?.data || [])
                       .filter((item) => (id ? true : item.active))
@@ -453,18 +471,29 @@ const OrderItems = ({
                       handleInputChange(e.target.value, index, "trackingType")
                     }
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        if (row.trackingType === "None") {
-                          const qtyEl = document.getElementById(
-                            `orderQty-input-${index}`,
+                      if (e.key === "Enter" || e.key === "Tab") {
+                        if (!row.styleItemId) {
+                          e.preventDefault();
+                          const reqEl = document.getElementById(
+                            "customerRequirements",
                           );
-                          if (qtyEl) qtyEl.focus();
-                        } else {
-                          const breakupEl = document.getElementById(
-                            `breakup-btn-${index}`,
-                          );
-                          if (breakupEl) breakupEl.focus();
+                          if (reqEl) {
+                            reqEl.focus();
+                            reqEl.select?.();
+                          }
+                        } else if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (row.trackingType === "None") {
+                            const qtyEl = document.getElementById(
+                              `orderQty-input-${index}`,
+                            );
+                            if (qtyEl) qtyEl.focus();
+                          } else {
+                            const breakupEl = document.getElementById(
+                              `breakup-btn-${index}`,
+                            );
+                            if (breakupEl) breakupEl.focus();
+                          }
                         }
                       }
                     }}
@@ -490,11 +519,7 @@ const OrderItems = ({
                         handleOpenSizeModal(index);
                       }
                     }}
-                    disabled={
-                      !row.styleItemId ||
-                      readOnly ||
-                      row.trackingType === "None"
-                    }
+                    disabled={!row.styleItemId || row.trackingType === "None"}
                     className="  text-indigo-600 hover:text-indigo-800 disabled:text-gray-400 transition-colors"
                     title="View Sizes"
                   >
@@ -541,7 +566,9 @@ const OrderItems = ({
                     value={
                       focusedField === `${index}`
                         ? (row?.orderQty ?? "")
-                        : row?.orderQty
+                        : row?.orderQty !== undefined &&
+                            row?.orderQty !== null &&
+                            row?.orderQty !== ""
                           ? Number(row.orderQty).toFixed(3)
                           : ""
                     }
@@ -558,9 +585,9 @@ const OrderItems = ({
                       setFocusedField(null);
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
+                      if (e.key === "Enter" || e.key === "Tab") {
                         if (!row.styleItemId) {
+                          e.preventDefault();
                           const reqEl = document.getElementById(
                             "customerRequirements",
                           );
@@ -568,7 +595,8 @@ const OrderItems = ({
                             reqEl.focus();
                             reqEl.select?.();
                           }
-                        } else {
+                        } else if (e.key === "Enter") {
+                          e.preventDefault();
                           if (index === orderItems.length - 1) {
                             addRow();
                           } else {
@@ -608,7 +636,7 @@ const OrderItems = ({
                       handleInputChange(e.target.value, index, "remarks")
                     }
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") {
+                      if (e.key === "Enter" || e.key === "Tab") {
                         e.preventDefault();
                         if (!row.styleItemId) {
                           const reqEl = document.getElementById(
@@ -769,7 +797,7 @@ const OrderItems = ({
                             key={idx}
                             className="hover:bg-slate-50 transition-colors"
                             onContextMenu={(e) =>
-                              handleRightClick(e, idx, "MODAL")
+                              !readOnly && handleRightClick(e, idx, "MODAL")
                             }
                           >
                             <td className="border-b border-r border-slate-200 px-1 py-0.5 text-center text-[11px] text-slate-500 font-medium">
@@ -806,6 +834,7 @@ const OrderItems = ({
                                 onKeyDown={(e) => {
                                   if (
                                     e.key === "Enter" &&
+                                    !readOnly &&
                                     idx ===
                                       orderItems[activeRowIndex]?.sizeBreakup
                                         ?.length -
@@ -823,7 +852,13 @@ const OrderItems = ({
                               <input
                                 type="number"
                                 className="w-full h-7 border-none text-right pr-2 bg-transparent text-[11px] text-black outline-none focus:bg-white"
-                                value={item.qty}
+                                value={
+                                  item.qty !== undefined &&
+                                  item.qty !== null &&
+                                  item.qty !== ""
+                                    ? Number(item.qty).toFixed(3)
+                                    : ""
+                                }
                                 onChange={(e) =>
                                   handleSizeBreakupChange(
                                     idx,
@@ -841,6 +876,7 @@ const OrderItems = ({
                                 onKeyDown={(e) => {
                                   if (
                                     e.key === "Enter" &&
+                                    !readOnly &&
                                     idx ===
                                       orderItems[activeRowIndex]?.sizeBreakup
                                         ?.length -
@@ -895,7 +931,13 @@ const OrderItems = ({
                               <input
                                 type="number"
                                 className="w-full h-7 border-none text-right pr-2 bg-transparent text-[11px] text-black outline-none focus:bg-white"
-                                value={item.qty}
+                                value={
+                                  item.qty !== undefined &&
+                                  item.qty !== null &&
+                                  item.qty !== ""
+                                    ? Number(item.qty).toFixed(3)
+                                    : ""
+                                }
                                 onChange={(e) =>
                                   handleSizeBreakupChange(
                                     idx,
@@ -993,7 +1035,13 @@ const OrderItems = ({
                               <input
                                 type="number"
                                 className="w-full h-7 border-none text-right pr-2 bg-transparent text-[11px] text-black outline-none focus:bg-white"
-                                value={item.qty}
+                                value={
+                                  item.qty !== undefined &&
+                                  item.qty !== null &&
+                                  item.qty !== ""
+                                    ? Number(item.qty).toFixed(3)
+                                    : ""
+                                }
                                 onChange={(e) =>
                                   handleSizeBreakupChange(
                                     idx,

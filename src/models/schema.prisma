@@ -1587,9 +1587,9 @@ model Size {
   purchaseReturnItems    PurchaseReturnItems[]
   inwardItems            InwardItems[]
   stocks                 Stock[]
-  orderItems             OrderItems[]
   orderSizeBreakups      OrderSizeBreakup[]
   proformaInvoiceItems   ProformaInvoiceItem[]
+  proformaSizeBreakups   ProformaSizeBreakup[]
 }
 
 model Gsm {
@@ -1630,15 +1630,16 @@ model ItemGroup {
 }
 
 model SizeTemplate {
-  id               Int                @id @default(autoincrement())
-  name             String?
-  Company          Company?           @relation(fields: [companyId], references: [id])
-  companyId        Int?
-  active           Boolean?           @default(true)
-  SizeTemplateList SizeTemplateList[]
-  styles           Style[]
-  styleItems       StyleItem[]
-  orderItems       OrderItems[]
+  id                   Int                   @id @default(autoincrement())
+  name                 String?
+  Company              Company?              @relation(fields: [companyId], references: [id])
+  companyId            Int?
+  active               Boolean?              @default(true)
+  SizeTemplateList     SizeTemplateList[]
+  styles               Style[]
+  styleItems           StyleItem[]
+  orderItems           OrderItems[]
+  proformaInvoiceItems ProformaInvoiceItem[]
 }
 
 model SizeTemplateList {
@@ -1822,12 +1823,9 @@ model OrderItems {
   itemGroupId    Int?
   ItemGroup      ItemGroup?         @relation(fields: [itemGroupId], references: [id])
   trackingType   String?
-  barcodeFrom    String?
-  barcodeTo      String?
+  itemOrder      Int                @default(0)
   remarks        String?
   orderQty       Int?
-  sizeId         Int?
-  Size           Size?              @relation(fields: [sizeId], references: [id])
   sizeTemplateId Int?
   SizeTemplate   SizeTemplate?      @relation(fields: [sizeTemplateId], references: [id])
   uomId          Int?
@@ -1840,16 +1838,15 @@ model OrderItems {
 }
 
 model OrderSizeBreakup {
-  id             Int           @id @default(autoincrement())
-  orderItemId    Int
-  OrderItem      OrderItems    @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
-  sizeId         Int?
-  Size           Size?         @relation(fields: [sizeId], references: [id])
-  qty            Int?
-  barcodeFrom    String?
-  barcodeTo      String?
+  id          Int        @id @default(autoincrement())
+  orderItemId Int
+  OrderItem   OrderItems @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  sizeId      Int?
+  Size        Size?      @relation(fields: [sizeId], references: [id])
+  qty         Int?
+  barcodeFrom String?
+  barcodeTo   String?
 }
-
 
 model ProformaInvoice {
   id                Int                   @id @default(autoincrement())
@@ -1910,6 +1907,24 @@ model ProformaInvoiceItem {
   product           Product?        @relation(fields: [productId], references: [id])
   productId         Int?
   quoteVersion      Int             @default(1)
+
+  itemOrder      Int                   @default(0)
+  trackingType   String?
+  sizeTemplateId Int?
+  SizeTemplate   SizeTemplate?         @relation(fields: [sizeTemplateId], references: [id])
+  remarks        String?
+  sizeBreakup    ProformaSizeBreakup[]
+}
+
+model ProformaSizeBreakup {
+  id          Int                 @id @default(autoincrement())
+  piItemId    Int
+  PIItem      ProformaInvoiceItem @relation(fields: [piItemId], references: [id], onDelete: Cascade)
+  sizeId      Int?
+  Size        Size?               @relation(fields: [sizeId], references: [id])
+  qty         Float?
+  barcodeFrom String?
+  barcodeTo   String?
 }
 
 model ProformaAttachments {
