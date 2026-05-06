@@ -180,30 +180,31 @@ const OrderEntryForm = ({
       setTermsId(data?.termsId || "");
       // ── Smart childRecord tracking (File 2) ─────────────────────────────
       childRecord.current = data?.childRecord ? data?.childRecord : 0;
-      setOrderItems(
-        data?.orderItems && data.orderItems.length > 0
-          ? data.orderItems.map((item) => ({
-              ...item,
-              itemGroupId: item.itemGroupId || "",
-              trackingType: item.trackingType || "None",
-              sizeBreakup: item.sizeBreakup || [],
-            }))
-          : Array.from({ length: 8 }, () => ({
-              itemGroupId: "",
-              styleItemId: "",
-              trackingType: "None",
-              sizeId: "",
-              sizeTemplateId: "",
-              barcodeFrom: "",
-              barcodeTo: "",
-              uomId: "",
-              gsmId: "",
-              hsnId: "",
-              orderQty: "",
-              remarks: "",
-              sizeBreakup: [],
-            })),
-      );
+      const initialItems = (data?.orderItems || []).map((item) => ({
+        ...item,
+        itemGroupId: item.itemGroupId || "",
+        trackingType: item.trackingType || "None",
+        sizeBreakup: item.sizeBreakup || [],
+      }));
+
+      const emptyRowsCount = Math.max(0, 8 - initialItems.length);
+      const emptyRows = Array.from({ length: emptyRowsCount }, () => ({
+        itemGroupId: "",
+        styleItemId: "",
+        trackingType: "None",
+        sizeId: "",
+        sizeTemplateId: "",
+        barcodeFrom: "",
+        barcodeTo: "",
+        uomId: "",
+        gsmId: "",
+        hsnId: "",
+        orderQty: "",
+        remarks: "",
+        sizeBreakup: [],
+      }));
+
+      setOrderItems([...initialItems, ...emptyRows]);
     },
     [id],
   );
@@ -234,7 +235,9 @@ const OrderEntryForm = ({
     termsAndCondition,
     termsId,
     docId,
-    orderItems: orderItems?.filter((i) => i.styleItemId && i.orderQty),
+    orderItems: orderItems
+      ?.filter((i) => i.styleItemId && i.orderQty)
+      .map((item, idx) => ({ ...item, itemOrder: idx })),
   };
 
   const handleSubmitCustom = async (callback, data, text, nextProcess) => {
@@ -312,7 +315,8 @@ const OrderEntryForm = ({
     const duplicates = [];
 
     items.forEach((item, index) => {
-      const key = `${item.styleItemId}-${item.sizeId}-${item.uomId}-${item.gsmId}`;
+      // Key consists of item (styleItemId), itemGroup (itemGroupId), and type (trackingType)
+      const key = `${item.styleItemId}-${item.itemGroupId}-${item.trackingType}`;
       if (seen.has(key)) {
         duplicates.push({
           firstIndex: seen.get(key),
@@ -1083,12 +1087,9 @@ const OrderEntryForm = ({
           </div>
         </div>
 
-        <div className="border border-slate-200 p-2 py-3 bg-white rounded-md shadow-sm gap-x-4 flex">
+        <div className="border border-slate-200 p-2 py-1 bg-white rounded-md shadow-sm gap-x-4 flex">
           <div className="w-1/2 px-2">
             <fieldset className="">
-              <legend className="font-medium text-slate-700 mb-2 text-xs">
-                Goods Details
-              </legend>
               <OrderItems
                 orderItems={orderItems}
                 setOrderItems={setOrderItems}
@@ -1105,14 +1106,14 @@ const OrderEntryForm = ({
 
       <ReusableFormFooter
         sections={[
-          {
-            title: "Customer Requirements",
-            id: "customerRequirements",
-            value: requirements,
-            onChange: setRequirements,
-            placeholder: "Enter requirements...",
-            readOnly: isReadOnly,
-          },
+          // {
+          //   title: "Customer Requirements",
+          //   id: "customerRequirements",
+          //   value: requirements,
+          //   onChange: setRequirements,
+          //   placeholder: "Enter requirements...",
+          //   readOnly: isReadOnly,
+          // },
           {
             title: "Remarks",
             value: remarks,
@@ -1125,13 +1126,13 @@ const OrderEntryForm = ({
         totalsRows={[
           {
             key: "orderType",
-            label: "Order Type",
-            value: orderType,
+            label: "Total Items",
+            value: orderItems?.filter((item) => item.styleItemId)?.length || 0,
             summaryColumn: "left",
           },
           {
             key: "orderQty",
-            label: "Order Qty",
+            label: "Total Qty",
             value: orderItems
               ?.reduce((acc, item) => {
                 const qty = parseFloat(item.orderQty) || 0;

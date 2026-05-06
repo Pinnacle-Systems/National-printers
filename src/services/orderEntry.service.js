@@ -50,7 +50,7 @@ async function getNextDocId(
     )}/ORD/1`;
 
     if (lastObject) {
-      newDocId = `${branchObj.branchCode}${getYearShortCode(new Date())}/OE/${
+      newDocId = `${branchObj.branchCode}${getYearShortCode(new Date())}/ORD/${
         parseInt(lastObject.docId.split("/").at(-1)) + 1
       }`;
     }
@@ -79,7 +79,7 @@ async function getNextDocId(
     });
 
     const branchObj = await getTableRecordWithId(branchId, "branch");
-    let newDocId = `${branchObj.branchCode}/${shortCode}/OE/1`;
+    let newDocId = `${branchObj.branchCode}/${shortCode}/ORD/1`;
     if (lastObject) {
       if (lastObject.docId === "Draft Save") {
         const records = await prisma.orderEntry.findMany({
@@ -108,11 +108,11 @@ async function getNextDocId(
 
           return currentNo > maxNo ? current.docId : max;
         }, null);
-        newDocId = `${branchObj.branchCode}/${shortCode}/OE/${
+        newDocId = `${branchObj.branchCode}/${shortCode}/ORD/${
           parseInt(maxDocId.split("/").at(-1)) + 1
         }`;
       } else {
-        newDocId = `${branchObj.branchCode}/${shortCode}/OE/${
+        newDocId = `${branchObj.branchCode}/${shortCode}/ORD/${
           parseInt(lastObject.docId.split("/").at(-1)) + 1
         }`;
       }
@@ -304,7 +304,6 @@ async function getOne(id) {
       orderItems: {
         include: {
           StyleItem: true,
-          Size: true,
           Uom: true,
           Gsm: true,
           Hsn: true,
@@ -316,6 +315,7 @@ async function getOne(id) {
             },
           },
         },
+        orderBy: { itemOrder: "asc" },
       },
       Branch: {
         select: {
@@ -392,7 +392,7 @@ async function create(body) {
     typeof orderItems === "string" ? JSON.parse(orderItems) : orderItems;
   const safeOrderItems =
     parsedOrderItems?.length > 0
-      ? parsedOrderItems.map((item) => ({
+      ? parsedOrderItems.map((item, index) => ({
           StyleItem: item?.styleItemId
             ? { connect: { id: parseInt(item.styleItemId) } }
             : undefined,
@@ -400,16 +400,12 @@ async function create(body) {
             ? { connect: { id: parseInt(item.itemGroupId) } }
             : undefined,
           trackingType: item?.trackingType,
-          barcodeFrom: item?.barcodeFrom,
-          barcodeTo: item?.barcodeTo,
+          itemOrder: index,
           remarks: item?.remarks,
           orderQty:
             item?.orderQty && !isNaN(Number(item.orderQty))
               ? parseInt(item.orderQty)
               : null,
-          Size: item?.sizeId
-            ? { connect: { id: parseInt(item.sizeId) } }
-            : undefined,
           SizeTemplate: item?.sizeTemplateId
             ? { connect: { id: parseInt(item.sizeTemplateId) } }
             : undefined,
@@ -426,8 +422,13 @@ async function create(body) {
             item?.sizeBreakup?.length > 0
               ? {
                   create: item.sizeBreakup.map((s) => ({
-                    sizeId: s.sizeId ? parseInt(s.sizeId) : null,
-                    qty: s.qty ? parseInt(s.qty) : null,
+                    sizeId:
+                      item.trackingType === "Barcode"
+                        ? null
+                        : s.sizeId
+                          ? parseInt(s.sizeId)
+                          : null,
+                    qty: s.qty ? parseInt(s.qty) : 0,
                     barcodeFrom: s.barcodeFrom,
                     barcodeTo: s.barcodeTo,
                   })),
@@ -617,13 +618,9 @@ async function update(id, body, files) {
                   ? { connect: { id: parseInt(item.itemGroupId) } }
                   : undefined,
                 trackingType: item.trackingType,
-                barcodeFrom: item.barcodeFrom,
-                barcodeTo: item.barcodeTo,
+                itemOrder: item.itemOrder,
                 remarks: item.remarks,
                 orderQty: item.orderQty ? parseInt(item.orderQty) : null,
-                Size: item.sizeId
-                  ? { connect: { id: parseInt(item.sizeId) } }
-                  : undefined,
                 SizeTemplate: item.sizeTemplateId
                   ? { connect: { id: parseInt(item.sizeTemplateId) } }
                   : undefined,
@@ -641,8 +638,13 @@ async function update(id, body, files) {
                   create:
                     item.sizeBreakup?.length > 0
                       ? item.sizeBreakup.map((s) => ({
-                          sizeId: s.sizeId ? parseInt(s.sizeId) : null,
-                          qty: s.qty ? parseInt(s.qty) : null,
+                          sizeId:
+                            item.trackingType === "Barcode"
+                              ? null
+                              : s.sizeId
+                                ? parseInt(s.sizeId)
+                                : null,
+                          qty: s.qty ? parseInt(s.qty) : 0,
                           barcodeFrom: s.barcodeFrom,
                           barcodeTo: s.barcodeTo,
                         }))
@@ -661,13 +663,9 @@ async function update(id, body, files) {
                 ? { connect: { id: parseInt(item.itemGroupId) } }
                 : undefined,
               trackingType: item.trackingType,
-              barcodeFrom: item.barcodeFrom,
-              barcodeTo: item.barcodeTo,
+              itemOrder: item.itemOrder,
               remarks: item.remarks,
               orderQty: item.orderQty ? parseInt(item.orderQty) : null,
-              Size: item.sizeId
-                ? { connect: { id: parseInt(item.sizeId) } }
-                : undefined,
               SizeTemplate: item.sizeTemplateId
                 ? { connect: { id: parseInt(item.sizeTemplateId) } }
                 : undefined,
@@ -684,8 +682,13 @@ async function update(id, body, files) {
                 item.sizeBreakup?.length > 0
                   ? {
                       create: item.sizeBreakup.map((s) => ({
-                        sizeId: s.sizeId ? parseInt(s.sizeId) : null,
-                        qty: s.qty ? parseInt(s.qty) : null,
+                        sizeId:
+                          item.trackingType === "Barcode"
+                            ? null
+                            : s.sizeId
+                              ? parseInt(s.sizeId)
+                              : null,
+                        qty: s.qty ? parseInt(s.qty) : 0,
                         barcodeFrom: s.barcodeFrom,
                         barcodeTo: s.barcodeTo,
                       })),

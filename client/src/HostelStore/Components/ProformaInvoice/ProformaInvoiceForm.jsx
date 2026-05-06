@@ -38,13 +38,19 @@ import { useGetPartyByIdQuery } from "../../../redux/services/PartyMasterService
 
 const EMPTY_ROW = {
   styleItemId: "",
+  trackingType: "None",
+  sizeTemplateId: "",
   sizeId: "",
+  barcodeFrom: "",
+  barcodeTo: "",
   uomId: "",
   gsmId: "",
   hsnId: "",
   qty: 0,
-  price: 0,
+  price: "",
   amount: 0,
+  remarks: "",
+  sizeBreakup: [],
 };
 
 const padItems = (itemsArray = []) => {
@@ -66,6 +72,7 @@ const ProformaInvoiceForm = ({
   setId,
   onClose,
   termsData,
+  customerList,
 }) => {
   const { branchId, companyId, finYearId, userId } = getCommonParams();
 
@@ -108,6 +115,14 @@ const ProformaInvoiceForm = ({
   const { data: supplierData } = useGetPartyByIdQuery(customerId, {
     skip: !customerId,
   });
+
+  const filteredOrderList = useMemo(() => {
+    if (!customerId || !orderList?.data) return [];
+    return orderList.data.filter(
+      (order) => parseInt(order.customerId) === parseInt(customerId),
+    );
+  }, [customerId, orderList]);
+
   const [triggerGetOrderById] = useLazyGetOrderEntryByIdQuery();
 
   const [addData] = useAddProformaInvoiceMutation();
@@ -170,22 +185,32 @@ const ProformaInvoiceForm = ({
   }, [id, singleData]);
 
   useEffect(() => {
-    if (singleData?.data?.items && id) {
+    if (selectedQuoteVersion !== "Latest" && singleData?.data?.items && id) {
       const itemsArr = singleData.data.items;
-      const maxVersion =
-        availableVersions.length > 0 ? Math.max(...availableVersions, 1) : 1;
-      let targetVersion = maxVersion;
-
-      if (selectedQuoteVersion !== "Latest") {
-        targetVersion = parseInt(selectedQuoteVersion.replace("V", ""));
-      }
-
+      const targetVersion = parseInt(selectedQuoteVersion.replace("V", ""));
       const filteredItems = itemsArr.filter(
         (i) => (i.quoteVersion || 1) === targetVersion,
       );
       setItems(padItems(filteredItems));
     }
-  }, [selectedQuoteVersion, singleData, id, availableVersions]);
+  }, [selectedQuoteVersion, singleData, id]);
+
+  useEffect(() => {
+    if (customerId && customerList?.data) {
+      const cust = customerList.data.find(
+        (c) => parseInt(c.id) === parseInt(customerId),
+      );
+      if (cust) {
+        setCustomerDetails({
+          name: cust.name || "",
+          contactPerson: cust.contactPersonName || "",
+          phone: cust.contactNumber || "",
+        });
+      }
+    } else {
+      setCustomerDetails({ name: "", contactPerson: "", phone: "" });
+    }
+  }, [customerId, customerList]);
 
   useEffect(() => {
     if (orderEntryId) {
@@ -204,16 +229,22 @@ const ProformaInvoiceForm = ({
               if (order.orderItems && order.orderItems.length > 0) {
                 const mappedItems = order.orderItems.map((oi) => ({
                   styleItemId: oi.styleItemId,
+                  trackingType: oi.trackingType || "None",
+                  sizeTemplateId: oi.sizeTemplateId || "",
+                  sizeId: oi.sizeId,
+                  barcodeFrom: oi.barcodeFrom || "",
+                  barcodeTo: oi.barcodeTo || "",
+                  uomId: oi.uomId,
+                  gsmId: oi.gsmId,
+                  hsnId: oi.hsnId,
                   qty: parseFloat(oi.orderQty) || 0,
-                  price: 0,
+                  price: "",
                   taxPercent: parseFloat(oi.Hsn?.tax) || 0,
                   discountType: "Percentage",
                   discountValue: 0,
                   amount: 0,
-                  sizeId: oi.sizeId,
-                  uomId: oi.uomId,
-                  gsmId: oi.gsmId,
-                  hsnId: oi.hsnId,
+                  remarks: oi.remarks || "",
+                  sizeBreakup: oi.sizeBreakup || [],
                 }));
                 setItems(padItems(mappedItems));
               }
@@ -494,21 +525,18 @@ const ProformaInvoiceForm = ({
           Order Details
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-8 gap-2">
-          <div className="md:col-span-1">
-            <DropdownInput
-              name="Order No"
-              options={dropDownListObject(orderList?.data, "docId", "id")}
-              value={orderEntryId}
-              setValue={setOrderEntryId}
-              readOnly={effectiveReadOnly}
-              required={true}
-            />
-          </div>
           <div className="md:col-span-2">
-            <TextInput
+            <DropdownInput
               name="Customer"
-              value={customerDetails.name}
-              disabled={true}
+              options={dropDownListObject(customerList?.data, "name", "id")}
+              value={customerId}
+              setValue={(val) => {
+                setCustomerId(val);
+                setOrderEntryId(""); // Clear order if customer changes
+                setItems(padItems([])); // Clear table if customer changes
+              }}
+              readOnly={effectiveReadOnly || !!id} // If editing existing PI, maybe lock customer?
+              required={true}
             />
           </div>
           <div className="md:col-span-2">
@@ -523,6 +551,16 @@ const ProformaInvoiceForm = ({
               name="Phone"
               value={customerDetails.phone}
               disabled={true}
+            />
+          </div>
+          <div className="md:col-span-1">
+            <DropdownInput
+              name="Order No"
+              options={dropDownListObject(filteredOrderList, "docId", "id")}
+              value={orderEntryId}
+              setValue={setOrderEntryId}
+              readOnly={effectiveReadOnly || !customerId}
+              required={true}
             />
           </div>
           <div className="md:col-span-2">
@@ -690,7 +728,14 @@ const ProformaInvoiceForm = ({
         widthClass={"w-[90%] h-[90%]"}
       >
         <PDFViewer style={tw("w-full h-full")}>
-          <ProformaInvoicePrintFormat data={singleData?.data} />
+          <ProformaInvoicePrintFormat
+            data={{
+              ...singleData?.data,
+              items: items.filter((i) => i.styleItemId),
+              calculations: enrichedData,
+              isSupplierOutside,
+            }}
+          />
         </PDFViewer>
       </Modal>
 
