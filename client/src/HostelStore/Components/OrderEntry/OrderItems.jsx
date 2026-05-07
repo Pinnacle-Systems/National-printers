@@ -231,6 +231,7 @@ const OrderItems = ({
           gsmId: selectedItem.gsmId || "",
           hsnId: selectedItem.hsnId || "",
           sizeTemplateId: selectedItem.sizeTemplateId || "",
+          price: selectedItem.price?.toFixed(2) || "",
           sizeBreakup: [],
           orderQty: "",
           barcodeFrom: "",
@@ -338,8 +339,8 @@ const OrderItems = ({
 
   return (
     <>
-      <div className="w-[80vw]  h-[300px] overflow-y-auto mb-2 bg-white">
-        <table className="w-full border-collapse table-fixed">
+      <div className="w-full h-full overflow-y-auto mb-2 bg-white border border-slate-200 rounded-md">
+        <table className="w-[90vw] border-collapse table-fixed">
           <thead className="bg-gray-200 text-gray-800 sticky top-0 z-10 text-[12px]">
             <tr>
               <th className="w-6 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
@@ -366,6 +367,9 @@ const OrderItems = ({
               <th className="w-16 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Qty
               </th>
+              <th className="w-16 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+                Price
+              </th>
               <th className="w-40 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Remarks
               </th>
@@ -384,7 +388,7 @@ const OrderItems = ({
                   {index + 1}
                 </td>
 
-                <td className="border border-gray-300 ">
+                <td className="border border-gray-300 grid-editable-cell">
                   <FxSelectWithAdd
                     inputId={`styleItemId-input-${index}`}
                     value={row.styleItemId}
@@ -432,23 +436,7 @@ const OrderItems = ({
                     addNewModalWidth="w-[50%] h-[57%]"
                   />
                 </td>
-                {/* <td className="border border-gray-300">
-                  <FxSelectWithAdd
-                    inputId={`itemGroupId-input-${index}`}
-                    value={row.itemGroupId}
-                    onChange={(val) =>
-                      handleInputChange(val, index, "itemGroupId")
-                    }
-                    options={(itemGroupList?.data || [])
-                      .filter((item) => (id ? true : item.active))
-                      .map((item) => ({ label: item.name, value: item.id }))}
-                    readOnly={readOnly}
-                    placeholder=""
-                    addNew={true}
-                    childComponent={ItemGroup}
-                    addNewModalWidth="w-[50%] h-[57%]"
-                  />
-                </td> */}
+
                 <td className="border border-gray-300">
                   <span className="w-full text-[11px] text-left pl-1 outline-none bg-transparent">
                     {findFromList(
@@ -459,11 +447,11 @@ const OrderItems = ({
                   </span>
                 </td>
                 <td className="border border-gray-300">
-                  <span className="w-full text-[11px] text-left pl-1 outline-none bg-transparent">
+                  <span className="w-full text-[11px] text-right pr-1 outline-none bg-transparent">
                     {findFromList(row.hsnId, hsnList?.data, "name") || ""}
                   </span>
                 </td>
-                <td className="border border-gray-300 ">
+                <td className="border border-gray-300 grid-editable-cell">
                   <select
                     id={`trackingType-input-${index}`}
                     value={row.trackingType || "None"}
@@ -498,7 +486,7 @@ const OrderItems = ({
                       }
                     }}
                     disabled={readOnly}
-                    className={`table-data-input  pl-2 h-full text-[11px] cursor-pointer outline-none w-full bg-transparent focus:bg-white focus:ring-1 focus:ring-indigo-500 rounded-sm transition-all `}
+                    className={`  pl-2 h-full text-[11px] cursor-pointer outline-none w-full bg-transparent   rounded-sm transition-all `}
                   >
                     <option value="None">None</option>
                     <option value="Barcode">Barcode</option>
@@ -526,39 +514,18 @@ const OrderItems = ({
                     <FiEye size={18} />
                   </button>
                 </td>
-                {/* <td className="border border-gray-300">
-                  <FxSelect
-                    value={row.uomId}
-                    onChange={(val) => handleInputChange(val, index, "uomId")}
-                    options={(uomList?.data || [])
-                      .filter((item) => (id ? true : item.active))
-                      .map((item) => ({ label: item.name, value: item.id }))}
-                    readOnly={true} // Read-only as requested
-                    placeholder=""
-                  />
-                </td> */}
+
                 <td className="border border-gray-300">
                   <span className="w-full text-[11px] text-left pl-1 outline-none bg-transparent">
                     {findFromList(row.uomId, uomList?.data, "name") || ""}
                   </span>
                 </td>
-                {/* <td className="border border-gray-300">
-                  <FxSelect
-                    value={row.gsmId}
-                    onChange={(val) => handleInputChange(val, index, "gsmId")}
-                    options={(gsmList?.data || [])
-                      .filter((item) => (id ? true : item.active))
-                      .map((item) => ({ label: item.name, value: item.id }))}
-                    readOnly={readOnly}
-                    placeholder=""
-                  />
-                </td> */}
 
-                <td className="border border-gray-300">
+                <td className="border border-gray-300 grid-editable-cell">
                   <input
                     id={`orderQty-input-${index}`}
                     type="number"
-                    className="w-full h-full table-data-input text-[11px] text-right px-1 outline-none bg-transparent"
+                    className="w-full h-full  text-[11px] text-right px-1 outline-none bg-transparent"
                     onFocus={(e) => {
                       e.target.select();
                       setFocusedField(`${index}`);
@@ -569,19 +536,13 @@ const OrderItems = ({
                         : row?.orderQty !== undefined &&
                             row?.orderQty !== null &&
                             row?.orderQty !== ""
-                          ? Number(row.orderQty).toFixed(3)
+                          ? Number(row.orderQty)
                           : ""
                     }
                     onChange={(e) =>
                       handleInputChange(e.target.value, index, "orderQty")
                     }
                     onBlur={(e) => {
-                      const val = e.target.value;
-                      handleInputChange(
-                        val ? Number(val).toFixed(3) : "",
-                        index,
-                        "orderQty",
-                      );
                       setFocusedField(null);
                     }}
                     onKeyDown={(e) => {
@@ -626,11 +587,60 @@ const OrderItems = ({
                     }
                   />
                 </td>
-                <td className="border border-gray-300">
+
+                <td className="border border-gray-300 grid-editable-cell">
+                  <input
+                    value={row?.price || ""}
+                    className="w-full text-[11px]  text-right pr-1 outline-none bg-transparent"
+                    onChange={(e) =>
+                      handleInputChange(e.target.value, index, "price")
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === "Tab") {
+                        if (!row.styleItemId) {
+                          e.preventDefault();
+                          const reqEl = document.getElementById(
+                            "customerRequirements",
+                          );
+                          if (reqEl) {
+                            reqEl.focus();
+                            reqEl.select?.();
+                          }
+                        } else if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (index === orderItems.length - 1) {
+                            addRow();
+                          } else {
+                            const nextStyleEl = document.getElementById(
+                              `styleItemId-input-${index + 1}`,
+                            );
+                            if (nextStyleEl) nextStyleEl.focus();
+                          }
+                        }
+                      }
+                    }}
+                    onFocus={(e) => {
+                      e.target.select();
+                      setFocusedField(`${index}`);
+                    }}
+                    onBlur={(e) => {
+                      const val = e.target.value;
+                      handleInputChange(
+                        val ? Number(val).toFixed(2) : "",
+                        index,
+                        "price",
+                      );
+                      setFocusedField(null);
+                    }}
+                    disabled={readOnly}
+                  ></input>
+                </td>
+
+                <td className="border border-gray-300 grid-editable-cell">
                   <input
                     id={`remarks-input-${index}`}
                     type="text"
-                    className="w-full h-full text-[11px] table-data-input outline-none px-1 bg-transparent"
+                    className="w-full h-full text-[11px]  outline-none px-1 bg-transparent"
                     value={row.remarks || ""}
                     onChange={(e) =>
                       handleInputChange(e.target.value, index, "remarks")
@@ -669,7 +679,7 @@ const OrderItems = ({
             <tr className="bg-gray-100 h-7 font-bold text-gray-800 text-[12px]">
               <td
                 className="text-right px-2 border border-gray-300"
-                colSpan={7}
+                colSpan={8}
               >
                 Total
               </td>
@@ -856,7 +866,7 @@ const OrderItems = ({
                                   item.qty !== undefined &&
                                   item.qty !== null &&
                                   item.qty !== ""
-                                    ? Number(item.qty).toFixed(3)
+                                    ? Number(item.qty)
                                     : ""
                                 }
                                 onChange={(e) =>
@@ -867,12 +877,6 @@ const OrderItems = ({
                                   )
                                 }
                                 disabled={readOnly}
-                                onBlur={(e) => {
-                                  const value = parseFloat(
-                                    e.target.value || 0,
-                                  ).toFixed(3);
-                                  handleSizeBreakupChange(idx, "qty", value);
-                                }}
                                 onKeyDown={(e) => {
                                   if (
                                     e.key === "Enter" &&
@@ -935,7 +939,7 @@ const OrderItems = ({
                                   item.qty !== undefined &&
                                   item.qty !== null &&
                                   item.qty !== ""
-                                    ? Number(item.qty).toFixed(3)
+                                    ? Number(item.qty)
                                     : ""
                                 }
                                 onChange={(e) =>
@@ -946,12 +950,6 @@ const OrderItems = ({
                                   )
                                 }
                                 disabled={readOnly}
-                                onBlur={(e) => {
-                                  const value = parseFloat(
-                                    e.target.value || 0,
-                                  ).toFixed(3);
-                                  handleSizeBreakupChange(idx, "qty", value);
-                                }}
                                 placeholder="0"
                               />
                             </td>
@@ -1039,7 +1037,7 @@ const OrderItems = ({
                                   item.qty !== undefined &&
                                   item.qty !== null &&
                                   item.qty !== ""
-                                    ? Number(item.qty).toFixed(3)
+                                    ? Number(item.qty)
                                     : ""
                                 }
                                 onChange={(e) =>
@@ -1050,12 +1048,6 @@ const OrderItems = ({
                                   )
                                 }
                                 disabled={readOnly}
-                                onBlur={(e) => {
-                                  const value = parseFloat(
-                                    e.target.value || 0,
-                                  ).toFixed(3);
-                                  handleSizeBreakupChange(idx, "qty", value);
-                                }}
                                 placeholder="0"
                               />
                             </td>
