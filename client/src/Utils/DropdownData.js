@@ -176,3 +176,18 @@ export const jobTypes = [
   { show: "External", value: "External" },
   { show: "Both", value: "Both" },
 ];
+
+export const departmentTypes = [
+  {
+    label: "Rotary",
+    value: "rotary",
+  },
+  {
+    label: "Digital",
+    value: "digital",
+  },
+  {
+    label: "Offset",
+    value: "offset",
+  },
+];

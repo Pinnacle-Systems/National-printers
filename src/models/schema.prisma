@@ -2044,6 +2044,7 @@ model JobCard {
   Designer           Employee?        @relation(fields: [designerId], references: [id])
   tagCardUps         String?
   jobRunTime         String?
+  department         String?
 
   boardQualities    BoardQuality[]
   processDetails    ProcessDetails[]

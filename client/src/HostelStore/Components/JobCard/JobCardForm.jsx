@@ -50,7 +50,7 @@ import {
   ReusableInput,
   TextInput,
 } from "../../../Inputs";
-import { orderTypes } from "../../../Utils/DropdownData";
+import { orderTypes, departmentTypes } from "../../../Utils/DropdownData";
 import { useCallback, useEffect, useRef, useState } from "react";
 import moment from "moment";
 import { findFromList, getCommonParams, ModeChip } from "../../../Utils/helper";
@@ -237,7 +237,7 @@ const JobCardForm = ({
   const [actionType, setActionType] = useState("");
   const [approvalRemarks, setApprovalRemarks] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
-
+  const [department, setDepartment] = useState("");
   const dispatch = useDispatch();
 
   const params = {
@@ -316,6 +316,7 @@ const JobCardForm = ({
         ? moment.utc(data.deliveryDate).format("YYYY-MM-DD")
         : "",
     );
+    setDepartment(data?.department || "");
     setGsmId(data?.gsmId || "");
     setFullBoard(data?.fullBoard || "");
     setNoOfPockets(data?.noOfPockets || "");
@@ -431,6 +432,7 @@ const JobCardForm = ({
     proformaInvoiceId, // ✅ added back
     jobRunTime,
     processRoute: routeKeysToDb(processRoute),
+    department,
   };
 
   const handleSubmitCustom = async (callback, data, text, nextProcess) => {
@@ -826,7 +828,25 @@ const JobCardForm = ({
                       disabled
                     />
                   </Field>
-
+                  <div className="-mt-2">
+                    <label className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+                      Department
+                      <select
+                        value={department}
+                        onChange={(e) => setDepartment(e.target.value)}
+                        className="w-full px-1 -ml-1 h-7 text-xs font-normal rounded-lg border
+          focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
+          transition-all duration-150 shadow-sm text-black"
+                      >
+                        {/* <option value="">Select Department</option> */}
+                        {departmentTypes.map((item) => (
+                          <option key={item.value} value={item.value}>
+                            {item.label}
+                          </option>
+                        ))}
+                      </select>{" "}
+                    </label>
+                  </div>
                   {/* ✅ Proforma / Order No conditional dropdown */}
                   <div className="w-[145px]">
                     <Field label="Order No">
