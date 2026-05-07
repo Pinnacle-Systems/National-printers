@@ -57,7 +57,7 @@ export default function Form({
   } = refs;
   const params = {
     companyId: secureLocalStorage.getItem(
-      sessionStorage.getItem("sessionId") + "userCompanyId"
+      sessionStorage.getItem("sessionId") + "userCompanyId",
     ),
   };
 
@@ -68,8 +68,8 @@ export default function Form({
   } = useGetSizeTemplateQuery({
     params: {
       ...params,
-      active: true
-    }
+      active: true,
+    },
   });
 
   const {
@@ -103,22 +103,22 @@ export default function Form({
         setSizeTemplateList(
           data?.SizeTemplateList
             ? data.SizeTemplateList.map((item) => {
-              return {
-                label: findFromList(
-                  item.sizeId,
-                  sizeList ? sizeList.data : [],
-                  "name"
-                ),
-                value: item.sizeId,
-              };
-            })
-            : []
+                return {
+                  label: findFromList(
+                    item.sizeId,
+                    sizeList ? sizeList.data : [],
+                    "name",
+                  ),
+                  value: item.sizeId,
+                };
+              })
+            : [],
         );
-        setActive(id ? data?.active ?? false : true);
+        setActive(id ? (data?.active ?? false) : true);
         childRecord.current = data?.childRecord ? data?.childRecord : 0;
       }
     },
-    [id, sizeList]
+    [id, sizeList],
   );
 
   useEffect(() => {
@@ -136,7 +136,7 @@ export default function Form({
     name,
     active,
     companyId: secureLocalStorage.getItem(
-      sessionStorage.getItem("sessionId") + "userCompanyId"
+      sessionStorage.getItem("sessionId") + "userCompanyId",
     ),
     sizeTemplateList: sizeTemplateList.map((item) => item.value),
   };
@@ -166,7 +166,6 @@ export default function Form({
       } else {
         setForm(false);
         syncFormWithDb(undefined);
-
       }
 
       Swal.fire({
@@ -174,7 +173,6 @@ export default function Form({
         icon: "success",
       });
       dispatchInvalidate();
-
     } catch (error) {
       Swal.fire({
         icon: "error",
@@ -191,11 +189,12 @@ export default function Form({
         ?.filter((i) => i.id !== id)
         ?.some(
           (item) =>
-            item.name?.trim().toLowerCase() === name?.trim().toLowerCase()
+            item.name?.trim().toLowerCase() === name?.trim().toLowerCase(),
         );
     } else {
       foundItem = allData?.data?.some(
-        (item) => item.name?.trim().toLowerCase() === name?.trim().toLowerCase()
+        (item) =>
+          item.name?.trim().toLowerCase() === name?.trim().toLowerCase(),
       );
     }
 
@@ -206,7 +205,7 @@ export default function Form({
         timer: 1500,
         didClose: () => {
           sizeNameRef?.current?.focus();
-        }
+        },
       });
       return false;
     }
@@ -218,12 +217,11 @@ export default function Form({
         text: "Please fill all required fields...!",
         didClose: () => {
           sizeNameRef?.current?.focus();
-        }
+        },
       });
       return;
     }
     if (id) {
-
       if (!window.confirm("Are you sure update the details ...?")) {
         return;
       }
@@ -254,10 +252,10 @@ export default function Form({
 
   const sizeOptions = sizeList
     ? multiSelectOption(
-      id ? sizeList?.data : sizeList.data.filter((item) => item.active),
-      "name",
-      "id"
-    )
+        id ? sizeList?.data : sizeList.data.filter((item) => item.active),
+        "name",
+        "id",
+      )
     : [];
 
   const handleView = (id) => {
@@ -307,7 +305,6 @@ export default function Form({
           dispatchInvalidate();
 
           syncFormWithDb(undefined);
-
         } catch (error) {
           Swal.fire({
             icon: "error",
@@ -439,8 +436,11 @@ export default function Form({
               <p>
                 "{deleteLabel}" has {childCount} linked records.
               </p>
-              <button type="button" onClick={onClose}
-                className="px-4 py-1.5 text-xs border border-gray-400 text-gray-600 hover:bg-gray-100 rounded">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-1.5 text-xs border border-gray-400 text-gray-600 hover:bg-gray-100 rounded"
+              >
                 Close
               </button>
             </>
@@ -451,12 +451,18 @@ export default function Form({
                 <span className="font-semibold">"{deleteLabel}"</span>?
               </p>
               <div className="flex gap-3">
-                <button type="button" onClick={onClose}
-                  className="px-4 py-1.5 text-xs border border-gray-400 text-gray-600 hover:bg-gray-100 rounded">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-1.5 text-xs border border-gray-400 text-gray-600 hover:bg-gray-100 rounded"
+                >
                   Cancel
                 </button>
-                <button type="button" onClick={handleConfirmDelete}
-                  className="px-4 py-1.5 text-xs bg-red-600 text-white hover:bg-red-700 rounded">
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  className="px-4 py-1.5 text-xs bg-red-600 text-white hover:bg-red-700 rounded"
+                >
                   Delete
                 </button>
               </div>
@@ -506,7 +512,7 @@ export default function Form({
               setForm(true);
               onNew();
             }}
-            className="bg-white border font-segoe text-xs px-2 border-green-600 text-green-600 hover:bg-green-700 hover:text-white rounded-md shadow transition-colors duration-200 flex items-center gap-2"
+            className="bg-white border  border-indigo-600 text-indigo-600 hover:bg-indigo-700 hover:text-white text-xs px-2 py-1 rounded-md shadow transition-colors duration-200 flex items-center gap-2"
           >
             + Add New Size Template
           </button>
@@ -528,7 +534,7 @@ export default function Form({
         <Modal
           isOpen={form}
           form={form}
-          widthClass={"w-[600px] h-[500px]"}
+          widthClass={"w-[650px] h-[500px]"}
           onClose={() => {
             setForm(false);
             syncFormWithDb(undefined);

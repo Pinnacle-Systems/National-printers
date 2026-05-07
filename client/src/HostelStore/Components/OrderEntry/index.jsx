@@ -152,7 +152,7 @@ const index = () => {
       </div>
 
       {showForm && (
-        <div className="h-[85vh] overflow-y-auto">
+        <div className="h-[93vh] overflow-y-hidden">
           <OrderEntryForm
             readOnly={readOnly}
             setReadOnly={setReadOnly}

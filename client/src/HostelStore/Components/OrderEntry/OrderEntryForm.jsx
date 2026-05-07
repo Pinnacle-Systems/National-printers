@@ -6,19 +6,8 @@ import {
   ReusableInput,
   TextInput,
 } from "../../../Inputs";
-import {
-  orderTypes,
-  poTypes,
-  productionTypes,
-} from "../../../Utils/DropdownData";
-import {
-  FiCheck,
-  FiEdit2,
-  FiEye,
-  FiPrinter,
-  FiSave,
-  FiSend,
-} from "react-icons/fi";
+import { poTypes, productionTypes } from "../../../Utils/DropdownData";
+import { FiCheck, FiEdit2, FiSave, FiSend } from "react-icons/fi";
 import { useCallback, useEffect, useRef, useState } from "react";
 import moment from "moment";
 import {
@@ -43,7 +32,6 @@ import {
   useUpdateOrderEntryMutation,
 } from "../../../redux/uniformService/OrderEntryService.js";
 import { QRCodeCanvas } from "qrcode.react";
-import CommonFormFooter from "../../../Basic/components/Reuseable/CommonFormFooter.jsx";
 import { PDFViewer } from "@react-pdf/renderer";
 import OrderEntryPrintFormat from "./OrderEntryPrintFormat.jsx";
 import { FiFileText } from "react-icons/fi";
@@ -52,13 +40,17 @@ import { useGetStyleItemMasterQuery } from "../../../redux/services/StyleItemMas
 import { useGetSizeMasterQuery } from "../../../redux/services/SizemasterService.js";
 import { useGetUnitOfMeasurementMasterQuery } from "../../../redux/uniformService/UnitOfMeasurementServices.js";
 import ReusableFormFooter from "../../../Basic/components/Reuseable/ReuseableFormFooter.jsx";
-import { useGetUomQuery } from "../../../redux/services/UomMasterService.js";
 import { useGetGsmMasterQuery } from "../../../redux/services/GsmMasterService.js";
 import { useGetHsnMasterQuery } from "../../../redux/services/HsnMasterServices.js";
 // ── Approval imports (from File 2) ──────────────────────────────────────────
 import { MdKeyboardDoubleArrowLeft } from "react-icons/md";
 import { useAddApprovalStausMutation } from "../../../redux/uniformService/PoServices.js";
 import { useGetItemGroupMasterQuery } from "../../../redux/services/ItemGroupMasterService.js";
+import {
+  CommonFormFooter,
+  TransactionActions,
+  TransactionLayout,
+} from "../../../Basic/components/Reuseable/index.js";
 
 const OrderEntryForm = ({
   onClose,
@@ -101,17 +93,17 @@ const OrderEntryForm = ({
   const [docDate, setDocDate] = useState(
     moment.utc(today).format("YYYY-MM-DD"),
   );
+  const [userDate, setUserDate] = useState(
+    moment.utc(today).format("YYYY-MM-DD"),
+  );
   const [customerId, setCustomerId] = useState("");
   const [remarks, setRemarks] = useState("");
   const [requirements, setRequirements] = useState("");
   const [orderType, setOrderType] = useState("ORDER");
   const [productionType, setProductionType] = useState("SAMPLE");
   const [deliveryDate, setDeliveryDate] = useState("");
-  const [jobType, setJobType] = useState("Internal");
   const [docId, setDocId] = useState("");
-  const [searchDocId, setSearchDocId] = useState("");
-  const [searchDocDate, setSearchDocDate] = useState("");
-  const [summary, setSummary] = useState(false);
+
   const [attachmentModal, setAttachmentModal] = useState(false);
   const [selectedAttachmentIndex, setSelectedAttachmentIndex] = useState(null);
   const [attachments, setAttachments] = useState([]);
@@ -164,6 +156,11 @@ const OrderEntryForm = ({
           ? moment.utc(data.docDate).format("YYYY-MM-DD")
           : moment.utc(new Date()).format("YYYY-MM-DD"),
       );
+      setUserDate(
+        data?.userDate
+          ? moment.utc(data.userDate).format("YYYY-MM-DD")
+          : moment.utc(new Date()).format("YYYY-MM-DD"),
+      );
       setOrderType(data?.orderType || "ORDER");
       setProductionType(data?.productionType || "SAMPLE");
       setCustomerId(data?.customerId || "");
@@ -185,6 +182,7 @@ const OrderEntryForm = ({
         itemGroupId: item.itemGroupId || "",
         trackingType: item.trackingType || "None",
         sizeBreakup: item.sizeBreakup || [],
+        price: item?.price || "",
       }));
 
       const emptyRowsCount = Math.max(0, 8 - initialItems.length);
@@ -200,6 +198,7 @@ const OrderEntryForm = ({
         gsmId: "",
         hsnId: "",
         orderQty: "",
+        price: "",
         remarks: "",
         sizeBreakup: [],
       }));
@@ -224,7 +223,6 @@ const OrderEntryForm = ({
     userId,
     orderType,
     productionType,
-    jobType,
     customerId,
     remarks,
     finYearId,
@@ -536,6 +534,274 @@ const OrderEntryForm = ({
       setActionLoading(false);
     }
   };
+
+  const headerContent = (
+    <div className="flex flex-col md:flex-row gap-2">
+      <div className="flex-none border border-slate-200 p-2 bg-white rounded-md shadow-sm">
+        <h2 className="text-[10px] font-bold text-gray-500 mb-1 uppercase border-b pb-0.5">
+          Basic Details
+        </h2>
+        <div className="flex gap-2">
+          <div className="w-32">
+            <ReusableInput label="Order Entry No" readOnly value={docId} />
+          </div>
+          <div className="w-32">
+            <ReusableInput
+              label="Order Entry Date"
+              value={docDate}
+              type={"date"}
+              required={true}
+              readOnly={true}
+              disabled
+            />
+          </div>
+          <div className="w-32">
+            <ReusableInput
+              label="User Date"
+              value={userDate}
+              setValue={setUserDate}
+              type={"date"}
+              required={true}
+              readOnly={isReadOnly}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-none border border-slate-200 p-2 bg-white rounded-md shadow-sm">
+        <h2 className="text-[10px] font-bold text-gray-500 mb-1 uppercase border-b pb-0.5">
+          Order Details
+        </h2>
+        <div className="flex gap-2">
+          <div className="w-32">
+            <DropdownInput
+              name="Order Type"
+              options={poTypes}
+              value={orderType}
+              setValue={setOrderType}
+              required={true}
+              readOnly={isReadOnly}
+              disabled={childRecord.current > 0 || isReadOnly}
+              ref={customerRef}
+            />
+          </div>
+          <div className="w-32">
+            <DropdownInput
+              name="Production Type"
+              options={productionTypes}
+              value={productionType}
+              setValue={setProductionType}
+              required={true}
+              readOnly={isReadOnly}
+              disabled={childRecord.current > 0 || isReadOnly}
+            />
+          </div>
+          <div className="w-32">
+            <DateInputNew
+              name="Delivery Date"
+              value={deliveryDate}
+              setValue={setDeliveryDate}
+              required={true}
+              readOnly={isReadOnly}
+              type={"date"}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 border border-slate-200 p-2 bg-white rounded-md shadow-sm">
+        <h2 className="text-[10px] font-bold text-gray-500 mb-1 uppercase border-b pb-0.5">
+          Customer Details
+        </h2>
+        <div className="grid grid-cols-12 gap-2">
+          <div className="col-span-6">
+            <DropdownWithModal
+              name="Customer"
+              options={dropDownListObject(
+                id
+                  ? customerList?.data?.filter((item) => item?.isCustomer)
+                  : customerList?.data?.filter(
+                      (item) => item?.active && item?.isCustomer,
+                    ),
+                "name",
+                "id",
+              )}
+              value={customerId}
+              setValue={setCustomerId}
+              required={true}
+              readOnly={isReadOnly}
+              addNewLabel="+ Add New Customer"
+              childComponent={PartyMaster}
+              addNewModalWidth="w-[90%] h-[95%]"
+              disabled={childRecord.current > 0 || isReadOnly}
+            />
+          </div>
+          <div className="col-span-3">
+            <TextInput
+              name="Contact Person"
+              value={findFromList(
+                customerId,
+                customerList?.data,
+                "contactPersonName",
+              )}
+              disabled={true}
+            />
+          </div>
+          <div className="col-span-3">
+            <TextInput
+              name="Phone"
+              value={findFromList(
+                customerId,
+                customerList?.data,
+                "contactNumber",
+              )}
+              disabled={true}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const actionButtonClass =
+    "px-3 py-1.5 rounded-md flex items-center justify-center text-sm text-white transition";
+
+  const leftActions = [
+    {
+      key: "saveAndClose",
+      icon: (
+        <span className="flex items-center gap-1">
+          <FiSave className="h-4 w-4" />
+          <HiX className="h-4 w-4" />
+        </span>
+      ),
+      hoverLabel: "Save & Close",
+      iconOnly: true,
+      onClick: () => saveData("close"),
+      className: `bg-indigo-500 hover:bg-indigo-600 ${actionButtonClass}`,
+      disabled: isReadOnly || isDisabled,
+    },
+    {
+      key: "saveAndNew",
+      icon: (
+        <span className="flex items-center gap-1">
+          <FiSave className="h-4 w-4" />
+          <HiOutlineRefresh className="h-4 w-4" />
+        </span>
+      ),
+      hoverLabel: "Save & New",
+      iconOnly: true,
+      onClick: () => saveData("new"),
+      className: `bg-indigo-600 hover:bg-indigo-700 ${actionButtonClass}`,
+      disabled: isReadOnly || isDisabled,
+    },
+    ...(status === "REJECTED"
+      ? [
+          {
+            key: "submitApproval",
+            icon: <FiSend className="w-4 h-4" />,
+            hoverLabel: "Submit Approval",
+            iconOnly: true,
+            onClick: () => saveData("close", { submitApproval: true }),
+            className: `bg-green-700 hover:bg-green-800 ${actionButtonClass}`,
+            disabled: isReadOnly,
+          },
+        ]
+      : []),
+    ...(id && status === "PENDING" && canApprove
+      ? [
+          {
+            key: "sendBack",
+            icon: <MdKeyboardDoubleArrowLeft className="w-4 h-4" />,
+            hoverLabel: "Send Back for Review",
+            iconOnly: true,
+            onClick: () => handleApprovalAction("REJECT"),
+            className: `bg-blue-600 hover:bg-blue-700 ${actionButtonClass}`,
+            disabled: isReadOnly,
+          },
+          {
+            key: "approve",
+            icon: <FiCheck className="w-4 h-4" />,
+            hoverLabel: "Approve",
+            iconOnly: true,
+            onClick: () => handleApprovalAction("APPROVE"),
+            className: `bg-green-600 hover:bg-green-700 ${actionButtonClass}`,
+            disabled: isReadOnly,
+          },
+        ]
+      : []),
+  ];
+
+  const rightActions = [
+    {
+      key: "edit",
+      icon: <FiEdit2 className="w-4 h-4 mr-1" />,
+      label: "Edit",
+      onClick: () => setReadOnly(false),
+      className: `bg-yellow-600 hover:bg-yellow-700 ${actionButtonClass}`,
+      hidden:
+        !id ||
+        (parentReadOnly && !(singleData?.data?.childRecord > 0)) === false ||
+        isDisabled,
+    },
+    {
+      key: "pdf",
+      icon: <FiFileText className="w-4 h-4 mr-1" />,
+      label: "PDF Export",
+      onClick: () => {
+        if (qrRef.current) {
+          setQrCodeDataUrl(qrRef.current.toDataURL("image/png"));
+        }
+        setPrintModalOpen(true);
+      },
+      className: `bg-slate-600 hover:bg-slate-700 ${actionButtonClass}`,
+      hidden: !id,
+    },
+    {
+      key: "upload",
+      icon: "📎",
+      label: "Upload",
+      onClick: () => {
+        setSelectedAttachmentIndex(null);
+        setAttachmentModal(true);
+      },
+      className: `bg-red-600 hover:bg-red-700 ${actionButtonClass}`,
+    },
+  ].filter((a) => !a.hidden);
+
+  const footerContent = (
+    <>
+      <CommonFormFooter
+        remarks={remarks}
+        setRemarks={setRemarks}
+        readOnly={isReadOnly}
+        totalsRows={[
+          {
+            key: "totalItems",
+            label: "Total Items",
+            value: orderItems?.filter((item) => item.styleItemId)?.length || 0,
+            summaryColumn: "left",
+          },
+          {
+            key: "totalQty",
+            label: "Total Qty",
+            value: orderItems
+              ?.reduce((acc, item) => {
+                const qty = parseFloat(item.orderQty) || 0;
+                return acc + qty;
+              }, 0)
+              .toFixed(3),
+            summaryColumn: "right",
+            emphasized: true,
+          },
+        ]}
+      />
+      <TransactionActions
+        leftActions={leftActions}
+        rightActions={rightActions}
+      />
+    </>
+  );
 
   return (
     <>
@@ -934,353 +1200,41 @@ const OrderEntryForm = ({
         </Modal>
       )}
 
-      <div className="w-full  mx-auto rounded-md shadow-lg px-2 py-1 overflow-y-auto">
-        <div className="flex justify-between items-center">
-          <h1 className="text-lg font-bold flex items-center gap-2">
-            Order Entry
-            <ModeChip id={id} readOnly={isReadOnly} />
-          </h1>
-          <button
-            onClick={() => {
-              onClose();
-            }}
-            className="text-indigo-600 hover:text-indigo-700"
-            title="Back to Report"
-          >
-            <IoArrowBackCircleSharp className="w-7 h-7" />
-          </button>
-        </div>
+      <div className="hidden">
+        <QRCodeCanvas
+          id="qr-gen"
+          value={docId || "New"}
+          size={128}
+          level={"H"}
+          includeMargin={true}
+          ref={qrRef}
+        />
       </div>
 
-      <div className="space-y-2 py-2" onKeyDown={handleKeyDown}>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-          <div className="border border-slate-200 p-2 bg-white rounded-md shadow-sm col-span-1">
-            <h2 className="font-medium text-slate-700 mb-1 text-xs">
-              Basic Details
-            </h2>
-            <div className="grid grid-cols-2 gap-1">
-              <ReusableInput label="Order Entry No" readOnly value={docId} />
-              <ReusableInput
-                label="Order Entry Date"
-                value={docDate}
-                type={"date"}
-                required={true}
-                readOnly={true}
-                disabled
-              />
-            </div>
-          </div>
-
-          <div className="border border-slate-200 p-2 bg-white rounded-md shadow-sm col-span-1">
-            <h2 className="font-medium text-slate-700 mb-1 text-xs">
-              Order Details
-            </h2>
-            <div className="grid grid-cols-2 gap-1 ">
-              <DropdownInput
-                name="Order Type"
-                options={poTypes}
-                value={orderType}
-                setValue={(value) => {
-                  setOrderType(value);
-                }}
-                required={true}
-                readOnly={isReadOnly}
-                disabled={childRecord.current > 0 || isReadOnly}
-                ref={customerRef}
-              />
-              <DropdownInput
-                name="Production Type"
-                options={productionTypes}
-                value={productionType}
-                setValue={(value) => {
-                  setProductionType(value);
-                }}
-                required={true}
-                readOnly={isReadOnly}
-                disabled={childRecord.current > 0 || isReadOnly}
-              />
-              <div className="w-28">
-                <DateInputNew
-                  name="Delivery Date"
-                  value={deliveryDate}
-                  setValue={setDeliveryDate}
-                  required={true}
-                  readOnly={isReadOnly}
-                  type={"date"}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="border border-slate-200 p-2 bg-white rounded-md shadow-sm col-span-1">
-            <h2 className="font-medium text-slate-700 mb-1 text-xs">
-              Customer Details
-            </h2>
-            <div className="grid grid-cols-2 gap-1">
-              <div className="col-span-2">
-                <DropdownWithModal
-                  name="Customer"
-                  options={dropDownListObject(
-                    id
-                      ? customerList?.data?.filter((item) => item?.isCustomer)
-                      : customerList?.data?.filter(
-                          (item) => item?.active && item?.isCustomer,
-                        ),
-                    "name",
-                    "id",
-                  )}
-                  value={customerId}
-                  setValue={setCustomerId}
-                  required={true}
-                  readOnly={isReadOnly}
-                  className={`w-[150px]`}
-                  addNewLabel="+ Add New Customer"
-                  childComponent={PartyMaster}
-                  addNewModalWidth="w-[90%] h-[95%]"
-                  disabled={childRecord.current > 0 || isReadOnly}
-                />
-              </div>
-              <TextInput
-                name="Contact Person"
-                placeholder="Contact name"
-                value={findFromList(
-                  customerId,
-                  customerList?.data,
-                  "contactPersonName",
-                )}
-                disabled={true}
-              />
-              <TextInput
-                name="Phone"
-                placeholder="Contact name"
-                value={findFromList(
-                  customerId,
-                  customerList?.data,
-                  "contactNumber",
-                )}
-                disabled={true}
-              />
-            </div>
-          </div>
-
-          <div className="border border-slate-200 p-2 bg-white rounded-md shadow-sm col-span-1">
-            <h2 className="font-medium text-slate-700 mb-1 text-xs">QR Code</h2>
-            <div className="flex flex-col items-center justify-center gap-2">
-              {docId && docId !== "New" ? (
-                <>
-                  <QRCodeCanvas
-                    ref={qrRef}
-                    value={JSON.stringify({ id, docId })}
-                    size={90}
-                    className="border border-slate-200 rounded"
-                  />
-                  <span className="text-xs text-slate-400">
-                    Scan to identify order
-                  </span>
-                </>
-              ) : (
-                <div className="w-24 h-24 flex items-center justify-center border border-dashed border-slate-300 rounded text-slate-400 text-xs text-center px-2">
-                  QR appears after save
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="border border-slate-200 p-2 py-1 bg-white rounded-md shadow-sm gap-x-4 flex">
-          <div className="w-1/2 px-2">
-            <fieldset className="">
-              <OrderItems
-                orderItems={orderItems}
-                setOrderItems={setOrderItems}
-                readOnly={isReadOnly || childRecord.current > 0}
-                styleItemList={styleItemList}
-                sizeList={sizeList}
-                uomList={uomList}
-                id={id}
-              />
-            </fieldset>
-          </div>
-        </div>
-      </div>
-
-      <ReusableFormFooter
-        sections={[
-          // {
-          //   title: "Customer Requirements",
-          //   id: "customerRequirements",
-          //   value: requirements,
-          //   onChange: setRequirements,
-          //   placeholder: "Enter requirements...",
-          //   readOnly: isReadOnly,
-          // },
-          {
-            title: "Remarks",
-            value: remarks,
-            onChange: setRemarks,
-            placeholder: "Additional notes...",
-            readOnly: isReadOnly,
-          },
-        ]}
-        hasSummaryTitle="Summary"
-        totalsRows={[
-          {
-            key: "orderType",
-            label: "Total Items",
-            value: orderItems?.filter((item) => item.styleItemId)?.length || 0,
-            summaryColumn: "left",
-          },
-          {
-            key: "orderQty",
-            label: "Total Qty",
-            value: orderItems
-              ?.reduce((acc, item) => {
-                const qty = parseFloat(item.orderQty) || 0;
-                return acc + qty;
-              }, 0)
-              .toFixed(3),
-            summaryColumn: "left",
-          },
-        ]}
+      <TransactionLayout
+        title="Order Entry"
+        badge={<ModeChip id={id} readOnly={isReadOnly} />}
+        closeIcon={<IoArrowBackCircleSharp className="w-7 h-7" />}
+        onClose={onClose}
+        onKeyDown={handleKeyDown}
+        header={headerContent}
+        detailsLayout="default"
+        detailsLayouts={["default"]}
+        gridItems={
+          <OrderItems
+            orderItems={orderItems}
+            setOrderItems={setOrderItems}
+            readOnly={isReadOnly || childRecord.current > 0}
+            styleItemList={styleItemList}
+            sizeList={sizeList}
+            uomList={uomList}
+            id={id}
+          />
+        }
+        footer={footerContent}
       />
-
-      <div className="flex flex-col md:flex-row gap-2 justify-between mt-4">
-        {/* Left Buttons */}
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => saveData("close")}
-            disabled={isReadOnly || isDisabled}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                saveData("close");
-                e.stopPropagation();
-              }
-            }}
-            className="bg-indigo-500 text-white px-4 py-1 rounded-md hover:bg-indigo-600 flex items-center text-xs"
-          >
-            <span className="flex items-center gap-1">
-              <FiSave className="h-4 w-4" />
-              <HiX className="h-4 w-4" />
-            </span>
-          </button>
-          <button
-            onClick={() => saveData("new")}
-            disabled={isReadOnly || isDisabled}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                e.stopPropagation();
-                saveData("new");
-              }
-            }}
-            className="bg-indigo-500 text-white px-4 py-1 rounded-md hover:bg-indigo-600 flex items-center text-xs"
-          >
-            <span className="flex items-center gap-1">
-              <FiSave className="h-4 w-4" />
-              <HiOutlineRefresh className="h-4 w-4" />
-            </span>
-          </button>
-
-          {/* Submit Approval — shown when status is REJECTED */}
-          {status === "REJECTED" && (
-            <button
-              onClick={() => saveData("close", { submitApproval: true })}
-              disabled={isReadOnly}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  saveData("close", { submitApproval: true });
-                }
-              }}
-              title="Submit Approval"
-              className="bg-green-700 text-white px-2 py-1 rounded-md hover:bg-green-800 flex items-center text-xs"
-            >
-              <FiSend className="w-4 h-4" />
-            </button>
-          )}
-
-          {/* Send Back — shown when PENDING and canApprove */}
-          {id && status === "PENDING" && canApprove && (
-            <button
-              onClick={() => handleApprovalAction("REJECT")}
-              disabled={isReadOnly}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleApprovalAction("REJECT");
-                }
-              }}
-              title="Send Back for Review"
-              className="bg-blue-600 text-white px-2 py-1 rounded-md hover:bg-blue-700 flex items-center text-xs"
-            >
-              <MdKeyboardDoubleArrowLeft className="w-4 h-4" />
-            </button>
-          )}
-
-          {/* Approve — shown when PENDING and canApprove */}
-          {id && status === "PENDING" && canApprove && (
-            <button
-              onClick={() => handleApprovalAction("APPROVE")}
-              disabled={isReadOnly}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleApprovalAction("APPROVE");
-                }
-              }}
-              title="Approve"
-              className="bg-green-600 text-white px-2 py-1 rounded-md hover:bg-green-700 flex items-center text-xs"
-            >
-              <FiCheck className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-
-        <div className="flex gap-2 flex-wrap">
-          {!id ||
-            (parentReadOnly && !(singleData?.data?.childRecord > 0) && (
-              <button
-                className="bg-yellow-600 text-white px-4 py-1 rounded-md hover:bg-yellow-700 flex items-center text-xs"
-                onClick={() => setReadOnly(false)}
-                disabled={isDisabled}
-              >
-                <FiEdit2 className="w-4 h-4 mr-2" />
-                Edit
-              </button>
-            ))}
-          {id && (
-            <button
-              onClick={() => {
-                if (qrRef.current) {
-                  setQrCodeDataUrl(qrRef.current.toDataURL("image/png"));
-                }
-                setPrintModalOpen(true);
-              }}
-              className="bg-slate-600 text-white px-4 py-1 rounded-md hover:bg-slate-700 flex items-center text-xs"
-            >
-              <FiFileText className="w-4 h-4 mr-2" />
-              PDF Export
-            </button>
-          )}
-          {
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedAttachmentIndex(null);
-                setAttachmentModal(true);
-              }}
-              className="flex items-center gap-1 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-            >
-              📎 Upload
-            </button>
-          }
-        </div>
-      </div>
     </>
   );
 };
+
 export default OrderEntryForm;

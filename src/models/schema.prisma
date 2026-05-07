@@ -944,6 +944,7 @@ model StyleItem {
   stocks                 Stock[]
   Hsn                    Hsn?                     @relation(fields: [hsnId], references: [id])
   hsnId                  Int?
+  price                  Float?
   purchaseReturnItems    PurchaseReturnItems[]
   purchaseCancelItems    PurchaseCancelItems[]
   purchaseBillEntryItems PurchaseBillEntryItems[]
@@ -1834,6 +1835,7 @@ model OrderItems {
   Gsm            Gsm?               @relation(fields: [gsmId], references: [id])
   hsnId          Int?
   Hsn            Hsn?               @relation(fields: [hsnId], references: [id])
+  price          Float?
   sizeBreakup    OrderSizeBreakup[]
 }
 

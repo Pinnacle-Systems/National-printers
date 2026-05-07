@@ -87,6 +87,7 @@ async function create(body) {
     sizeTemplateId,
     itemGroupId,
     gsmId,
+    price,
   } = await body;
   const data = await prisma.styleItem.create({
     data: {
@@ -99,6 +100,7 @@ async function create(body) {
       itemGroupId: parseInt(itemGroupId) || null,
       sizeTemplateId: parseInt(sizeTemplateId) || null,
       gsmId: parseInt(gsmId) || null,
+      price: parseFloat(price) || null,
     },
   });
   return { statusCode: 0, data };
@@ -115,6 +117,7 @@ async function update(id, body) {
     sizeTemplateId,
     itemGroupId,
     gsmId,
+    price,
   } = await body;
 
   const dataFound = await prisma.styleItem.findUnique({
@@ -137,6 +140,7 @@ async function update(id, body) {
       itemGroupId: parseInt(itemGroupId) || null,
       sizeTemplateId: parseInt(sizeTemplateId) || null,
       gsmId: parseInt(gsmId) || null,
+      price: parseFloat(price) || null,
     },
   });
   return { statusCode: 0, data };

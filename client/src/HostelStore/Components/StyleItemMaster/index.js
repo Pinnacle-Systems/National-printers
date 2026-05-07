@@ -37,7 +37,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
   const [readOnly, setReadOnly] = useState(false);
   const [id, setId] = useState("");
   const [name, setName] = useState(defaultName || "");
-  const [accessory, setAccessory] = useState(false);
+  const [price, setPrice] = useState(false);
   const [active, setActive] = useState(false);
   const [aliasName, setAliasName] = useState(defaultName || "");
   const [hsnId, setHsnId] = useState("");
@@ -89,6 +89,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
       setUomId(data?.uomId ? data?.uomId : "");
       setSizeTemplateId(data?.sizeTemplateId ? data?.sizeTemplateId : "");
       setGsmId(data?.gsmId ? data?.gsmId : "");
+      setPrice(data?.price ? data?.price?.toFixed(2) : "");
       childRecord.current = data?.childRecord ? data?.childRecord : 0;
     },
     [id],
@@ -111,6 +112,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
     sizeTemplateId,
     uomId,
     gsmId,
+    price,
   };
 
   const validateData = (data) => {
@@ -463,6 +465,29 @@ export default function Form({ onSuccess, defaultName = "" }) {
                     addNewLabel="+ Add New Gsm"
                     childComponent={Gsm}
                     addNewModalWidth="w-[40%] h-[50%]"
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                    Price
+                  </label>
+                  <input
+                    type="number"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    className={`w-full px-3 py-1.5 text-xs border text-right pr-2 border-gray-300 rounded-lg
+          focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
+          transition-all duration-150 shadow-sm ${readOnly ? "bg-slate-100" : ""}
+       `}
+                    placeholder="0.00"
+                    onBlur={(e) => {
+                      const formattedValue =
+                        e.target.value === ""
+                          ? ""
+                          : Number(e.target.value).toFixed(2);
+
+                      setPrice(formattedValue);
+                    }}
                   />
                 </div>
                 <div className="mb-5">
