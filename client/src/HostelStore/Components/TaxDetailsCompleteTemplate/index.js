@@ -40,7 +40,7 @@ const TaxDetailsFullTemplate = ({
       event?.preventDefault?.();
       event?.stopPropagation?.();
       document.activeElement?.blur?.();
-      setCurrentSelectedIndex("");
+      setCurrentSelectedIndex(null);
       window.setTimeout(() => {
         onCloseFocus?.(index);
       }, 0);

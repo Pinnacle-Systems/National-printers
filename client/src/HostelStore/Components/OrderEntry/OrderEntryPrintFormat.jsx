@@ -160,23 +160,15 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   colHSN: {
-    width: 50,
+    width: 40,
     textAlign: "right",
     paddingRight: 2,
     borderRight: "1 solid #eee",
     justifyContent: "center",
     paddingVertical: 4,
   },
-  colTracking: {
-    width: 85,
-    textAlign: "left",
-    paddingLeft: 2,
-    borderRight: "1 solid #eee",
-    justifyContent: "center",
-    paddingVertical: 4,
-  },
   colUOM: {
-    width: 40,
+    width: 35,
     textAlign: "left",
     paddingLeft: 4,
     borderRight: "1 solid #eee",
@@ -184,7 +176,15 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   colQty: {
-    width: 60,
+    width: 45,
+    textAlign: "right",
+    paddingRight: 4,
+    borderRight: "1 solid #eee",
+    justifyContent: "center",
+    paddingVertical: 4,
+  },
+  colPrice: {
+    width: 45,
     textAlign: "right",
     paddingRight: 4,
     borderRight: "1 solid #eee",
@@ -263,7 +263,6 @@ const OrderEntryPrintFormat = ({
   data,
   customerDetails,
   branchData,
-  qrCodeDataUrl,
   styleItemList,
   sizeList,
   uomList,
@@ -290,8 +289,11 @@ const OrderEntryPrintFormat = ({
           <View style={styles.companyCenter}>
             <Text style={styles.companyName}>NATIONAL PRINTING PRESS</Text>
             <Text style={styles.companyAddr}>
-              {branchData?.address ||
-                "9(1)-MAARIYAMMAN LAYOUT 2ND STREET,KUMARANATHA PURAM,TIRUPUR : 641602"}
+              {branchData?.address || (
+                <Text>
+                  9(1)-MAARIYAMMAN LAYOUT 2ND STREET,{"\n"}KUMARANATHA PURAM,TIRUPUR : 641602
+                </Text>
+              )}
             </Text>
           </View>
           <View style={styles.companyRight}>
@@ -307,11 +309,6 @@ const OrderEntryPrintFormat = ({
                 {branchData?.contactMobile || "9952138129"}
               </Text>
             </View>
-            {qrCodeDataUrl && (
-              <View style={{ marginTop: 5 }}>
-                <Image src={qrCodeDataUrl} style={{ width: 40, height: 40 }} />
-              </View>
-            )}
           </View>
         </View>
 
@@ -388,9 +385,9 @@ const OrderEntryPrintFormat = ({
                 Item Group
               </Text>
               <Text style={[styles.colHSN, styles.headerCell]}>HSN</Text>
-              <Text style={[styles.colTracking, styles.headerCell]}>Type</Text>
               <Text style={[styles.colUOM, styles.headerCell]}>UOM</Text>
               <Text style={[styles.colQty, styles.headerCell]}>Qty</Text>
+              <Text style={[styles.colPrice, styles.headerCell]}>Price</Text>
               <Text style={[styles.colRemarks, styles.headerCell]}>
                 Remarks
               </Text>
@@ -402,28 +399,36 @@ const OrderEntryPrintFormat = ({
                     <Text>{index + 1}</Text>
                   </View>
                   <View style={styles.colDesc}>
-                    <Text style={{ fontWeight: "bold" }}>
+                    <Text
+                      style={{
+                        fontWeight: "bold",
+                        color: "black",
+                        fontSize: 9,
+                      }}
+                    >
                       {getName(item.styleItemId, styleItemList)}
                     </Text>
                     {item.sizeBreakup?.filter((sb) => (Number(sb.qty) || 0) > 0)
                       .length > 0 && (
                       <View style={{ marginTop: 2 }}>
-                        <Text style={{ fontSize: 6, color: "#555" }}>
+                        <Text style={{ fontSize: 9, color: "black" }}>
                           {item.sizeBreakup
                             .filter((sb) => (Number(sb.qty) || 0) > 0)
                             .map((sb) => {
-                              const qtyStr = `Qty: ${Number(sb.qty).toFixed(3)}`;
-                              const rangeStr = sb.barcodeFrom
-                                ? `Barcode: ${sb.barcodeFrom} - ${sb.barcodeTo}`
+                              const size = getName(sb.sizeId, sizeList);
+                              const qty = Number(sb.qty);
+                              const range = sb.barcodeFrom
+                                ? `${sb.barcodeFrom}-${sb.barcodeTo}`
                                 : "";
+
                               if (item.trackingType === "Barcode")
-                                return `${rangeStr}  ${qtyStr}`;
+                                return `${range}/${qty}`;
                               if (item.trackingType === "Size Template")
-                                return `${getName(sb.sizeId, sizeList)}: ${qtyStr}`;
+                                return `${size}/${qty}`;
                               if (
                                 item.trackingType === "Size Template + Barcode"
                               )
-                                return `${getName(sb.sizeId, sizeList)} ${rangeStr}  ${qtyStr}`;
+                                return `${size}/${range}/${qty}`;
                               return null;
                             })
                             .filter(Boolean)
@@ -438,14 +443,14 @@ const OrderEntryPrintFormat = ({
                   <View style={styles.colHSN}>
                     <Text>{getName(item.hsnId, hsnList)}</Text>
                   </View>
-                  <View style={styles.colTracking}>
-                    <Text>{item.trackingType || "None"}</Text>
-                  </View>
                   <View style={styles.colUOM}>
                     <Text>{getName(item.uomId, uomList)}</Text>
                   </View>
                   <View style={styles.colQty}>
-                    <Text>{Number(item.orderQty || 0).toFixed(3)}</Text>
+                    <Text>{Number(item.orderQty || 0)}</Text>
+                  </View>
+                  <View style={styles.colPrice}>
+                    <Text>{Number(item.price || 0).toFixed(2)}</Text>
                   </View>
                   <View style={styles.colRemarks}>
                     <Text>{item.remarks || ""}</Text>
@@ -460,7 +465,6 @@ const OrderEntryPrintFormat = ({
                   styles.colDesc,
                   styles.colItemGroup,
                   styles.colHSN,
-                  styles.colTracking,
                   styles.colUOM,
                   {
                     width: "auto",
@@ -475,14 +479,13 @@ const OrderEntryPrintFormat = ({
               </View>
               <View style={[styles.colQty, { borderRight: "none" }]}>
                 <Text>
-                  {data?.orderItems
-                    ?.reduce(
-                      (sum, item) => sum + (Number(item.orderQty) || 0),
-                      0,
-                    )
-                    .toFixed(3)}
+                  {data?.orderItems?.reduce(
+                    (sum, item) => sum + (Number(item.orderQty) || 0),
+                    0,
+                  )}
                 </Text>
               </View>
+              <View style={[styles.colPrice, { borderRight: "none" }]} />
               <View style={[styles.colRemarks, { borderRight: "none" }]} />
             </View>
           </View>
@@ -512,12 +515,10 @@ const OrderEntryPrintFormat = ({
                 <Text style={[styles.label, { width: 50 }]}>Total Qty</Text>
                 <Text style={styles.summaryValue}>
                   :{" "}
-                  {data?.orderItems
-                    ?.reduce(
-                      (sum, item) => sum + (Number(item.orderQty) || 0),
-                      0,
-                    )
-                    .toFixed(3)}
+                  {data?.orderItems?.reduce(
+                    (sum, item) => sum + (Number(item.orderQty) || 0),
+                    0,
+                  )}
                 </Text>
               </View>
             </View>

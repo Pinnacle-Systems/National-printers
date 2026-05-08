@@ -108,12 +108,10 @@ const OrderEntryForm = ({
   const [selectedAttachmentIndex, setSelectedAttachmentIndex] = useState(null);
   const [attachments, setAttachments] = useState([]);
   const [orderQty, setOrderQty] = useState("");
-  const [termsAndCondition, setTermsAndCondition] = useState("");
   const [termsId, setTermsId] = useState("");
   const [printModalOpen, setPrintModalOpen] = useState(false);
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState("");
   const [orderItems, setOrderItems] = useState(
-    Array.from({ length: 8 }, () => ({
+    Array.from({ length: 14 }, () => ({
       styleItemId: "",
       sizeId: "",
       uomId: "",
@@ -129,7 +127,6 @@ const OrderEntryForm = ({
   const [approvalRemarks, setApprovalRemarks] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
-  const qrRef = useRef(null);
   const customerRef = useRef(null);
 
   const { data: styleItemList } = useGetStyleItemMasterQuery({
@@ -173,7 +170,6 @@ const OrderEntryForm = ({
           ? moment.utc(data.deliveryDate).format("YYYY-MM-DD")
           : "",
       );
-      setTermsAndCondition(data?.termsAndCondition || "");
       setTermsId(data?.termsId || "");
       // ── Smart childRecord tracking (File 2) ─────────────────────────────
       childRecord.current = data?.childRecord ? data?.childRecord : 0;
@@ -182,10 +178,10 @@ const OrderEntryForm = ({
         itemGroupId: item.itemGroupId || "",
         trackingType: item.trackingType || "None",
         sizeBreakup: item.sizeBreakup || [],
-        price: item?.price || "",
+        price: item?.price?.toFixed(2) || "",
       }));
 
-      const emptyRowsCount = Math.max(0, 8 - initialItems.length);
+      const emptyRowsCount = Math.max(0, 14 - initialItems.length);
       const emptyRows = Array.from({ length: emptyRowsCount }, () => ({
         itemGroupId: "",
         styleItemId: "",
@@ -230,7 +226,6 @@ const OrderEntryForm = ({
     orderQty,
     requirements,
     deliveryDate,
-    termsAndCondition,
     termsId,
     docId,
     orderItems: orderItems
@@ -749,9 +744,6 @@ const OrderEntryForm = ({
       icon: <FiFileText className="w-4 h-4 mr-1" />,
       label: "PDF Export",
       onClick: () => {
-        if (qrRef.current) {
-          setQrCodeDataUrl(qrRef.current.toDataURL("image/png"));
-        }
         setPrintModalOpen(true);
       },
       className: `bg-slate-600 hover:bg-slate-700 ${actionButtonClass}`,
@@ -775,12 +767,14 @@ const OrderEntryForm = ({
         remarks={remarks}
         setRemarks={setRemarks}
         readOnly={isReadOnly}
+        hideTerms={true}
+        hasSummaryTitle="Order Summary"
         totalsRows={[
           {
             key: "totalItems",
             label: "Total Items",
             value: orderItems?.filter((item) => item.styleItemId)?.length || 0,
-            summaryColumn: "left",
+            summaryColumn: "right",
           },
           {
             key: "totalQty",
@@ -1188,7 +1182,6 @@ const OrderEntryForm = ({
                 (c) => c.id === customerId,
               )}
               branchData={branchList?.data?.find((b) => b.id === branchId)}
-              qrCodeDataUrl={qrCodeDataUrl}
               styleItemList={styleItemList?.data}
               sizeList={sizeList?.data}
               uomList={uomList?.data}
@@ -1199,17 +1192,6 @@ const OrderEntryForm = ({
           </PDFViewer>
         </Modal>
       )}
-
-      <div className="hidden">
-        <QRCodeCanvas
-          id="qr-gen"
-          value={docId || "New"}
-          size={128}
-          level={"H"}
-          includeMargin={true}
-          ref={qrRef}
-        />
-      </div>
 
       <TransactionLayout
         title="Order Entry"

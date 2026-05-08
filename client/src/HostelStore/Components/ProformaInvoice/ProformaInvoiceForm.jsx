@@ -102,6 +102,8 @@ const ProformaInvoiceForm = ({
     phone: "",
   });
 
+  const customerRef = useRef(null);
+
   const { data: allData } = useGetProformaInvoiceQuery({
     params: { branchId },
   });
@@ -134,6 +136,14 @@ const ProformaInvoiceForm = ({
       setDocId(allData.nextDocId);
     }
   }, [id, allData]);
+
+  useEffect(() => {
+    if (!id && !readOnly) {
+      setTimeout(() => {
+        customerRef.current?.focus();
+      }, 100);
+    }
+  }, [id, readOnly]);
 
   useEffect(() => {
     if (id && singleData?.data) {
@@ -185,13 +195,26 @@ const ProformaInvoiceForm = ({
   }, [id, singleData]);
 
   useEffect(() => {
-    if (selectedQuoteVersion !== "Latest" && singleData?.data?.items && id) {
+    if (singleData?.data?.items && id) {
+      let targetVersion;
+      if (selectedQuoteVersion === "Latest") {
+        const versions = [
+          ...new Set(singleData.data.items.map((i) => i.quoteVersion).filter(Boolean)),
+        ];
+        targetVersion = versions.length > 0 ? Math.max(...versions) : 1;
+      } else {
+        targetVersion = parseInt(selectedQuoteVersion.replace("V", ""));
+      }
+
       const itemsArr = singleData.data.items;
-      const targetVersion = parseInt(selectedQuoteVersion.replace("V", ""));
       const filteredItems = itemsArr.filter(
         (i) => (i.quoteVersion || 1) === targetVersion,
       );
-      setItems(padItems(filteredItems));
+      const formattedItems = filteredItems.map((item) => ({
+        ...item,
+        price: Number(item.price || 0),
+      }));
+      setItems(padItems(formattedItems));
     }
   }, [selectedQuoteVersion, singleData, id]);
 
@@ -238,11 +261,12 @@ const ProformaInvoiceForm = ({
                   gsmId: oi.gsmId,
                   hsnId: oi.hsnId,
                   qty: parseFloat(oi.orderQty) || 0,
-                  price: "",
+                  price: oi.price || "",
                   taxPercent: parseFloat(oi.Hsn?.tax) || 0,
                   discountType: "Percentage",
                   discountValue: 0,
-                  amount: 0,
+                  amount:
+                    (parseFloat(oi.orderQty) || 0) * (parseFloat(oi.price) || 0),
                   remarks: oi.remarks || "",
                   sizeBreakup: oi.sizeBreakup || [],
                 }));
@@ -353,6 +377,7 @@ const ProformaInvoiceForm = ({
         });
       }
       setReadOnly(true);
+      setSelectedQuoteVersion("Latest");
 
       if (pendingAction === "new") {
         onNew();
@@ -527,6 +552,7 @@ const ProformaInvoiceForm = ({
         <div className="grid grid-cols-2 md:grid-cols-8 gap-2">
           <div className="md:col-span-2">
             <DropdownInput
+              ref={customerRef}
               name="Customer"
               options={dropDownListObject(customerList?.data, "name", "id")}
               value={customerId}
@@ -535,7 +561,7 @@ const ProformaInvoiceForm = ({
                 setOrderEntryId(""); // Clear order if customer changes
                 setItems(padItems([])); // Clear table if customer changes
               }}
-              readOnly={effectiveReadOnly || !!id} // If editing existing PI, maybe lock customer?
+              readOnly={effectiveReadOnly || !!id}
               required={true}
             />
           </div>
@@ -559,7 +585,7 @@ const ProformaInvoiceForm = ({
               options={dropDownListObject(filteredOrderList, "docId", "id")}
               value={orderEntryId}
               setValue={setOrderEntryId}
-              readOnly={effectiveReadOnly || !customerId}
+              readOnly={effectiveReadOnly || !!id}
               required={true}
             />
           </div>
@@ -574,7 +600,7 @@ const ProformaInvoiceForm = ({
               value={taxTemplateId}
               setValue={setTaxTemplateId}
               required={true}
-              readOnly={effectiveReadOnly}
+              readOnly={effectiveReadOnly || !!id}
             />
           </div>
         </div>
@@ -656,6 +682,25 @@ const ProformaInvoiceForm = ({
     </div>
   );
 
+  const taxBreakdownContent =
+    enrichedData.slabBreakup.length > 0 ? (
+      <div className="space-y-0.5 border-t border-slate-100 pt-1">
+        {enrichedData.slabBreakup
+          .filter((row) => (row.amount || 0) > 0)
+          .map((row) => (
+            <div
+              key={`${row.tax}-${row.amount}`}
+              className="flex items-center justify-between gap-2 text-[11px]"
+            >
+              <span className="text-slate-500">{row.tax}</span>
+              <span className="font-medium text-slate-700">
+                {`Rs.${parseFloat(row.amount || 0).toFixed(2)}`}
+              </span>
+            </div>
+          ))}
+      </div>
+    ) : null;
+
   const footerContent = (
     <>
       <CommonFormFooter
@@ -682,19 +727,21 @@ const ProformaInvoiceForm = ({
             summaryColumn: "right",
           },
           {
-            key: "grossAmount",
-            label: "Gross Amount",
-            value: `₹ ${enrichedData.gross.toFixed(2)}`,
+            key: "taxableAmount",
+            label: "Taxable Amount",
+            value: `Rs.${enrichedData.taxable.toFixed(2)}`,
             summaryColumn: "right",
           },
           {
             key: "netAmount",
             label: "Net Amount",
-            value: `₹ ${enrichedData.net.toFixed(2)}`,
+            value: `Rs.${enrichedData.net.toFixed(2)}`,
             summaryColumn: "right",
             emphasized: true,
           },
         ]}
+        extraTotalsContent={taxBreakdownContent}
+        extraTotalsContentColumn="right"
       />
       <TransactionActions
         leftActions={leftActions}

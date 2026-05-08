@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   colDesc: {
-    flex: 2.5,
+    flex: 4,
     textAlign: "left",
     paddingLeft: 4,
     borderRight: "1 solid #eee",
@@ -154,14 +154,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 4,
     paddingRight: 2,
-  },
-  colType: {
-    width: 75,
-    textAlign: "left",
-    paddingLeft: 4,
-    borderRight: "1 solid #eee",
-    justifyContent: "center",
-    paddingVertical: 4,
   },
   colUOM: {
     width: 35,
@@ -227,32 +219,79 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     marginTop: 15,
   },
-  summaryBox: {
-    width: 180,
-    border: "1 solid #eee",
-    borderRadius: 4,
+  taxBox: {
+    width: 160,
+    border: "1 solid #ddd",
+    borderRadius: 3,
     overflow: "hidden",
   },
-  summaryRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    padding: "4 10",
-    borderBottom: "1 solid #f9f9f9",
-  },
-  grandTotalRow: {
+  taxHeader: {
     backgroundColor: "#1a1a2e",
     color: "#fff",
+    textAlign: "center",
+    fontSize: 8,
     fontWeight: "bold",
-    padding: "6 10",
+    letterSpacing: 1,
+    paddingVertical: 4,
+  },
+  taxRow: {
+    flexDirection: "row",
+    borderTop: "1 solid #ebebeb",
+  },
+  taxRowNet: {
+    flexDirection: "row",
+    borderTop: "1.5 solid #1a1a2e",
+    backgroundColor: "#1a1a2e",
+  },
+  taxLabel: {
+    flex: 1,
+    fontSize: 7.5,
+    color: "#444",
+    padding: 4,
+    paddingLeft: 8,
+  },
+  taxValue: {
+    fontSize: 7.5,
+    color: "#000",
+    textAlign: "right",
+    padding: 4,
+    paddingRight: 8,
+    fontWeight: "bold",
+  },
+  taxLabelNet: {
+    flex: 1,
+    fontSize: 8.5,
+    color: "#fff",
+    fontWeight: "bold",
+    padding: 6,
+    paddingLeft: 8,
+  },
+  taxValueNet: {
+    fontSize: 8.5,
+    color: "#fff",
+    fontWeight: "bold",
+    textAlign: "right",
+    padding: 6,
+    paddingRight: 8,
   },
   wordsBar: {
     backgroundColor: "#1a1a2e",
     color: "#fff",
-    padding: "6 10",
-    marginTop: 5,
-    borderRadius: 4,
-    flexDirection: "row",
-    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginTop: 8,
+    borderRadius: 3,
+  },
+  wordsText: {
+    fontSize: 8,
+    fontStyle: "italic",
+    color: "#e8e8f0",
+  },
+  wordsValue: {
+    fontSize: 8,
+    fontWeight: "bold",
+    color: "#fff",
+    textTransform: "capitalize",
   },
 
   footer: {
@@ -325,7 +364,14 @@ const ProformaInvoicePrintFormat = ({ data }) => {
             <View style={styles.sectionBody}>
               <View style={styles.labelValueRow}>
                 <Text style={styles.label}>PI No</Text>
-                <Text style={styles.value}>: {data.docId}</Text>
+                <Text
+                  style={[
+                    styles.value,
+                    data.quoteVersion > 1 && { color: "#b91c1c" },
+                  ]}
+                >
+                  : {data.docId}
+                </Text>
               </View>
               <View style={styles.labelValueRow}>
                 <Text style={styles.label}>PI Date</Text>
@@ -382,7 +428,6 @@ const ProformaInvoicePrintFormat = ({ data }) => {
                 Description of Goods
               </Text>
               <Text style={[styles.colHSN, styles.headerCell]}>HSN</Text>
-              <Text style={[styles.colType, styles.headerCell]}>Type</Text>
               <Text style={[styles.colUOM, styles.headerCell]}>UOM</Text>
               <Text style={[styles.colQty, styles.headerCell]}>Qty</Text>
               <Text style={[styles.colPrice, styles.headerCell]}>Price</Text>
@@ -398,30 +443,36 @@ const ProformaInvoicePrintFormat = ({ data }) => {
                       <Text>{index + 1}</Text>
                     </View>
                     <View style={styles.colDesc}>
-                      <Text style={{ fontWeight: "bold" }}>
+                      <Text
+                        style={{
+                          fontWeight: "bold",
+                          color: "black",
+                          fontSize: 9,
+                        }}
+                      >
                         {item.StyleItem?.name || "N/A"}
                       </Text>
-                      {item.sizeBreakup?.filter(
-                        (sb) => (Number(sb.qty) || 0) > 0,
-                      ).length > 0 && (
+                      {item.sizeBreakup?.filter((sb) => (Number(sb.qty) || 0) > 0)
+                        .length > 0 && (
                         <View style={{ marginTop: 2 }}>
-                          <Text style={{ fontSize: 6, color: "#555" }}>
+                          <Text style={{ fontSize: 9, color: "black" }}>
                             {item.sizeBreakup
                               .filter((sb) => (Number(sb.qty) || 0) > 0)
                               .map((sb) => {
-                                const qtyStr = `Qty: ${Number(sb.qty).toFixed(3)}`;
-                                const rangeStr = sb.barcodeFrom
-                                  ? `Barcode: ${sb.barcodeFrom} - ${sb.barcodeTo}`
+                                const size = sb.Size?.name || "Size";
+                                const qty = Number(sb.qty);
+                                const range = sb.barcodeFrom
+                                  ? `${sb.barcodeFrom}-${sb.barcodeTo}`
                                   : "";
+
                                 if (item.trackingType === "Barcode")
-                                  return `${rangeStr}  ${qtyStr}`;
+                                  return `${range}/${qty}`;
                                 if (item.trackingType === "Size Template")
-                                  return `${sb.Size?.name || "Size"}: ${qtyStr}`;
+                                  return `${size}/${qty}`;
                                 if (
-                                  item.trackingType ===
-                                  "Size Template + Barcode"
+                                  item.trackingType === "Size Template + Barcode"
                                 )
-                                  return `${sb.Size?.name || "Size"} ${rangeStr}  ${qtyStr}`;
+                                  return `${size}/${range}/${qty}`;
                                 return null;
                               })
                               .filter(Boolean)
@@ -432,9 +483,6 @@ const ProformaInvoicePrintFormat = ({ data }) => {
                     </View>
                     <View style={styles.colHSN}>
                       <Text>{item.Hsn?.name || "-"}</Text>
-                    </View>
-                    <View style={styles.colType}>
-                      <Text>{item.trackingType || "None"}</Text>
                     </View>
                     <View style={styles.colUOM}>
                       <Text>{item.Uom?.name || "-"}</Text>
@@ -458,7 +506,6 @@ const ProformaInvoicePrintFormat = ({ data }) => {
                   styles.colSno,
                   styles.colDesc,
                   styles.colHSN,
-                  styles.colType,
                   styles.colUOM,
                   {
                     width: "auto",
@@ -489,60 +536,33 @@ const ProformaInvoicePrintFormat = ({ data }) => {
         {/* Summary Section */}
         {/* Summary Section */}
         <View style={styles.summaryContainer}>
-          <View style={styles.summaryBox}>
-            <View style={styles.summaryRow}>
-              <Text style={{ fontSize: 8, color: "#555" }}>Total Gross</Text>
-              <Text style={{ fontSize: 8, fontWeight: "bold" }}>
-                Rs. {subTotal.toFixed(2)}
-              </Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={{ fontSize: 8, color: "#555" }}>Total Discount</Text>
-              <Text style={{ fontSize: 8, fontWeight: "bold", color: "#d32f2f" }}>
-                (-) Rs. {totalDiscount.toFixed(2)}
-              </Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={{ fontSize: 8, color: "#1a1a2e", fontWeight: "bold" }}>
-                Taxable Amount
-              </Text>
-              <Text style={{ fontSize: 8, fontWeight: "bold" }}>
-                Rs. {taxableAmount.toFixed(2)}
-              </Text>
+          <View style={styles.taxBox}>
+            <Text style={styles.taxHeader}>TAX DETAILS</Text>
+            
+            <View style={styles.taxRow}>
+              <Text style={styles.taxLabel}>Taxable Amt</Text>
+              <Text style={styles.taxValue}>{taxableAmount.toFixed(2)}</Text>
             </View>
 
             {taxRows.map((tax, idx) => (
-              <View style={styles.summaryRow} key={idx}>
-                <Text style={{ fontSize: 7, color: "#555" }}>{tax.tax}</Text>
-                <Text style={{ fontSize: 7, fontWeight: "bold" }}>
-                  (+) Rs. {tax.amount.toFixed(2)}
-                </Text>
+              <View style={styles.taxRow} key={idx}>
+                <Text style={styles.taxLabel}>{tax.tax}</Text>
+                <Text style={styles.taxValue}>{tax.amount.toFixed(2)}</Text>
               </View>
             ))}
 
-            {Math.abs(roundOff) > 0 && (
-              <View style={styles.summaryRow}>
-                <Text style={{ fontSize: 7, color: "#555" }}>Round Off</Text>
-                <Text style={{ fontSize: 7, fontWeight: "bold" }}>
-                  {roundOff > 0 ? "(+) " : "(-) "}
-                  Rs. {Math.abs(roundOff).toFixed(2)}
-                </Text>
-              </View>
-            )}
-
-            <View style={[styles.summaryRow, styles.grandTotalRow]}>
-              <Text style={{ fontSize: 9 }}>GRAND TOTAL</Text>
-              <Text style={{ fontSize: 9 }}>Rs. {grandTotal.toFixed(2)}</Text>
+            <View style={styles.taxRowNet}>
+              <Text style={styles.taxLabelNet}>Net Amount</Text>
+              <Text style={styles.taxValueNet}>
+                {grandTotal.toFixed(2)}
+              </Text>
             </View>
           </View>
         </View>
 
         <View style={styles.wordsBar}>
-          <Text style={{ fontSize: 7, fontWeight: "bold", marginRight: 5 }}>
-            AMOUNT IN WORDS :
-          </Text>
-          <Text style={{ fontSize: 8, fontWeight: "bold", textTransform: "capitalize" }}>
-            {amountInWords(grandTotal)}
+          <Text style={styles.wordsText}>
+            Amount in Words: <Text style={styles.wordsValue}>{amountInWords(grandTotal)} Only</Text>
           </Text>
         </View>
 

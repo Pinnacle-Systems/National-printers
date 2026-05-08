@@ -170,9 +170,7 @@ const ProformaInvoiceReport = ({
                 <th className="w-80  px-3   font-medium text-[13px] text-gray-900  text-center ">
                   <div>Customer</div>
                 </th>
-                <th className=" px-3 w-36  font-medium text-[13px]  text-gray-900  text-center ">
-                  <div>Amount</div>
-                </th>
+
                 {showApprovalColumn && (
                   <th className="w-44 px-3 font-medium text-[13px] text-gray-900 text-center">
                     <div>Approval Action</div>
@@ -222,7 +220,7 @@ const ProformaInvoiceReport = ({
                     onChange={(e) => setSearchCustomer(e.target.value)}
                   />
                 </th>
-                <th className=" px-3 w-36  font-medium text-[13px]  text-gray-900  text-center "></th>
+                {/* <th className=" px-3 w-36  font-medium text-[13px]  text-gray-900  text-center "></th> */}
                 {showApprovalColumn && <th className="w-44 px-3"></th>}
                 <th className="w-14   px-3  font-medium text-[13px]  text-gray-900  text-center "></th>
               </tr>
@@ -268,9 +266,7 @@ const ProformaInvoiceReport = ({
                       <td className="py-1.5 text-left">
                         {item.customer?.name}
                       </td>
-                      <td className="py-1.5 text-right px-3 ">
-                        ₹{totalAmount.toFixed(2)}
-                      </td>
+
                       {showApprovalColumn && (
                         <td
                           className="px-3 py-1 text-center"

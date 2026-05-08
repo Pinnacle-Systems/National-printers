@@ -87,7 +87,13 @@ const ProformaInvoiceItems = ({
       <Modal
         isOpen={Number.isInteger(currentSelectedIndex)}
         onClose={() => {
+          const index = currentSelectedIndex;
           setCurrentSelectedIndex(null);
+          if (Number.isInteger(index)) {
+            setTimeout(() => {
+              document.getElementById(`tax-btn-${index}`)?.focus();
+            }, 0);
+          }
         }}
       >
         <TaxDetailsFullTemplate
@@ -99,14 +105,33 @@ const ProformaInvoiceItems = ({
           handleInputChange={handleInputChange}
           id={id}
           isNewVersion={false}
-          onCloseFocus={() => {}}
+          onCloseFocus={(index) => {
+            // This is called by TaxDetailsFullTemplate when Enter is pressed on the last field
+            setCurrentSelectedIndex(null); // Ensure modal is closed
+            setTimeout(() => {
+              const nextIndex = index + 1;
+              const nextSizeBtn = document.getElementById(`size-btn-${nextIndex}`);
+              
+              if (nextSizeBtn && items[nextIndex]?.styleItemId) {
+                nextSizeBtn.focus();
+              } else {
+                document.getElementById("termsAndCondition")?.focus();
+              }
+            }, 50); // Small delay to allow modal to unmount
+          }}
         />
       </Modal>
 
       {sizeModalOpen && activeRowIndex !== null && (
         <Modal
           isOpen={sizeModalOpen}
-          onClose={() => setSizeModalOpen(false)}
+          onClose={() => {
+            const index = activeRowIndex;
+            setSizeModalOpen(false);
+            setTimeout(() => {
+              document.getElementById(`price-input-${index}`)?.focus();
+            }, 0);
+          }}
           widthClass="w-[750px]"
         >
           <div className="bg-slate-100 p-3 rounded-lg">
@@ -170,40 +195,45 @@ const ProformaInvoiceItems = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {(items[activeRowIndex]?.sizeBreakup || []).map(
-                      (breakup, idx) => (
-                        <tr key={idx} className="h-8">
-                          <td className="border-b border-r border-slate-200 text-center text-[11px]">
-                            {idx + 1}
+                    {(() => {
+                      const actualRows =
+                        items[activeRowIndex]?.sizeBreakup || [];
+                      if (actualRows.length >= 5) return actualRows;
+                      return [
+                        ...actualRows,
+                        ...Array(5 - actualRows.length).fill({}),
+                      ];
+                    })().map((breakup, idx) => (
+                      <tr key={idx} className="h-8">
+                        <td className="border-b border-r border-slate-200 text-center text-[11px]">
+                          {idx + 1}
+                        </td>
+                        {items[activeRowIndex]?.trackingType !== "Barcode" && (
+                          <td className="border-b border-r border-slate-200 text-left pl-1 text-[11px]">
+                            {findFromList(
+                              breakup.sizeId,
+                              sizeList?.data,
+                              "name",
+                            )}
                           </td>
-                          {items[activeRowIndex]?.trackingType !==
-                            "Barcode" && (
-                            <td className="border-b border-r border-slate-200 text-left pl-1 text-[11px]">
-                              {findFromList(
-                                breakup.sizeId,
-                                sizeList?.data,
-                                "name",
-                              )}
+                        )}
+                        {(items[activeRowIndex]?.trackingType === "Barcode" ||
+                          items[activeRowIndex]?.trackingType ===
+                            "Size Template + Barcode") && (
+                          <>
+                            <td className="border-b border-r border-slate-200 text-left pl-1  text-[11px]">
+                              {breakup.barcodeFrom}
                             </td>
-                          )}
-                          {(items[activeRowIndex]?.trackingType === "Barcode" ||
-                            items[activeRowIndex]?.trackingType ===
-                              "Size Template + Barcode") && (
-                            <>
-                              <td className="border-b border-r border-slate-200 text-left pl-1  text-[11px]">
-                                {breakup.barcodeFrom}
-                              </td>
-                              <td className="border-b border-r border-slate-200 text-left pl-1  text-[11px]">
-                                {breakup.barcodeTo}
-                              </td>
-                            </>
-                          )}
-                          <td className="border-b border-r border-slate-200 text-right px-2 text-[11px]">
-                            {Number(breakup.qty).toFixed(3)}
-                          </td>
-                        </tr>
-                      ),
-                    )}
+                            <td className="border-b border-r border-slate-200 text-left pl-1  text-[11px]">
+                              {breakup.barcodeTo}
+                            </td>
+                          </>
+                        )}
+                        <td className="border-b border-r border-slate-200 text-right px-2 text-[11px]">
+                          {breakup.qty !== undefined ? Number(breakup.qty) : ""}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                   <tfoot>
                     <tr className="bg-slate-50 font-bold">
@@ -292,9 +322,17 @@ const ProformaInvoiceItems = ({
                 </td>
                 <td className="border border-gray-300 text-center">
                   <button
+                    id={`size-btn-${index}`}
                     disabled={!item.styleItemId || item.trackingType === "None"}
-                    className="text-indigo-600 hover:text-indigo-800 disabled:text-gray-300 transition-colors"
+                    className="text-indigo-600 hover:text-indigo-800 disabled:text-gray-300 transition-colors outline-none focus:ring-2 focus:ring-indigo-500 rounded"
                     onClick={() => handleOpenSizeModal(index)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleOpenSizeModal(index);
+                      }
+                    }}
                     title="View Size Breakup"
                   >
                     <FiEye size={16} className="inline" />
@@ -304,10 +342,11 @@ const ProformaInvoiceItems = ({
                   {findFromList(item.uomId, uomList?.data, "name")}
                 </td>
                 <td className="border border-gray-300 text-right px-1 text-[11px]">
-                  {item.styleItemId ? (item.qty || 0).toFixed(3) : ""}
+                  {item?.qty || ""}
                 </td>
-                <td className="border border-gray-300 text-right px-1">
+                <td className="border border-gray-300 text-right px-1 grid-editable-cell">
                   <input
+                    id={`price-input-${index}`}
                     type="number"
                     className="w-full text-[11px] text-right outline-none bg-transparent"
                     value={
@@ -348,8 +387,9 @@ const ProformaInvoiceItems = ({
                 </td>
                 <td className="border border-gray-300 text-center text-[11px]">
                   <button
+                    id={`tax-btn-${index}`}
                     disabled={!item.styleItemId}
-                    className="text-indigo-600 hover:text-indigo-800 disabled:text-gray-300 transition-colors"
+                    className="text-indigo-600 hover:text-indigo-800 disabled:text-gray-300 transition-colors outline-none focus:ring-2 focus:ring-indigo-500 rounded"
                     onClick={() => {
                       if (!taxTemplateId) {
                         return Swal.fire({
@@ -360,6 +400,21 @@ const ProformaInvoiceItems = ({
                         });
                       }
                       setCurrentSelectedIndex(index);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (!taxTemplateId) {
+                          return Swal.fire({
+                            title: "Information",
+                            text: "Please select Tax Type",
+                            icon: "info",
+                            confirmButtonColor: "#3085d6",
+                          });
+                        }
+                        setCurrentSelectedIndex(index);
+                      }
                     }}
                   >
                     <FiEye size={16} className="inline" />

@@ -295,7 +295,7 @@ async function update(id, body, files) {
 
   const dataFound = await prisma.proformaInvoice.findUnique({
     where: { id: parseInt(id) },
-    include: { attachments: true, items: true },
+    include: { attachments: true, items: { include: { sizeBreakup: true } } },
   });
 
   if (!dataFound) return NoRecordFound("Proforma Invoice");
@@ -341,18 +341,19 @@ async function update(id, body, files) {
   });
 
   const currentQuoteVersion = dataFound.quoteVersion || 1;
-  const latestItems = dataFound.items.filter(i => i.quoteVersion === currentQuoteVersion);
+  const latestItems = dataFound.items
+    .filter((i) => i.quoteVersion === currentQuoteVersion)
+    .sort((a, b) => (a.itemOrder || 0) - (b.itemOrder || 0));
 
   let isTableChanged = false;
   if (parseItems.length !== latestItems.length) {
     isTableChanged = true;
   } else {
     isTableChanged = parseItems.some((newItem, index) => {
-      // Assuming ordered arrays from the client match the order of latestItems, or we just compare element by element.
-      // Since ProformaInvoiceForm sets/gets the entire array in order, index matching works fine.
       const oldItem = latestItems[index];
       if (!oldItem) return true;
-      return (
+
+      const basicChanged =
         parseInt(newItem.styleItemId || 0) !== parseInt(oldItem.styleItemId || 0) ||
         parseFloat(newItem.qty || 0) !== parseFloat(oldItem.qty || 0) ||
         parseFloat(newItem.price || 0) !== parseFloat(oldItem.price || 0) ||
@@ -362,8 +363,27 @@ async function update(id, body, files) {
         parseInt(newItem.sizeId || 0) !== parseInt(oldItem.sizeId || 0) ||
         parseInt(newItem.uomId || 0) !== parseInt(oldItem.uomId || 0) ||
         parseInt(newItem.gsmId || 0) !== parseInt(oldItem.gsmId || 0) ||
-        parseInt(newItem.hsnId || 0) !== parseInt(oldItem.hsnId || 0)
+        parseInt(newItem.hsnId || 0) !== parseInt(oldItem.hsnId || 0);
+
+      if (basicChanged) return true;
+
+      const oldSB = [...(oldItem.sizeBreakup || [])].sort(
+        (a, b) => (a.sizeId || 0) - (b.sizeId || 0),
       );
+      const newSB = [...(newItem.sizeBreakup || [])].sort(
+        (a, b) => (a.sizeId || 0) - (b.sizeId || 0),
+      );
+
+      if (oldSB.length !== newSB.length) return true;
+
+      return newSB.some((nsb, sIdx) => {
+        const osb = oldSB[sIdx];
+        if (!osb) return true;
+        return (
+          parseInt(nsb.sizeId || 0) !== parseInt(osb.sizeId || 0) ||
+          parseFloat(nsb.qty || 0) !== parseFloat(osb.qty || 0)
+        );
+      });
     });
   }
 
@@ -385,7 +405,6 @@ async function update(id, body, files) {
       quoteVersion: nextQuoteVersion,
       ...(isApproved !== undefined && { isApproved: isApproved === "true" || isApproved === true }),
       items: isTableChanged ? {
-        deleteMany: {},
         create: parseItems.map((item, idx) => ({
           StyleItem: item.styleItemId ? { connect: { id: parseInt(item.styleItemId) } } : undefined,
           Size: item.sizeId ? { connect: { id: parseInt(item.sizeId) } } : undefined,

@@ -406,6 +406,10 @@ async function create(body) {
             item?.orderQty && !isNaN(Number(item.orderQty))
               ? parseInt(item.orderQty)
               : null,
+          price:
+            item?.price && !isNaN(Number(item.price))
+              ? parseFloat(item.price)
+              : null,
           SizeTemplate: item?.sizeTemplateId
             ? { connect: { id: parseInt(item.sizeTemplateId) } }
             : undefined,
@@ -621,6 +625,10 @@ async function update(id, body, files) {
                 itemOrder: item.itemOrder,
                 remarks: item.remarks,
                 orderQty: item.orderQty ? parseInt(item.orderQty) : null,
+                price:
+                  item?.price && !isNaN(Number(item.price))
+                    ? parseFloat(item.price)
+                    : null,
                 SizeTemplate: item.sizeTemplateId
                   ? { connect: { id: parseInt(item.sizeTemplateId) } }
                   : undefined,
@@ -666,6 +674,10 @@ async function update(id, body, files) {
               itemOrder: item.itemOrder,
               remarks: item.remarks,
               orderQty: item.orderQty ? parseInt(item.orderQty) : null,
+              price:
+                item?.price && !isNaN(Number(item.price))
+                  ? parseFloat(item.price)
+                  : null,
               SizeTemplate: item.sizeTemplateId
                 ? { connect: { id: parseInt(item.sizeTemplateId) } }
                 : undefined,
