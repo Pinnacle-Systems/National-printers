@@ -63,6 +63,30 @@ const OrderItems = ({
     }
   }, [sizeModalOpen, pendingFocus]);
 
+  useEffect(() => {
+    if (sizeModalOpen && activeRowIndex !== null) {
+      setTimeout(() => {
+        const trackingType = orderItems[activeRowIndex]?.trackingType;
+        let elementId = "";
+        if (trackingType === "Barcode") {
+          elementId = "barcodeFrom-0";
+        } else if (trackingType === "Size Template") {
+          elementId = "sizeQty-0";
+        } else if (trackingType === "Size Template + Barcode") {
+          elementId = "sizeBarcodeFrom-0";
+        }
+
+        if (elementId) {
+          const element = document.getElementById(elementId);
+          if (element) {
+            element.focus();
+            element.select?.();
+          }
+        }
+      }, 200);
+    }
+  }, [sizeModalOpen, activeRowIndex]);
+
   const handleOpenSizeModal = async (index) => {
     setActiveRowIndex(index);
     setSizeModalOpen(true);
@@ -110,14 +134,14 @@ const OrderItems = ({
         console.error("Failed to fetch size template details", e);
       }
     } else if (currentRow.trackingType === "Barcode") {
-      // For Barcode tracking, ensure at least 4 rows and they reflect the current order quantity distribution
+      // For Barcode tracking, ensure at least 5 rows and they reflect the current order quantity distribution
       setOrderItems((prev) => {
         const newRows = [...prev];
         if (newRows[index]) {
           let currentBreakup = [...(newRows[index].sizeBreakup || [])];
 
-          // Ensure at least 4 rows initially
-          const minRows = 4;
+          // Ensure at least 5 rows initially
+          const minRows = 5;
           if (currentBreakup.length < minRows) {
             const padding = Array.from(
               { length: minRows - currentBreakup.length },
@@ -250,8 +274,8 @@ const OrderItems = ({
       const currentRow = { ...newRows[activeRowIndex] };
       let newBreakup = currentRow.sizeBreakup.filter((_, i) => i !== index);
 
-      // Keep min 4 rows for Barcode type
-      if (currentRow.trackingType === "Barcode" && newBreakup.length < 4) {
+      // Keep min 5 rows for Barcode type
+      if (currentRow.trackingType === "Barcode" && newBreakup.length < 5) {
         newBreakup.push({
           sizeId: null,
           qty: "",
@@ -276,7 +300,7 @@ const OrderItems = ({
       const currentRow = { ...newRows[activeRowIndex] };
 
       if (currentRow.trackingType === "Barcode") {
-        currentRow.sizeBreakup = Array.from({ length: 4 }, () => ({
+        currentRow.sizeBreakup = Array.from({ length: 5 }, () => ({
           sizeId: null,
           qty: "",
           barcodeFrom: "",
@@ -332,7 +356,7 @@ const OrderItems = ({
   };
 
   const handleDeleteAllRows = () => {
-    setOrderItems(Array.from({ length: 8 }, () => ({ ...EMPTY_ROW })));
+    setOrderItems(Array.from({ length: 14 }, () => ({ ...EMPTY_ROW })));
   };
 
   // Row initialization is now handled in the parent OrderEntryForm
@@ -447,7 +471,7 @@ const OrderItems = ({
                   </span>
                 </td>
                 <td className="border border-gray-300">
-                  <span className="w-full text-[11px] text-right pr-1 outline-none bg-transparent">
+                  <span className="w-full block text-[11px] text-right pr-1 outline-none bg-transparent">
                     {findFromList(row.hsnId, hsnList?.data, "name") || ""}
                   </span>
                 </td>
@@ -679,14 +703,20 @@ const OrderItems = ({
             <tr className="bg-gray-100 h-7 font-bold text-gray-800 text-[12px]">
               <td
                 className="text-right px-2 border border-gray-300"
-                colSpan={8}
+                colSpan={7}
               >
                 Total
               </td>
               <td className="text-right px-1 border border-gray-300 text-black">
+                {orderItems?.reduce(
+                  (sum, row) => sum + (Number(row.orderQty) || 0),
+                  0,
+                )}
+              </td>
+              <td className="text-right px-1 border border-gray-300 text-black">
                 {orderItems
-                  ?.reduce((sum, row) => sum + (Number(row.orderQty) || 0), 0)
-                  .toFixed(3)}
+                  ?.reduce((sum, row) => sum + (Number(row.price) || 0), 0)
+                  .toFixed(2)}
               </td>
               <td className="border border-gray-300"></td>
             </tr>
@@ -815,6 +845,7 @@ const OrderItems = ({
                             </td>
                             <td className="border-b border-r border-slate-200 px-1">
                               <input
+                                id={`barcodeFrom-${idx}`}
                                 type="text"
                                 className="w-full border-none bg-transparent px-2 text-[11px] outline-none focus:bg-white"
                                 value={item.barcodeFrom}
@@ -933,6 +964,7 @@ const OrderItems = ({
                             </td>
                             <td className="border-b border-r border-slate-200 px-1 py-0">
                               <input
+                                id={`sizeQty-${idx}`}
                                 type="number"
                                 className="w-full h-7 border-none text-right pr-2 bg-transparent text-[11px] text-black outline-none focus:bg-white"
                                 value={
@@ -999,6 +1031,7 @@ const OrderItems = ({
                             </td>
                             <td className="border-b border-r border-slate-200 px-1 py-0">
                               <input
+                                id={`sizeBarcodeFrom-${idx}`}
                                 type="text"
                                 className="w-full h-7 border-none bg-transparent px-1 text-[11px] outline-none focus:bg-white"
                                 value={item.barcodeFrom}

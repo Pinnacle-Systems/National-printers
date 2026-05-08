@@ -73,6 +73,7 @@ const CommonFormFooter = ({
   stacked = false,
   hasSummaryTitle = false,
   remarksReadOnly = null,
+  hideTerms = false,
 }) => {
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -305,44 +306,47 @@ const CommonFormFooter = ({
           .filter(Boolean)
           .join(" ")}
       >
-        <div
-          className={[
-            "flex h-full flex-col rounded-md border border-slate-200 bg-white p-1.5 shadow-sm",
-            stacked ? "" : "md:col-span-4",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-        >
-          <div className="flex h-full flex-col gap-1">
-            <div className="mb-1 flex items-center justify-between gap-2">
-              <h2 className="text-[12px] font-bold text-slate-700">
-                Terms & Conditions
-              </h2>
-              {showTemplateControl ? (
-                <button
-                  type="button"
-                  className="shrink-0 text-[11px] font-medium text-blue-600 underline underline-offset-2 hover:text-blue-700"
-                  onClick={() => setIsTemplateModalOpen(true)}
-                >
-                  Apply template
-                </button>
-              ) : null}
+        {!hideTerms && (
+          <div
+            className={[
+              "flex h-full flex-col rounded-md border border-slate-200 bg-white p-1.5 shadow-sm",
+              stacked ? "" : "md:col-span-4",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            <div className="flex h-full flex-col gap-1">
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <h2 className="text-[12px] font-bold text-slate-700">
+                  Terms & Conditions
+                </h2>
+                {showTemplateControl ? (
+                  <button
+                    type="button"
+                    className="shrink-0 text-[11px] font-medium text-blue-600 underline underline-offset-2 hover:text-blue-700"
+                    onClick={() => setIsTemplateModalOpen(true)}
+                  >
+                    Apply template
+                  </button>
+                ) : null}
+              </div>
+              <textarea
+                id="termsAndCondition"
+                ref={termsTextareaRef}
+                disabled={readOnly}
+                className="min-h-[2.5rem] flex-1 w-full overflow-auto focus:outline-none rounded-md border border-slate-300 px-2 py-1.5 text-[11px] focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200"
+                value={terms || ""}
+                onChange={(e) => setTerms(e.target.value)}
+                placeholder={termsPlaceholder}
+              />
             </div>
-            <textarea
-              ref={termsTextareaRef}
-              disabled={readOnly}
-              className="min-h-[2.5rem] flex-1 w-full overflow-auto focus:outline-none rounded-md border border-slate-300 px-2 py-1.5 text-[11px] focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200"
-              value={terms || ""}
-              onChange={(e) => setTerms(e.target.value)}
-              placeholder={termsPlaceholder}
-            />
           </div>
-        </div>
+        )}
 
         <div
           className={[
             "flex h-full flex-col rounded-md border border-slate-200 bg-white p-1.5 shadow-sm",
-            stacked ? "" : "md:col-span-4",
+            stacked ? "" : hideTerms ? "md:col-span-6" : "md:col-span-4",
           ]
             .filter(Boolean)
             .join(" ")}
@@ -360,7 +364,7 @@ const CommonFormFooter = ({
         <div
           className={[
             "grid grid-cols-1 gap-2",
-            stacked ? "" : "md:col-span-4",
+            stacked ? "" : hideTerms ? "md:col-span-6" : "md:col-span-4",
             stacked
               ? ""
               : hasLeftSummaryContent && hasRightSummaryContent
@@ -381,6 +385,11 @@ const CommonFormFooter = ({
           ) : null}
           {hasRightSummaryContent ? (
             <div className="rounded-md border border-slate-200 bg-white px-3 py-2 shadow-sm">
+              {hasSummaryTitle && !hasLeftSummaryContent && (
+                <h2 className="mb-1 text-[12px] font-bold text-slate-700">
+                  {hasSummaryTitle}
+                </h2>
+              )}
               {renderSummaryRows(rightSummaryRows)}
               {extraTotalsContent && extraTotalsContentColumn === "right" ? (
                 <div className="pt-0.5">{extraTotalsContent}</div>
