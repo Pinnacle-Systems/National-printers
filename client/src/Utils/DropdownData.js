@@ -179,15 +179,15 @@ export const jobTypes = [
 
 export const departmentTypes = [
   {
-    label: "Rotary",
+    show: "Rotary",
     value: "rotary",
   },
   {
-    label: "Digital",
+    show: "Digital",
     value: "digital",
   },
   {
-    label: "Offset",
+    show: "Offset",
     value: "offset",
   },
 ];

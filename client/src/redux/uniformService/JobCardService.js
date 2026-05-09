@@ -66,6 +66,19 @@ const JobCardApi = createApi({
       },
       invalidatesTags: ["jobCard"],
     }),
+    getJobCardList: builder.query({
+      query: ({ params }) => {
+        return {
+          url: JOB_CARD_API + "/jobCardList",
+          method: "GET",
+          headers: {
+            "Content-type": "application/json; charset=UTF-8",
+          },
+          params,
+        };
+      },
+      providesTags: ["jobCard"],
+    }),
     deleteJobCard: builder.mutation({
       query: (id) => ({
         url: `${JOB_CARD_API}/${id}`,
@@ -83,6 +96,7 @@ export const {
   useAddJobCardMutation,
   useUpdateJobCardMutation,
   useDeleteJobCardMutation,
+  useGetJobCardListQuery,
 } = JobCardApi;
 
 export default JobCardApi;
