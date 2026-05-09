@@ -91,6 +91,8 @@ import { ProcessRoutePanel, routeKeysToDb } from "./ProcessRoutePanel.jsx";
 import { useAddApprovalStausMutation } from "../../../redux/uniformService/PoServices.js";
 import { MdKeyboardDoubleArrowLeft, MdArrowBack } from "react-icons/md";
 import TransactionLayout from "../../../Basic/components/Reuseable/TransactionLayout.jsx";
+import TransactionActions from "../../../Basic/components/Reuseable/TransactionActions.jsx";
+import { HiX } from "react-icons/hi";
 
 // ── Section card ─────────────────────────────────────────────
 const SectionCard = ({ title, children, className = "" }) => (
@@ -1201,8 +1203,96 @@ const JobCardForm = ({
     </div>
   );
 
+  const actionButtonClass =
+    "px-3 py-2 rounded-md flex items-center justify-center text-sm text-white transition";
+
+  const leftActions = [
+    ...(!readOnly
+      ? [
+          {
+            key: "saveAndClose",
+            icon: (
+              <span className="flex items-center gap-1">
+                <FiSave className="h-4 w-4" />
+                <HiX className="h-4 w-4" />
+              </span>
+            ),
+            hoverLabel: "Save & Close",
+            iconOnly: true,
+            onClick: () => saveData("close"),
+            className: `bg-indigo-500 hover:bg-indigo-600 ${actionButtonClass}`,
+          },
+          {
+            key: "saveAndNew",
+            icon: (
+              <span className="flex items-center gap-1">
+                <FiSave className="h-4 w-4" />
+                <HiOutlineRefresh className="h-4 w-4" />
+              </span>
+            ),
+            hoverLabel: "Save & New",
+            iconOnly: true,
+            onClick: () => saveData("new"),
+            className: `bg-indigo-600 hover:bg-indigo-700 ${actionButtonClass}`,
+          },
+        ]
+      : []),
+    ...(status === "REJECTED" && !readOnly
+      ? [
+          {
+            key: "submitApproval",
+            icon: <FiSend className="h-4 w-4" />,
+            hoverLabel: "Submit Approval",
+            iconOnly: true,
+            onClick: () => saveData("close", { submitApproval: true }),
+            className: `bg-green-700 hover:bg-green-800 ${actionButtonClass}`,
+          },
+        ]
+      : []),
+    ...(id && status === "PENDING" && canApprove && !readOnly
+      ? [
+          {
+            key: "reject",
+            icon: <MdKeyboardDoubleArrowLeft className="h-4 w-4" />,
+            hoverLabel: "Send Back for Review",
+            iconOnly: true,
+            onClick: () => handleApprovalAction("REJECT"),
+            className: `bg-blue-600 hover:bg-blue-700 ${actionButtonClass}`,
+          },
+          {
+            key: "approve",
+            icon: <FiCheck className="h-4 w-4" />,
+            hoverLabel: "Approve",
+            iconOnly: true,
+            onClick: () => handleApprovalAction("APPROVE"),
+            className: `bg-green-600 hover:bg-green-700 ${actionButtonClass}`,
+          },
+        ]
+      : []),
+  ];
+
+  const rightActions = [
+    {
+      key: "edit",
+      icon: <FiEdit2 className="h-4 w-4" />,
+      hoverLabel: "Edit",
+      iconOnly: true,
+      onClick: () => setReadOnly(false),
+      className: `bg-yellow-600 hover:bg-yellow-700 ${actionButtonClass}`,
+      hidden: !readOnly || !id,
+    },
+    {
+      key: "print",
+      icon: <FiPrinter className="h-4 w-4" />,
+      hoverLabel: "Print",
+      iconOnly: true,
+      onClick: () => setPrintModalOpen(true),
+      className: `bg-slate-600 hover:bg-slate-700 ${actionButtonClass}`,
+    },
+  ].filter((a) => !a.hidden);
+
   const footerContent = (
-    <div className="flex flex-col gap-3 bg-[#f1f3f9] p-2 rounded-md border border-slate-200">
+    <div className="flex flex-col gap-3 bg-[#f1f3f9] p-2 rounded-md border border-slate-200 shadow-sm">
       {/* PROCESS ROUTE & REMARKS */}
       <div className="grid grid-cols-[3.5fr_1fr] gap-3">
         <ProcessRoutePanel
@@ -1219,7 +1309,7 @@ const JobCardForm = ({
 
         <SectionCard title="Remarks" className="h-full">
           <textarea
-            className="w-full  h-[30px] border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-blue-500 outline-none resize-none bg-white font-normal"
+            className="w-full h-full min-h-[60px] border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-blue-500 outline-none resize-none bg-white font-normal"
             value={remarks}
             onChange={(e) => setRemarks(e.target.value)}
             placeholder="Additional Remarks..."
@@ -1229,99 +1319,10 @@ const JobCardForm = ({
       </div>
 
       {/* Footer Actions */}
-      <div className="flex justify-between items-center px-4 py-2 bg-[#e9ecef] border border-slate-300 rounded-md">
-        <div className="flex gap-2">
-          <button
-            onClick={() => saveData("close")}
-            disabled={readOnly}
-            className="bg-[#5c5cff] disabled:opacity-50 text-white px-4 py-1.5 rounded hover:bg-indigo-700 flex items-center gap-2 text-xs font-bold transition-colors shadow-sm uppercase"
-          >
-            <HiOutlineRefresh className="w-4 h-4" />
-            Save & Close
-          </button>
-          <button
-            onClick={() => saveData("new")}
-            disabled={readOnly}
-            className="bg-[#5c5cff] disabled:opacity-50 text-white px-4 py-1.5 rounded hover:bg-indigo-700 flex items-center gap-2 text-xs font-bold transition-colors shadow-sm uppercase"
-          >
-            <FiSave className="w-4 h-4" />
-            Save & New
-          </button>
-
-          {status === "REJECTED" && (
-            <button
-              onClick={() => saveData("close", { submitApproval: true })}
-              disabled={readOnly}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  saveData("close", { submitApproval: true });
-                }
-              }}
-              title="Submit Approval"
-              className="bg-green-700 text-white px-2 py-1 rounded hover:bg-green-800 flex items-center text-xs"
-            >
-              <FiSend className="w-4 h-4" />
-            </button>
-          )}
-
-          {id && status === "PENDING" && canApprove && (
-            <button
-              onClick={() => handleApprovalAction("REJECT")}
-              disabled={readOnly}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleApprovalAction("REJECT");
-                }
-              }}
-              title="Send Back for Review"
-              className="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 flex items-center text-xs"
-            >
-              <MdKeyboardDoubleArrowLeft className="w-4 h-4" />
-            </button>
-          )}
-
-          {id && status === "PENDING" && canApprove && (
-            <button
-              onClick={() => handleApprovalAction("APPROVE")}
-              disabled={readOnly}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleApprovalAction("APPROVE");
-                }
-              }}
-              title="Approve"
-              className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 flex items-center text-xs"
-            >
-              <FiCheck className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-
-        <div className="flex gap-2">
-          {id && readOnly && (
-            <button
-              onClick={() => setReadOnly(false)}
-              className="bg-amber-500 text-white px-4 py-1.5 rounded hover:bg-amber-600 flex items-center gap-2 text-xs font-bold transition-colors shadow-sm uppercase"
-            >
-              <FiEdit2 className="w-4 h-4" />
-              Edit
-            </button>
-          )}
-          <button
-            className="bg-[#4a4a4a] text-white px-4 py-1.5 rounded hover:bg-slate-700 flex items-center gap-2 text-xs font-bold uppercase transition-colors shadow-sm"
-            onClick={() => setPrintModalOpen(true)}
-          >
-            <FiPrinter className="w-4 h-4" />
-            Print
-          </button>
-        </div>
-      </div>
+      <TransactionActions
+        leftActions={leftActions}
+        rightActions={rightActions}
+      />
     </div>
   );
 
