@@ -43,6 +43,7 @@ export const CheckBox = ({
 // JobCardForm — 5-column card layout
 // ─────────────────────────────────────────────────────────────
 import { IoArrowBackCircleSharp } from "react-icons/io5";
+import { QRCodeCanvas } from "qrcode.react";
 import {
   DropdownInput,
   DropdownInputNew,
@@ -55,7 +56,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import moment from "moment";
 import { findFromList, getCommonParams, ModeChip } from "../../../Utils/helper";
 import { toast } from "react-toastify";
-import { FiCheck, FiEdit2, FiPrinter, FiSave, FiSend } from "react-icons/fi";
+import {
+  FiCheck,
+  FiEdit2,
+  FiEye,
+  FiPrinter,
+  FiSave,
+  FiSend,
+} from "react-icons/fi";
 import { HiOutlineRefresh } from "react-icons/hi";
 import Swal from "sweetalert2";
 import { dropDownListObject } from "../../../Utils/contructObject";
@@ -84,20 +92,23 @@ import tw from "../../../Utils/tailwind-react-pdf.js";
 import JobCardPrintFormat from "./JobCardPrintFormat.jsx";
 import OrderEntryApi, {
   useGetOrderEntryQuery,
+  useGetOrderEntryByIdQuery,
 } from "../../../redux/uniformService/OrderEntryService.js";
 import { useDispatch } from "react-redux";
 import { invalidateOrderEntryModule } from "../../../redux/Dispatch/OrderInvalidateTags.js";
+import { useGetEmployeeQuery } from "../../../redux/services/EmployeeMasterService.js";
+import { useGetSizeMasterQuery } from "../../../redux/services/SizemasterService.js";
 import { ProcessRoutePanel, routeKeysToDb } from "./ProcessRoutePanel.jsx";
-import { useAddApprovalStausMutation } from "../../../redux/uniformService/PoServices.js";
 import { MdKeyboardDoubleArrowLeft, MdArrowBack } from "react-icons/md";
 import TransactionLayout from "../../../Basic/components/Reuseable/TransactionLayout.jsx";
 import TransactionActions from "../../../Basic/components/Reuseable/TransactionActions.jsx";
 import { HiX } from "react-icons/hi";
+import { useAddApprovalStausMutation } from "../../../redux/uniformService/PoServices.js";
 
 // ── Section card ─────────────────────────────────────────────
 const SectionCard = ({ title, children, className = "" }) => (
   <div
-    className={`bg-white rounded-lg border border-slate-300 shadow-sm overflow-hidden flex flex-col ${className}`}
+    className={`bg-white rounded-lg border border-slate-300 shadow-sm flex flex-col ${className}`}
   >
     {title && (
       <div className="bg-[#f8f9fa] border-b border-slate-200 px-3 py-1.5">
@@ -106,7 +117,7 @@ const SectionCard = ({ title, children, className = "" }) => (
         </h3>
       </div>
     )}
-    <div className="p-3 flex-1">{children}</div>
+    <div className="p-2.5 flex-1">{children}</div>
   </div>
 );
 
@@ -115,8 +126,8 @@ const Col = ({ title, children, className = "" }) => (
 );
 
 // ── Field label + input wrapper ───────────────────────────────
-const Field = ({ label, children, required }) => (
-  <div className="flex flex-col gap-1">
+const Field = ({ label, children, required, className = "" }) => (
+  <div className={`flex flex-col gap-0.5 ${className}`}>
     <span className="text-[10px] font-bold text-slate-800 uppercase tracking-tight flex gap-1">
       {label}{" "}
       {required && <span className="text-red-500 font-bold text-xs">*</span>}
@@ -200,7 +211,7 @@ const JobCardForm = ({
   );
   const [customerId, setCustomerId] = useState("");
   const [remarks, setRemarks] = useState("");
-  const [orderType, setOrderType] = useState("ORDER");
+  const [orderType, setOrderType] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [docId, setDocId] = useState("");
   const [orderQty, setOrderQty] = useState("");
@@ -242,11 +253,21 @@ const JobCardForm = ({
   const [approvalRemarks, setApprovalRemarks] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [department, setDepartment] = useState("");
+  const [itemGroup, setItemGroup] = useState("");
+  const [tagCardUps, setTagCardUps] = useState("");
+  const [followUp, setFollowUp] = useState("");
+  const [designer, setDesigner] = useState("");
+  const [orderEntryItemId, setOrderEntryItemId] = useState("");
+  const [styleItemId, setStyleItemId] = useState("");
+  const [sizeModal, setSizeModal] = useState(false);
+  const qrRef = useRef(null);
+
+  // LABEL DETAILS STATE
   const [labelQuality, setLabelQuality] = useState("");
-  const [block, setBlock] = useState("");
-  const [labelQty, setLabelQty] = useState("");
-  const [rollQty, setRollQty] = useState("");
-  const [cutAndSeal, setCutAndSeal] = useState("");
+  const [labelBlock, setLabelBlock] = useState("");
+  const [labelRollQty, setLabelRollQty] = useState("");
+  const [labelCutAndSeal, setLabelCutAndSeal] = useState("");
+
   const dispatch = useDispatch();
 
   const params = {
@@ -261,6 +282,9 @@ const JobCardForm = ({
     useGetBoardMasterQuery({ params });
   const { data: processGroupList, isFetching: isProcessGroupFetching } =
     useGetProcessGroupMasterQuery({ params });
+  const { data: employeeList } = useGetEmployeeQuery({ params });
+  const { data: sizeList } = useGetSizeMasterQuery({ params: { companyId } });
+  console.log(employeeList, "employeeList");
 
   // ✅ added back — branch feature flags
   const { data: currentBranch } = useGetBranchByIdQuery(branchId, {
@@ -299,6 +323,14 @@ const JobCardForm = ({
 
   const boardList = boardData?.data || [];
 
+  const { data: selectedOrderData } = useGetOrderEntryByIdQuery(orderEntryId, {
+    skip: !orderEntryId,
+  });
+
+  const selectedItem = selectedOrderData?.data?.orderItems?.find(
+    (i) => i.id === orderEntryItemId,
+  );
+
   // Fallback: If "DEFAULT" group is empty, show all processes that aren't in other major groups
   const laminationIds = getGroupIds("LAMINATION");
   const varnishIds = getGroupIds("VARNISH");
@@ -318,6 +350,8 @@ const JobCardForm = ({
   const varnishList = filterByGroup("VARNISH");
   const machineList = filterByGroup("MACHINE");
 
+  const isLabel = itemGroup?.toUpperCase() === "LABEL";
+
   const {
     data: singleData,
     isFetching: isSingleFetching,
@@ -336,7 +370,7 @@ const JobCardForm = ({
         ? moment.utc(data.docDate).format("YYYY-MM-DD")
         : moment.utc(new Date()).format("YYYY-MM-DD"),
     );
-    setOrderType(data?.orderType || "ORDER");
+    setOrderType(data?.orderType || "");
     setCustomerId(data?.customerId || "");
     setRemarks(data?.remarks || "");
     setOrderQty(data?.orderQty || "");
@@ -397,11 +431,16 @@ const JobCardForm = ({
             })
         : [],
     );
+    setItemGroup(data?.itemGroup || "");
+    setTagCardUps(data?.tagCardUps || "");
+    setFollowUp(data?.followUpId || "");
+    setDesigner(data?.designerId || "");
     setLabelQuality(data?.labelQuality || "");
-    setBlock(data?.block || "");
-    setLabelQty(data?.labelQty || "");
-    setRollQty(data?.rollQty || "");
-    setCutAndSeal(data?.cutAndSeal || "");
+    setLabelBlock(data?.labelBlock || "");
+    setLabelRollQty(data?.labelRollQty || "");
+    setLabelCutAndSeal(data?.labelCutAndSeal || "");
+    setOrderEntryItemId(data?.orderEntryItemId || "");
+    setStyleItemId(data?.styleItemId || "");
     setReadOnly(
       (["PENDING", "APPROVED"].includes(status) && !canApprove) || readOnly,
     );
@@ -467,11 +506,17 @@ const JobCardForm = ({
     jobRunTime,
     processRoute: routeKeysToDb(processRoute),
     department,
+    itemGroup,
+    tagCardUps,
+    followUpId: followUp,
+    designerId: designer,
+    orderEntryItemId,
+    styleItemId,
+    // Label specific fields
     labelQuality,
-    block,
-    labelQty,
-    rollQty,
-    cutAndSeal,
+    labelBlock,
+    labelRollQty,
+    labelCutAndSeal,
   };
 
   const handleSubmitCustom = async (callback, data, text, nextProcess) => {
@@ -709,29 +754,33 @@ const JobCardForm = ({
                 "id",
               )}
               value={customerId}
-              setValue={setCustomerId}
+              setValue={(val) => {
+                setCustomerId(val);
+                setOrderEntryId("");
+                setProformaInvoiceId("");
+                setOrderType("");
+                setOrderEntryItemId("");
+                setItemGroup("");
+                setOrderQty("");
+              }}
               required
               readOnly={readOnly}
               addNewLabel="+ Add New Customer"
               childComponent={PartyMaster}
               addNewModalWidth="w-[90%] h-[95%]"
               disabled={!!id}
+              ref={customerRef}
             />
           </Field>
           <Field label="Department">
-            <select
+            <DropdownInput
+              name=""
+              options={departmentTypes}
               value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-              className="w-full px-2 h-8 text-xs font-normal rounded border border-slate-300 
-                focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
-                transition-all duration-150 shadow-sm text-black"
-            >
-              {departmentTypes.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
+              setValue={setDepartment}
+              readOnly={readOnly}
+              disabled={readOnly}
+            />
           </Field>
         </div>
       </SectionCard>
@@ -745,10 +794,15 @@ const JobCardForm = ({
                 name=""
                 dataList={proformaList?.data
                   ?.filter((item) => {
+                    if (!customerId) return false;
                     const approvedCheck = isApprovalEnabled
                       ? item.isApproved === true
                       : true;
-                    return item.orderEntryId && approvedCheck;
+                    return (
+                      item.orderEntryId &&
+                      approvedCheck &&
+                      item.customerId === customerId
+                    );
                   })
                   ?.map((item) => ({
                     ...item,
@@ -763,22 +817,27 @@ const JobCardForm = ({
                   if (selected) {
                     setOrderEntryId(selected.orderEntryId);
                     setCustomerId(selected.customerId);
-                    setOrderType(selected.orderType || "ORDER");
+                    setOrderType(
+                      selected.productionType || selected.orderType || "",
+                    );
                     setOrderQty(selected.orderQty || "");
+                    setOrderEntryItemId("");
                   }
                 }}
                 required
                 readOnly={readOnly}
                 disabled={readOnly}
                 otherField={"orderDocId"}
-                ref={customerRef}
               />
             ) : (
               <DropdownNew
                 name=""
                 dataList={orderList?.data?.filter((item) => {
-                  if (isApprovalEnabled) return item.isApproved === true;
-                  return true;
+                  if (!customerId) return false;
+                  const approvedCheck = isApprovalEnabled
+                    ? item.isApproved === true
+                    : true;
+                  return approvedCheck && item.customerId === customerId;
                 })}
                 value={orderEntryId}
                 setValue={(val) => {
@@ -786,116 +845,126 @@ const JobCardForm = ({
                   const selected = orderList?.data?.find((o) => o.id === val);
                   if (selected) {
                     setCustomerId(selected.customerId);
-                    setOrderType(selected.orderType || "ORDER");
+                    setOrderType(
+                      selected.productionType || selected.orderType || "",
+                    );
                     setOrderQty(selected.orderQty || "");
+                    setOrderEntryItemId("");
                   }
                 }}
                 required
                 readOnly={readOnly}
                 disabled={readOnly}
                 otherField={"docId"}
-                ref={customerRef}
               />
             )}
           </Field>
 
           <Field label="Production Type" required>
-            <DropdownInput
+            <TextInput
               name=""
-              options={orderTypes}
               value={orderType}
-              setValue={setOrderType}
-              required
-              readOnly={readOnly}
-              disabled={readOnly}
+              readOnly
+              disabled
+              className="bg-slate-50 font-medium"
             />
           </Field>
 
+          <Field label="Item Description" className="col-span-2">
+            <DropdownNew
+              name=""
+              dataList={
+                selectedOrderData?.data?.orderItems?.map((item) => ({
+                  ...item,
+                  itemDescription:
+                    item.StyleItem?.name || item.remarks || "No Name",
+                })) || []
+              }
+              value={orderEntryItemId}
+              setValue={(val) => {
+                setOrderEntryItemId(val);
+                const item = selectedOrderData?.data?.orderItems?.find(
+                  (i) => i.id === val,
+                );
+                if (item) {
+                  setOrderQty(item.orderQty || orderQty);
+                  setItemGroup(item.ItemGroup?.name || "");
+                  setStyleItemId(item.styleItemId || "");
+                }
+              }}
+              otherField={"itemDescription"}
+              readOnly={readOnly}
+              disabled={readOnly || !orderEntryId}
+            />
+          </Field>
+          <Field label="Item Group" className="col-span-2">
+            <TextInput
+              value={itemGroup}
+              setValue={setItemGroup}
+              readOnly
+              disabled
+              className="w-full bg-slate-50"
+            />
+          </Field>
           <Field label="Order Qty" required>
             <TextInput
               name=""
               value={orderQty}
               setValue={setOrderQty}
-              readOnly={readOnly}
+              readOnly
+              disabled
               required
               type="number"
-              className="text-right w-full"
+              className="text-right w-full bg-slate-50"
               placeholder="Order Qty"
             />
           </Field>
 
-          <Field label="Label Quality">
-            <TextInput
-              value={labelQuality}
-              setValue={setLabelQuality}
-              readOnly={readOnly}
-              className="w-full"
-            />
-          </Field>
+          {!isLabel && (
+            <Field label="Tag/Card ups" className="col-span-1">
+              <TextInput
+                value={tagCardUps}
+                setValue={setTagCardUps}
+                readOnly={readOnly}
+                className="w-full"
+              />
+            </Field>
+          )}
 
-          <Field label="Block">
-            <TextInput
-              value={block}
-              setValue={setBlock}
-              readOnly={readOnly}
-              className="w-full"
-            />
-          </Field>
+          {!isLabel && (
+            <Field label="Job Run time">
+              <TextInput
+                value={jobRunTime}
+                setValue={setJobRunTime}
+                readOnly={readOnly}
+                className="w-full"
+              />
+            </Field>
+          )}
 
-          <Field label="Label Qty">
-            <TextInput
-              value={labelQty}
-              setValue={setLabelQty}
-              readOnly={readOnly}
-              type="number"
-              className="w-full text-right"
-            />
-          </Field>
-
-          <Field label="Roll Qty">
-            <TextInput
-              value={rollQty}
-              setValue={setRollQty}
-              readOnly={readOnly}
-              type="number"
-              className="w-full text-right"
-            />
-          </Field>
-
-          <Field label="Cut & Seal">
-            <TextInput
-              value={cutAndSeal}
-              setValue={setCutAndSeal}
-              readOnly={readOnly}
-              className="w-full"
-            />
-          </Field>
-
-          <Field label="Job Run Time">
-            <TextInput
+          <Field label="Follow Up">
+            <DropdownNew
               name=""
-              value={jobRunTime}
-              setValue={setJobRunTime}
+              dataList={employeeList?.data || []}
+              otherField="name"
+              otherValue="id"
+              value={followUp}
+              setValue={setFollowUp}
               readOnly={readOnly}
-              type="text"
-              className="w-full"
-              placeholder="Job Run Time"
+              disabled={readOnly}
             />
           </Field>
 
-          <Field label="Item Description" className="col-span-3">
-            <TextInput
+          <Field label="Designer">
+            <DropdownNew
               name=""
-              value={
-                findFromList(
-                  orderEntryId,
-                  orderList?.data,
-                  "itemDescription",
-                ) || ""
-              }
-              readOnly
-              disabled
-              className="bg-slate-50"
+              dataList={employeeList?.data || []}
+              otherField="name"
+              otherValue="id"
+              value={designer}
+              setValue={setDesigner}
+              readOnly={readOnly}
+              disabled={readOnly}
             />
           </Field>
         </div>
@@ -904,302 +973,499 @@ const JobCardForm = ({
       {/* QR CODE */}
       <SectionCard title="QR CODE">
         <div className="flex flex-col items-center justify-center h-full min-h-[80px] border-2 border-dashed border-slate-200 rounded text-center p-1 bg-white">
-          <span className="text-[10px] text-slate-400 font-medium leading-tight">
-            QR appears
-            <br />
-            after save
-          </span>
+          {id ? (
+            <div className="flex flex-col items-center">
+              <QRCodeCanvas
+                ref={qrRef}
+                value={JSON.stringify({ id, docId })}
+                size={80}
+                className="border border-slate-200 rounded mx-auto my-2"
+                level="H"
+              />
+              <div className="text-[9px] font-bold text-slate-800 tracking-tight">
+                {docId}
+              </div>
+            </div>
+          ) : (
+            <span className="text-[10px] text-slate-400 font-medium leading-tight">
+              QR appears
+              <br />
+              after save
+            </span>
+          )}
         </div>
       </SectionCard>
     </div>
   );
 
+  const labelDetailsContent = (
+    <SectionCard title="LABEL DETAILS" className="min-h-full flex-1">
+      <div className="flex gap-6 p-2 flex-1 min-h-0">
+        {/* LEFT SIDE: TECHNICAL FIELDS & REMARKS */}
+        <div className="flex-1 flex flex-col gap-4 min-h-0">
+          {/* Single Row for all Technical Fields */}
+          <div className="grid grid-cols-6 gap-3 shrink-0">
+            <Field label="Label Quality">
+              <TextInput
+                value={labelQuality}
+                setValue={setLabelQuality}
+                readOnly={readOnly}
+                className="w-full"
+              />
+            </Field>
+            <Field label="Block" className="col-span-2">
+              <TextInput
+                value={labelBlock}
+                setValue={setLabelBlock}
+                readOnly={readOnly}
+                className="w-full"
+              />
+            </Field>
+            <Field label="Label Qty">
+              <TextInput
+                value={orderQty}
+                readOnly
+                disabled
+                className="w-full bg-slate-50 text-right"
+              />
+            </Field>
+            <Field label="Roll Qty">
+              <TextInput
+                value={labelRollQty}
+                setValue={setLabelRollQty}
+                readOnly={readOnly}
+                className="w-full text-right"
+              />
+            </Field>
+            <Field label="Cut & Seal">
+              <TextInput
+                value={labelCutAndSeal}
+                setValue={setLabelCutAndSeal}
+                readOnly={readOnly}
+                className="w-full"
+              />
+            </Field>
+          </div>
+
+          {/* Remarks (Fills remaining height below the row) */}
+          <div className="flex-1 flex flex-col min-h-0">
+            <Field label="Remarks" className="h-full flex flex-col">
+              <textarea
+                className="w-full p-2 border border-slate-300 rounded-md text-[11px] focus:ring-1 focus:ring-indigo-500 outline-none flex-1 min-h-0 bg-white transition-all shadow-inner resize-none"
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                readOnly={readOnly}
+                placeholder="Enter special label instructions..."
+              />
+            </Field>
+          </div>
+        </div>
+
+        {/* RIGHT SIDE: SIZE BREAKUP */}
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="border border-slate-200 rounded-md overflow-hidden bg-white shadow-sm flex flex-col h-full">
+            <div className="bg-slate-50 px-3 py-1.5 border-b border-slate-200 shrink-0">
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                Size / Barcode wise Details
+              </span>
+            </div>
+            <div className="p-2 flex-1 overflow-auto min-h-0">
+              {selectedItem?.sizeBreakup?.length > 0 ? (
+                <table className="w-full text-[11px] border-collapse">
+                  <thead className="sticky top-0 z-20">
+                    <tr className="bg-slate-50 text-black uppercase text-[10px] font-bold">
+                      <th className="border border-slate-200 px-2 py-1.5 text-center w-11">
+                        S.NO
+                      </th>
+                      {selectedItem?.trackingType !== "Barcode" && (
+                        <th className="border border-slate-200 px-2 py-1.5 text-center">
+                          SIZE
+                        </th>
+                      )}
+                      {selectedItem?.trackingType !== "Size Template" && (
+                        <>
+                          <th className="border border-slate-200 px-2 py-1.5 text-center">
+                            FROM
+                          </th>
+                          <th className="border border-slate-200 px-2 py-1.5 text-center">
+                            TO
+                          </th>
+                        </>
+                      )}
+                      <th className="border border-slate-200 px-2 py-1.5 text-center w-24">
+                        QTY
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedItem?.sizeBreakup
+                      ?.filter((row) => (Number(row.qty) || 0) > 0)
+                      ?.map((row, idx) => (
+                        <tr
+                          key={idx}
+                          className="hover:bg-slate-50 transition-colors"
+                        >
+                          <td className="border border-slate-200 px-2 py-1.5 text-center text-slate-500">
+                            {idx + 1}
+                          </td>
+                          {selectedItem?.trackingType !== "Barcode" && (
+                            <td className="border border-slate-200 px-2 py-1.5 text-left font-medium text-slate-700">
+                              {row.Size?.name ||
+                                sizeList?.data?.find(
+                                  (s) => String(s.id) === String(row.sizeId),
+                                )?.name ||
+                                row.size ||
+                                "All Items"}
+                            </td>
+                          )}
+                          {selectedItem?.trackingType !== "Size Template" && (
+                            <>
+                              <td className="border border-slate-200 px-2 py-1.5 text-left text-slate-600 font-mono">
+                                {row.barcodeFrom || "-"}
+                              </td>
+                              <td className="border border-slate-200 px-2 py-1.5 text-left text-slate-600 font-mono">
+                                {row.barcodeTo || "-"}
+                              </td>
+                            </>
+                          )}
+                          <td className="border border-slate-200 px-2 py-1.5 text-right font-bold text-indigo-600">
+                            {row.qty}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full py-8 text-slate-400 gap-2">
+                  <FiEye className="text-2xl opacity-20" />
+                  <span className="text-[10px] italic">
+                    No size details available
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </SectionCard>
+  );
+
   const gridItemsContent = (
-    <div className="h-full overflow-y-auto px-1 bg-[#f1f3f9] p-2 rounded-md border border-slate-200">
-      {/* ══ MIDDLE GRID — 4 COLUMNS ════════════════════════ */}
-      <div className="grid grid-cols-4 gap-3 items-start">
-        {/* COLUMN 1: BOARD QUALITY & SPECIFICATIONS */}
-        <div className="flex flex-col gap-3">
-          <SectionCard title="Board Quality">
-            <div className="grid grid-cols-2 gap-x-2 gap-y-3">
-              {boardList?.map((item) => (
-                <CheckBox
-                  key={item.id}
-                  name={item.name}
-                  value={boardItems.includes(item.id)}
-                  setValue={() => toggleArr(setBoardItems, item.id)}
-                  readOnly={readOnly}
-                />
-              ))}
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Specifications">
-            <div className="grid grid-cols-2 gap-x-3 gap-y-3">
-              <Field label="GSM">
-                <DropdownWithModal
-                  name=""
-                  options={dropDownListObject(
-                    id
-                      ? gsmList?.data
-                      : gsmList?.data?.filter((i) => i?.active),
-                    "name",
-                    "id",
-                  )}
-                  value={gsmId}
-                  setValue={setGsmId}
-                  readOnly={readOnly}
-                  addNewLabel="+ Add GSM"
-                  childComponent={Gsm}
-                  addNewModalWidth="w-[30%] h-[45%]"
-                />
-              </Field>
-              <Field label="Others / Board">
-                <DropdownWithModal
-                  name=""
-                  options={dropDownListObject(
-                    id
-                      ? boardData?.data
-                      : boardData?.data?.filter((i) => i?.active),
-                    "name",
-                    "id",
-                  )}
-                  value={boardId}
-                  setValue={setBoardId}
-                  readOnly={readOnly}
-                  addNewLabel="+ Add Board"
-                  childComponent={BoardMaster}
-                  addNewModalWidth="w-[30%] h-[45%]"
-                />
-              </Field>
-              <Field label="Full Board">
-                <TextInput
-                  name=""
-                  value={fullBoard}
-                  setValue={setFullBoard}
-                  readOnly={readOnly}
-                  type="number"
-                  className="text-right w-full"
-                />
-              </Field>
-              <Field label="Cutting Size">
-                <TextInput
-                  name=""
-                  value={cuttingSize}
-                  setValue={setCuttingSize}
-                  readOnly={readOnly}
-                  className="w-full"
-                />
-              </Field>
-              <Field label="No. of Pockets">
-                <TextInput
-                  name=""
-                  value={noOfPockets}
-                  setValue={setNoOfPockets}
-                  readOnly={readOnly}
-                  type="number"
-                  className="w-full text-right"
-                />
-              </Field>
-              <Field label="Running Qty">
-                <TextInput
-                  name=""
-                  value={runningQty}
-                  setValue={setRunningQty}
-                  readOnly={readOnly}
-                  type="number"
-                  className="w-full text-right"
-                />
-              </Field>
-              <CheckBox
-                name="4 Color"
-                value={isFourColor}
-                setValue={setIsFourColor}
-                readOnly={readOnly}
-              />
-              <CheckBox
-                name="Cut Color"
-                value={isCutColor}
-                setValue={setIsCutColor}
-                readOnly={readOnly}
-              />
-            </div>
-          </SectionCard>
-        </div>
-
-        {/* COLUMN 2: PROCESS DETAILS & LAMINATION DETAILS */}
-        <div className="flex flex-col gap-3">
-          <SectionCard title="Process Details">
-            <div className="grid grid-cols-2 gap-x-2 gap-y-3">
-              {defaultList?.map((item) => (
-                <CheckBox
-                  key={item.id}
-                  name={item.name}
-                  value={selectedProcesses.includes(item.id)}
-                  setValue={() => toggleArr(setSelectedProcesses, item.id)}
-                  readOnly={readOnly}
-                />
-              ))}
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Lamination Details">
-            <LVHeader />
-            <div className="space-y-1">
-              {laminationList?.map((item) => {
-                const selected = laminations.find(
-                  (l) => l.processId === item.id,
-                );
-                return (
-                  <LVRow
+    <div className="h-full overflow-y-auto px-1 bg-[#f1f3f9] p-2 rounded-md border border-slate-200 flex flex-col">
+      {isLabel ? (
+        <div className="min-h-full flex flex-col">{labelDetailsContent}</div>
+      ) : (
+        <div className="grid grid-cols-4 gap-3 items-stretch h-full">
+          {/* COLUMN 1: BOARD QUALITY & SPECIFICATIONS */}
+          <div className="flex flex-col gap-3 h-full">
+            <SectionCard title="Board Quality">
+              <div className="grid grid-cols-2 gap-x-2 gap-y-3">
+                {boardList?.map((item) => (
+                  <CheckBox
                     key={item.id}
-                    item={item}
-                    selected={selected}
-                    onMain={() => toggleLV(setLaminations, item.id)}
-                    onFront={() =>
-                      toggleLVProp(setLaminations, item.id, "isFront")
-                    }
-                    onFrontBack={() =>
-                      toggleLVProp(setLaminations, item.id, "isFrontAndBack")
-                    }
+                    name={item.name}
+                    value={boardItems.includes(item.id)}
+                    setValue={() => toggleArr(setBoardItems, item.id)}
                     readOnly={readOnly}
                   />
-                );
-              })}
-            </div>
-          </SectionCard>
-        </div>
+                ))}
+              </div>
+            </SectionCard>
 
-        {/* COLUMN 3: VARNISH DETAILS & MACHINES */}
-        <div className="flex flex-col gap-3">
-          <SectionCard title="Varnish Details">
-            <LVHeader />
-            <div className="space-y-1">
-              {varnishList?.map((item) => {
-                const selected = varnishes.find((v) => v.processId === item.id);
-                return (
-                  <LVRow
-                    key={item.id}
-                    item={item}
-                    selected={selected}
-                    onMain={() => toggleLV(setVarnishes, item.id)}
-                    onFront={() =>
-                      toggleLVProp(setVarnishes, item.id, "isFront")
-                    }
-                    onFrontBack={() =>
-                      toggleLVProp(setVarnishes, item.id, "isFrontAndBack")
-                    }
-                    readOnly={readOnly}
-                  />
-                );
-              })}
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Machines">
-            <div className="grid grid-cols-2 gap-x-2 gap-y-4">
-              {machineList?.map((item) => (
-                <CheckBox
-                  key={item.id}
-                  name={item.name}
-                  value={selectedMachines.includes(item.id)}
-                  setValue={() => toggleArr(setSelectedMachines, item.id)}
-                  readOnly={readOnly}
-                />
-              ))}
-            </div>
-          </SectionCard>
-        </div>
-
-        {/* COLUMN 4: MACHINE SPECS, PLATE & DIE, REMARKS */}
-        <div className="flex flex-col gap-3">
-          <SectionCard title="Machine Specifications">
-            <div className="grid grid-cols-2 gap-x-2 gap-y-3">
-              <CheckBox
-                name="CMYK"
-                value={isCMYK}
-                setValue={setIsCMYK}
-                readOnly={readOnly}
-              />
-              <CheckBox
-                name="Cut Col"
-                value={isCutColMachine}
-                setValue={setIsCutColMachine}
-                readOnly={readOnly}
-              />
-              <CheckBox
-                name="Front"
-                value={isFrontMachine}
-                setValue={setIsFrontMachine}
-                readOnly={readOnly}
-              />
-              <CheckBox
-                name="Front & Back"
-                value={isFrontBackMachine}
-                setValue={setIsFrontBackMachine}
-                readOnly={readOnly}
-              />
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Plate & Die Details">
-            <div className="flex flex-col gap-3">
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Plate Details">
+            <SectionCard title="Specifications" className="flex-1">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-3">
+                <Field label="GSM">
                   <DropdownWithModal
                     name=""
                     options={dropDownListObject(
                       id
-                        ? plateList?.data
-                        : plateList?.data?.filter((i) => i?.active),
+                        ? gsmList?.data
+                        : gsmList?.data?.filter((i) => i?.active),
                       "name",
                       "id",
                     )}
-                    value={plateId}
-                    setValue={setPlateId}
+                    value={gsmId}
+                    setValue={setGsmId}
                     readOnly={readOnly}
-                    addNewLabel="+ Add Plate"
-                    childComponent={PlateMaster}
+                    addNewLabel="+ Add GSM"
+                    childComponent={Gsm}
+                    addNewModalWidth="w-[30%] h-[45%]"
                   />
                 </Field>
-                <Field label="Die Details">
+                <Field label="Others / Board">
                   <DropdownWithModal
                     name=""
                     options={dropDownListObject(
                       id
-                        ? dieList?.data
-                        : dieList?.data?.filter((i) => i?.active),
+                        ? boardData?.data
+                        : boardData?.data?.filter((i) => i?.active),
                       "name",
                       "id",
                     )}
-                    value={dieId}
-                    setValue={setDieId}
+                    value={boardId}
+                    setValue={setBoardId}
                     readOnly={readOnly}
-                    addNewLabel="+ Add Die"
-                    childComponent={DieMaster}
+                    addNewLabel="+ Add Board"
+                    childComponent={BoardMaster}
+                    addNewModalWidth="w-[30%] h-[45%]"
+                  />
+                </Field>
+                <Field label="Full Board">
+                  <TextInput
+                    name=""
+                    value={fullBoard}
+                    setValue={setFullBoard}
+                    readOnly={readOnly}
+                    type="number"
+                    className="text-right w-full"
+                  />
+                </Field>
+                <Field label="Cutting Size">
+                  <TextInput
+                    name=""
+                    value={cuttingSize}
+                    setValue={setCuttingSize}
+                    readOnly={readOnly}
+                    className="w-full"
+                  />
+                </Field>
+                <Field label="No. of Pockets">
+                  <TextInput
+                    name=""
+                    value={noOfPockets}
+                    setValue={setNoOfPockets}
+                    readOnly={readOnly}
+                    type="number"
+                    className="w-full text-right"
+                  />
+                </Field>
+                <Field label="Running Qty">
+                  <TextInput
+                    name=""
+                    value={runningQty}
+                    setValue={setRunningQty}
+                    readOnly={readOnly}
+                    type="number"
+                    className="w-full text-right"
+                  />
+                </Field>
+                <CheckBox
+                  name="4 Color"
+                  value={isFourColor}
+                  setValue={setIsFourColor}
+                  readOnly={readOnly}
+                />
+                <CheckBox
+                  name="Cut Color"
+                  value={isCutColor}
+                  setValue={setIsCutColor}
+                  readOnly={readOnly}
+                />
+                <CheckBox
+                  name="Front"
+                  value={isFront}
+                  setValue={setIsFront}
+                  readOnly={readOnly}
+                />
+                <CheckBox
+                  name="Front & Back"
+                  value={isFrontAndBack}
+                  setValue={setIsFrontAndBack}
+                  readOnly={readOnly}
+                />
+              </div>
+            </SectionCard>
+          </div>
+
+          {/* COLUMN 2: PROCESS DETAILS & LAMINATION DETAILS */}
+          <div className="flex flex-col gap-3 h-full">
+            <SectionCard title="Process Details">
+              <div className="grid grid-cols-2 gap-x-2 gap-y-3">
+                {defaultList?.map((item) => (
+                  <CheckBox
+                    key={item.id}
+                    name={item.name}
+                    value={selectedProcesses.includes(item.id)}
+                    setValue={() => toggleArr(setSelectedProcesses, item.id)}
+                    readOnly={readOnly}
+                  />
+                ))}
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Lamination Details" className="flex-1">
+              <LVHeader />
+              <div className="space-y-1">
+                {laminationList?.map((item) => {
+                  const selected = laminations.find(
+                    (l) => l.processId === item.id,
+                  );
+                  return (
+                    <LVRow
+                      key={item.id}
+                      item={item}
+                      selected={selected}
+                      onMain={() => toggleLV(setLaminations, item.id)}
+                      onFront={() =>
+                        toggleLVProp(setLaminations, item.id, "isFront")
+                      }
+                      onFrontBack={() =>
+                        toggleLVProp(setLaminations, item.id, "isFrontAndBack")
+                      }
+                      readOnly={readOnly}
+                    />
+                  );
+                })}
+              </div>
+            </SectionCard>
+          </div>
+
+          {/* COLUMN 3: VARNISH DETAILS & MACHINES */}
+          <div className="flex flex-col gap-3 h-full">
+            <SectionCard title="Varnish Details">
+              <LVHeader />
+              <div className="space-y-1">
+                {varnishList?.map((item) => {
+                  const selected = varnishes.find(
+                    (v) => v.processId === item.id,
+                  );
+                  return (
+                    <LVRow
+                      key={item.id}
+                      item={item}
+                      selected={selected}
+                      onMain={() => toggleLV(setVarnishes, item.id)}
+                      onFront={() =>
+                        toggleLVProp(setVarnishes, item.id, "isFront")
+                      }
+                      onFrontBack={() =>
+                        toggleLVProp(setVarnishes, item.id, "isFrontAndBack")
+                      }
+                      readOnly={readOnly}
+                    />
+                  );
+                })}
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Machines" className="flex-1">
+              <div className="grid grid-cols-2 gap-x-2 gap-y-4">
+                {machineList?.map((item) => (
+                  <CheckBox
+                    key={item.id}
+                    name={item.name}
+                    value={selectedMachines.includes(item.id)}
+                    setValue={() => toggleArr(setSelectedMachines, item.id)}
+                    readOnly={readOnly}
+                  />
+                ))}
+              </div>
+            </SectionCard>
+          </div>
+
+          {/* COLUMN 4: MACHINE SPECS, PLATE & DIE, SIZE DETAILS */}
+          <div className="flex flex-col gap-3 h-full">
+            <SectionCard title="Machine Specifications">
+              <div className="grid grid-cols-2 gap-x-2 gap-y-3">
+                <CheckBox
+                  name="CMYK"
+                  value={isCMYK}
+                  setValue={setIsCMYK}
+                  readOnly={readOnly}
+                />
+                <CheckBox
+                  name="Cut Col"
+                  value={isCutColMachine}
+                  setValue={setIsCutColMachine}
+                  readOnly={readOnly}
+                />
+                <CheckBox
+                  name="Front"
+                  value={isFrontMachine}
+                  setValue={setIsFrontMachine}
+                  readOnly={readOnly}
+                />
+                <CheckBox
+                  name="Front & Back"
+                  value={isFrontBackMachine}
+                  setValue={setIsFrontBackMachine}
+                  readOnly={readOnly}
+                />
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Plate & Die Details">
+              <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Plate Details">
+                    <DropdownWithModal
+                      name=""
+                      options={dropDownListObject(
+                        id
+                          ? plateList?.data
+                          : plateList?.data?.filter((i) => i?.active),
+                        "name",
+                        "id",
+                      )}
+                      value={plateId}
+                      setValue={setPlateId}
+                      readOnly={readOnly}
+                      addNewLabel="+ Add Plate"
+                      childComponent={PlateMaster}
+                    />
+                  </Field>
+                  <Field label="Die Details">
+                    <DropdownWithModal
+                      name=""
+                      options={dropDownListObject(
+                        id
+                          ? dieList?.data
+                          : dieList?.data?.filter((i) => i?.active),
+                        "name",
+                        "id",
+                      )}
+                      value={dieId}
+                      setValue={setDieId}
+                      readOnly={readOnly}
+                      addNewLabel="+ Add Die"
+                      childComponent={DieMaster}
+                    />
+                  </Field>
+                </div>
+                <Field label="Total Plate Sets">
+                  <TextInput
+                    name=""
+                    value={totalPlateSet}
+                    setValue={setTotalPlateSet}
+                    readOnly={readOnly}
+                    type="number"
+                    className="w-full text-right"
                   />
                 </Field>
               </div>
-              <Field label="Total Plate Sets">
-                <TextInput
-                  name=""
-                  value={totalPlateSet}
-                  setValue={setTotalPlateSet}
-                  readOnly={readOnly}
-                  type="number"
-                  className="w-full text-right"
-                />
-              </Field>
-            </div>
-          </SectionCard>
+            </SectionCard>
 
-          <SectionCard title="Size Details">
-            <button className="w-full py-2 bg-[#218838] text-white rounded text-[11px] font-bold uppercase hover:bg-green-700 transition-colors shadow-sm">
-              View Size Details
-            </button>
-          </SectionCard>
+            <SectionCard title="Size / Barcode Details" className="flex-1">
+              <div className="flex items-center justify-center h-full">
+                <button
+                  onClick={() => setSizeModal(true)}
+                  disabled={
+                    !selectedItem || selectedItem.trackingType === "None"
+                  }
+                  className={`p-2 rounded-full transition-all ${
+                    !selectedItem || selectedItem.trackingType === "None"
+                      ? "text-slate-300 cursor-not-allowed"
+                      : "text-indigo-600 hover:bg-indigo-50 hover:scale-110 active:scale-95"
+                  }`}
+                  title="View Size Details"
+                >
+                  <FiEye size={20} />
+                </button>
+              </div>
+            </SectionCard>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 
@@ -1294,29 +1560,31 @@ const JobCardForm = ({
   const footerContent = (
     <div className="flex flex-col gap-3 bg-[#f1f3f9] p-2 rounded-md border border-slate-200 shadow-sm">
       {/* PROCESS ROUTE & REMARKS */}
-      <div className="grid grid-cols-[3.5fr_1fr] gap-3">
-        <ProcessRoutePanel
-          selectedProcesses={selectedProcesses}
-          laminations={laminations}
-          varnishes={varnishes}
-          defaultList={defaultList}
-          laminationList={laminationList}
-          varnishList={varnishList}
-          processRoute={processRoute}
-          setProcessRoute={setProcessRoute}
-          readOnly={readOnly}
-        />
-
-        <SectionCard title="Remarks" className="h-full">
-          <textarea
-            className="w-full h-full min-h-[60px] border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-blue-500 outline-none resize-none bg-white font-normal"
-            value={remarks}
-            onChange={(e) => setRemarks(e.target.value)}
-            placeholder="Additional Remarks..."
+      {!isLabel && (
+        <div className="grid grid-cols-[3.5fr_1fr] gap-3">
+          <ProcessRoutePanel
+            selectedProcesses={selectedProcesses}
+            laminations={laminations}
+            varnishes={varnishes}
+            defaultList={defaultList}
+            laminationList={laminationList}
+            varnishList={varnishList}
+            processRoute={processRoute}
+            setProcessRoute={setProcessRoute}
             readOnly={readOnly}
           />
-        </SectionCard>
-      </div>
+
+          <SectionCard title="Remarks" className="h-full">
+            <textarea
+              className="w-full h-[30px] border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-blue-500 outline-none resize-none bg-white font-normal"
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
+              placeholder="Additional Remarks..."
+              readOnly={readOnly}
+            />
+          </SectionCard>
+        </div>
+      )}
 
       {/* Footer Actions */}
       <TransactionActions
@@ -1426,21 +1694,247 @@ const JobCardForm = ({
         >
           <PDFViewer className="w-full h-full border-none">
             <JobCardPrintFormat
-              data={formData}
-              customerDetails={customerList?.data?.find(
-                (c) => c.id === customerId,
-              )}
-              gsmList={gsmList?.data}
-              boardData={boardData?.data}
+              singleData={singleData?.data || data}
+              customerList={customerList}
+              gsmList={gsmList}
+              boardList={boardList}
               plateList={plateList}
               dieList={dieList}
-              processList={processList?.data}
+              defaultList={defaultList}
               laminationList={laminationList}
               varnishList={varnishList}
+              machineList={machineList}
               branchData={branchData?.data}
               orderList={orderList}
             />
           </PDFViewer>
+        </Modal>
+      )}
+
+      {sizeModal && (
+        <Modal
+          isOpen={sizeModal}
+          onClose={() => setSizeModal(false)}
+          widthClass="w-[650px] h-[460px]"
+        >
+          <div className="bg-slate-100 p-3 rounded-lg">
+            {/* Header section */}
+            <div className="bg-white p-3 rounded-lg flex justify-between items-center mb-3 shadow-sm">
+              <h3 className="text-[16px] font-bold text-slate-800">
+                {selectedItem?.trackingType === "Barcode"
+                  ? "Barcode Wise Breakup"
+                  : selectedItem?.trackingType === "Size Template + Barcode"
+                    ? "Size + Barcode Wise Breakup"
+                    : "Size Wise Breakup"}
+              </h3>
+              <div className="flex gap-2">
+                <button
+                  className="bg-white text-indigo-600 border border-indigo-600 px-4 py-0.5 rounded text-[12px] hover:bg-indigo-50 font-semibold transition-colors flex items-center gap-1 shadow-sm"
+                  onClick={() => setSizeModal(false)}
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+
+            {/* Main content area */}
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+              {selectedItem?.trackingType !== "Barcode" && (
+                <div className="mb-3 bg-slate-50 p-2 border border-slate-200 rounded flex items-center gap-3">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    Size Template
+                  </span>
+                  <span className="text-[12px] font-bold text-slate-700">
+                    {selectedItem?.SizeTemplate?.name || "No Template Selected"}
+                  </span>
+                </div>
+              )}
+              <div className="h-[250px] overflow-y-auto">
+                {/* --- BARCODE TYPE TABLE --- */}
+                {selectedItem?.trackingType === "Barcode" && (
+                  <table className="w-full border-separate border-spacing-0 border-t border-l border-slate-200">
+                    <thead>
+                      <tr>
+                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-11">
+                          S.No
+                        </th>
+                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase">
+                          Barcode From
+                        </th>
+                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase">
+                          Barcode To
+                        </th>
+                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-24">
+                          Qty
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedItem?.sizeBreakup
+                        ?.filter((item) => (Number(item.qty) || 0) > 0)
+                        ?.map((item, idx) => (
+                          <tr
+                            key={idx}
+                            className="hover:bg-slate-50 transition-colors"
+                          >
+                            <td className="border-b border-r border-slate-200 px-1 py-0.5 text-center text-[11px] text-slate-500 font-medium">
+                              {idx + 1}
+                            </td>
+                            <td className="border-b border-r border-slate-200 px-3 py-1.5 text-left text-[11px] text-black font-mono">
+                              {item.barcodeFrom}
+                            </td>
+                            <td className="border-b border-r border-slate-200 px-3 py-1.5 text-left text-[11px] text-black font-mono">
+                              {item.barcodeTo}
+                            </td>
+                            <td className="border-b border-r border-slate-200 px-3 py-1.5 text-right text-[11px] text-black font-bold">
+                              {item.qty}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                    <tfoot className="sticky bottom-0 z-20">
+                      <tr className="bg-slate-50 font-bold">
+                        <td
+                          colSpan={3}
+                          className="border-b border-r border-slate-200 px-3 py-1.5 text-right text-[11px] text-slate-700 uppercase"
+                        >
+                          Total Quantity
+                        </td>
+                        <td className="border-b border-r border-slate-200 px-3 py-1.5 text-right text-[12px] text-indigo-700">
+                          {selectedItem?.sizeBreakup?.reduce(
+                            (sum, r) => sum + (Number(r.qty) || 0),
+                            0,
+                          )}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                )}
+
+                {/* --- SIZE TEMPLATE TYPE TABLE --- */}
+                {selectedItem?.trackingType === "Size Template" && (
+                  <table className="w-[450px] border-separate border-spacing-0 border-t border-l border-slate-200 mx-auto">
+                    <thead>
+                      <tr>
+                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-10">
+                          S.No
+                        </th>
+                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase">
+                          Size
+                        </th>
+                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-24">
+                          Qty
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedItem?.sizeBreakup
+                        ?.filter((item) => (Number(item.qty) || 0) > 0)
+                        ?.map((item, idx) => (
+                          <tr
+                            key={idx}
+                            className="h-8 hover:bg-slate-50 transition-colors"
+                          >
+                            <td className="border-b border-r border-slate-200 px-1 py-0 text-center text-[11px] text-black">
+                              {idx + 1}
+                            </td>
+                            <td className="border-b border-r border-slate-200 px-3 py-0 text-[11px] text-black">
+                              {item.Size?.name || "All Items"}
+                            </td>
+                            <td className="border-b border-r border-slate-200 px-3 py-0 text-right text-[11px] text-black font-bold">
+                              {item.qty}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                    <tfoot className="sticky bottom-0 z-20">
+                      <tr className="bg-slate-50 font-bold">
+                        <td
+                          colSpan={2}
+                          className="border-b border-r border-slate-200 px-3 py-1.5 text-right text-[11px] text-slate-700 uppercase"
+                        >
+                          Total Quantity
+                        </td>
+                        <td className="border-b border-r border-slate-200 px-3 py-1.5 text-right text-[12px] text-indigo-700">
+                          {selectedItem?.sizeBreakup?.reduce(
+                            (sum, r) => sum + (Number(r.qty) || 0),
+                            0,
+                          )}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                )}
+
+                {/* --- SIZE TEMPLATE + BARCODE TYPE TABLE --- */}
+                {selectedItem?.trackingType === "Size Template + Barcode" && (
+                  <table className="w-full border-separate border-spacing-0 border-t border-l border-slate-200">
+                    <thead>
+                      <tr>
+                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-11">
+                          S.No
+                        </th>
+                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase">
+                          Size
+                        </th>
+                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase">
+                          From
+                        </th>
+                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase">
+                          To
+                        </th>
+                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-24">
+                          Qty
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedItem?.sizeBreakup
+                        ?.filter((item) => (Number(item.qty) || 0) > 0)
+                        ?.map((item, idx) => (
+                          <tr
+                            key={idx}
+                            className="h-8 hover:bg-slate-50 transition-colors"
+                          >
+                            <td className="border-b border-r border-slate-200 px-1 py-0 text-center text-[11px] text-black">
+                              {idx + 1}
+                            </td>
+                            <td className="border-b border-r border-slate-200 px-3 py-0 text-[11px] text-black">
+                              {item.Size?.name || "All Items"}
+                            </td>
+                            <td className="border-b border-r border-slate-200 px-3 py-0 text-left text-[11px] text-black font-mono">
+                              {item.barcodeFrom}
+                            </td>
+                            <td className="border-b border-r border-slate-200 px-3 py-0 text-left text-[11px] text-black font-mono">
+                              {item.barcodeTo}
+                            </td>
+                            <td className="border-b border-r border-slate-200 px-3 py-0 text-right text-[11px] text-black font-bold">
+                              {item.qty}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                    <tfoot className="sticky bottom-0 z-20">
+                      <tr className="bg-slate-50 font-bold">
+                        <td
+                          colSpan={4}
+                          className="border-b border-r border-slate-200 px-3 py-1.5 text-right text-[11px] text-slate-700 uppercase"
+                        >
+                          Total Quantity
+                        </td>
+                        <td className="border-b border-r border-slate-200 px-3 py-1.5 text-right text-[12px] text-indigo-700">
+                          {selectedItem?.sizeBreakup?.reduce(
+                            (sum, r) => sum + (Number(r.qty) || 0),
+                            0,
+                          )}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                )}
+              </div>
+            </div>
+          </div>
         </Modal>
       )}
 

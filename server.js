@@ -66,6 +66,7 @@ import {
   jobCard,
   board,
   proformaInvoice,
+  productionalallocation,
 } from "./src/routes/index.js";
 import { setIo } from "./src/utils/notificationHelper.js";
 import { socketMain } from "./src/sockets/socket.js";
@@ -164,6 +165,7 @@ app.use("/die", dieMaster);
 app.use("/jobCard", jobCard);
 app.use("/board", board);
 app.use("/proformaInvoice", proformaInvoice);
+app.use("/productionAllocation", productionalallocation);
 
 app.get("/retreiveFile/:fileName", (req, res) => {
   const { fileName } = req.params;

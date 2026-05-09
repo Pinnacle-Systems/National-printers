@@ -28,6 +28,7 @@ export default function Form({
   const [readOnly, setReadOnly] = useState(false);
   const [id, setId] = useState("");
   const [name, setName] = useState("");
+  const [isOutSide, setIsOutSide] = useState(false);
   const [active, setActive] = useState(true);
   const { refs, handlers, focusFirstInput } = useFormKeyboardNavigation();
 
@@ -58,6 +59,7 @@ export default function Form({
   const syncFormWithDb = useCallback(
     (data) => {
       setName(data?.name ? data.name : "");
+      setIsOutSide(data?.isOutSide ? data.isOutSide : false);
       setActive(id ? (data?.active ? data.active : false) : true);
       childRecord.current = data?.childRecord ? data?.childRecord : 0;
     },
@@ -71,6 +73,7 @@ export default function Form({
   const data = {
     id,
     name,
+    isOutSide,
     active,
     companyId: secureLocalStorage.getItem(
       sessionStorage.getItem("sessionId") + "userCompanyId",
@@ -229,6 +232,11 @@ export default function Form({
       //   cellClass: () => "font-medium text-gray-900",
       className: "font-medium text-gray-900 text-center uppercase w-16",
     },
+    {
+      header: "Outside",
+      accessor: (item) => (item.isOutSide ? "YES" : "NO"),
+      className: "font-medium text-gray-900 text-center uppercase w-20",
+    },
   ];
 
   const handleView = (id) => {
@@ -258,8 +266,8 @@ export default function Form({
           <div className="bg-white p-3 rounded-md border border-gray-200 h-full">
             <div className="space-y-4 ">
               <fieldset className=" rounded mt-2">
-                <div className="grid grid-cols-2 my-2">
-                  <div className="w-[50%">
+                <div className="grid grid-cols-2 my-2 gap-4">
+                  <div className="w-full">
                     <TextInputNew
                       name="Process"
                       value={name}
@@ -269,6 +277,22 @@ export default function Form({
                       disabled={childRecord.current > 0}
                       ref={countryNameRef}
                     />
+                  </div>
+                  <div className="flex items-center gap-2 mt-4">
+                    <input
+                      type="checkbox"
+                      id="isOutSide"
+                      className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                      checked={isOutSide}
+                      onChange={(e) => setIsOutSide(e.target.checked)}
+                      disabled={readOnly}
+                    />
+                    <label
+                      htmlFor="isOutSide"
+                      className="text-xs font-bold text-gray-500 uppercase"
+                    >
+                      Is Outside Process
+                    </label>
                   </div>
                 </div>
                 <ToggleButton

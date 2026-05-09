@@ -41,22 +41,22 @@ async function getOne(id) {
     },
   });
   if (!data) return NoRecordFound("process");
-  const childRecord = 0;
-  //   await prisma.processGroupList.count({
-  //     where: {
-  //       processId: parseInt(id),
-  //     },
-  //   });
+  const childRecord = await prisma.processGroupList.count({
+    where: {
+      processId: parseInt(id),
+    },
+  });
   return { statusCode: 0, data: { ...data, ...{ childRecord } } };
 }
 
 async function create(body) {
-  const { name, companyId, active = true } = await body;
+  const { name, companyId, active = true, isOutSide = false } = await body;
 
   const data = await prisma.process.create({
     data: {
       name,
       active,
+      isOutSide,
       companyId: parseInt(companyId),
     },
   });
@@ -65,7 +65,7 @@ async function create(body) {
 }
 
 async function update(id, body) {
-  const { name, active, companyId } = await body;
+  const { name, active, companyId, isOutSide } = await body;
   const dataFound = await prisma.process.findUnique({
     where: {
       id: parseInt(id),
@@ -79,6 +79,7 @@ async function update(id, body) {
     data: {
       name,
       active,
+      isOutSide,
       companyId: parseInt(companyId),
     },
   });

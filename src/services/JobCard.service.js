@@ -320,8 +320,16 @@ async function create(body) {
       totalPlateSet,
       remarks,
       designerId,
+      followUpId,
       tagCardUps,
       jobRunTime,
+      department,
+      itemGroup,
+      orderEntryItemId,
+      labelQuality,
+      labelBlock,
+      labelRollQty,
+      labelCutAndSeal,
       boardItems,
       selectedProcesses,
       laminations,
@@ -418,8 +426,18 @@ async function create(body) {
           Designer: designerId
             ? { connect: { id: Number(designerId) } }
             : undefined,
+          FollowUp: followUpId
+            ? { connect: { id: Number(followUpId) } }
+            : undefined,
           tagCardUps: tagCardUps || null,
           jobRunTime: jobRunTime || null,
+          department: department || null,
+          itemGroup: itemGroup || null,
+          orderEntryItemId: orderEntryItemId ? Number(orderEntryItemId) : null,
+          labelQuality: labelQuality || null,
+          labelBlock: labelBlock || null,
+          labelRollQty: labelRollQty || null,
+          labelCutAndSeal: labelCutAndSeal || null,
 
           boardQualities: safeBoardItems.length
             ? {
@@ -540,10 +558,17 @@ async function update(id, body) {
       plateId,
       dieId,
       totalPlateSet,
-      remarks,
       designerId,
+      followUpId,
       tagCardUps,
       jobRunTime,
+      department,
+      itemGroup,
+      orderEntryItemId,
+      labelQuality,
+      labelBlock,
+      labelRollQty,
+      labelCutAndSeal,
       boardItems,
       selectedProcesses,
       laminations,
@@ -585,7 +610,9 @@ async function update(id, body) {
         data: {
           docDate: docDate ? new Date(docDate) : null,
           updatedBy: userId ? { connect: { id: parseInt(userId) } } : undefined,
-          Branch: branchId ? { connect: { id: parseInt(branchId) } } : undefined,
+          Branch: branchId
+            ? { connect: { id: parseInt(branchId) } }
+            : undefined,
           OrderEntry: orderEntryId
             ? { connect: { id: parseInt(orderEntryId) } }
             : undefined,
@@ -618,8 +645,20 @@ async function update(id, body) {
           Designer: designerId
             ? { connect: { id: parseInt(designerId) } }
             : undefined,
+          FollowUp: followUpId
+            ? { connect: { id: parseInt(followUpId) } }
+            : undefined,
           tagCardUps: tagCardUps || null,
           jobRunTime: jobRunTime || null,
+          department: department || null,
+          itemGroup: itemGroup || null,
+          orderEntryItemId: orderEntryItemId
+            ? parseInt(orderEntryItemId)
+            : null,
+          labelQuality: labelQuality || null,
+          labelBlock: labelBlock || null,
+          labelRollQty: labelRollQty || null,
+          labelCutAndSeal: labelCutAndSeal || null,
 
           boardQualities:
             boardItems.length > 0
@@ -742,7 +781,57 @@ async function remove(id) {
   }
 }
 
+async function getJobCardList(req) {
+  const { branchId, companyId } = req.query;
+
+  let result = await prisma.jobCard.findMany({
+    where: {
+      branchId: branchId ? parseInt(branchId) : undefined,
+    },
+    select: {
+      id: true,
+      docId: true,
+      orderQty: true,
+      styleItemId: true,
+      OrderEntryItem: {
+        select: {
+          styleItemId: true,
+        },
+      },
+      customer: { select: { name: true } },
+      processRoute: {
+        include: {
+          Process: {
+            select: {
+              name: true,
+              isOutSide: true,
+            },
+          },
+        },
+      },
+      OrderEntry: { select: { docId: true } },
+    },
+    orderBy: {
+      docId: "desc",
+    },
+  });
+
+  const data = result.map((item) => ({
+    id: item.id,
+    docId: item.docId,
+    orderQty: item.orderQty,
+    styleItemId: item.styleItemId || item.OrderEntryItem?.styleItemId || null,
+
+    customerName: item.customer?.name || "",
+
+    orderEntryDocId: item.OrderEntry?.docId || "",
+
+    processRoute: item.processRoute || [],
+  }));
+
+  return { statusCode: 0, data };
+}
 // ─────────────────────────────────────────────
 // Export
 // ─────────────────────────────────────────────
-export { get, getOne, create, update, remove };
+export { get, getOne, create, update, remove, getJobCardList };

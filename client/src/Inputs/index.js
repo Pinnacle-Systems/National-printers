@@ -823,7 +823,7 @@ export const CheckBoxNew = ({
     <label
       className={`inline-flex items-center gap-1.5 cursor-pointer select-none
         text-xs font-medium text-slate-700 leading-none
-        ${readOnly || disabled ? "opacity-50 cursor-not-allowed" : "hover:text-indigo-600"}
+        ${disabled ? "opacity-50 cursor-not-allowed" : readOnly ? "cursor-default" : "hover:text-indigo-600"}
         ${className || ""}`}
     >
       <input
@@ -4000,13 +4000,17 @@ export const DropdownNew = forwardRef(
           isSearchable
           isClearable={false}
           menuShouldScrollIntoView={false}
-          maxMenuHeight={170} // <-- Reduce height here
+          menuPortalTarget={document.body}
+          maxMenuHeight={170}
           onInputChange={(value) => value.toUpperCase()}
           className="w-full px-1 -ml-1 h-7 text-xs rounded-lg
           focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
           transition-all duration-150 shadow-sm"
           placeholder={placeholder}
-          styles={customSelectStyles}
+          styles={{
+            ...customSelectStyles,
+            menuPortal: (base) => ({ ...base, zIndex: 99999 }),
+          }}
           onKeyDown={onKeyDown}
           autoFocus={autoFocus}
         />

@@ -62,3 +62,4 @@ export const DIE_API = "die";
 export const PLATE_API = "plate";
 export const BOARD_API = "board";
 export const PROFORMA_INVOICE_API = "proformaInvoice";
+export const PRODUCTION_ALLOCATION_API = "productionAllocation";

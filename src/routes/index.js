@@ -63,3 +63,4 @@ export { default as dieMaster } from "./die.route.js";
 export { default as jobCard } from "./jobCard.route.js";
 export { default as board } from "./board.route.js";
 export { default as proformaInvoice } from "./ProformaInvoice.route.js";
+export { default as productionalallocation } from "./productionAllocation.route.js";

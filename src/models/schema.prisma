@@ -211,6 +211,8 @@ model User {
   jobCardsUpdatedBy              JobCard[]              @relation(name: "updatedBy")
   proformaCreatedBy              ProformaInvoice[]      @relation(name: "proformaCreatedBy")
   proformaUpdatedBy              ProformaInvoice[]      @relation(name: "proformaUpdatedBy")
+  productionAllocationCreatedBy  ProductionAllocation[] @relation(name: "AllocationCreatedBy")
+  productionAllocationUpdatedBy  ProductionAllocation[] @relation(name: "AllocationUpdatedBy")
 }
 
 model Employee {
@@ -261,8 +263,9 @@ model Employee {
   updatedAt          DateTime?         @updatedAt
   employeeId         String?
 
-  User    User[]
-  JobCard JobCard[]
+  User            User[]
+  JobCardDesigner JobCard[] @relation("designer")
+  JobCardFollowUp JobCard[] @relation("followUp")
 }
 
 model FinYear {
@@ -950,6 +953,8 @@ model StyleItem {
   purchaseBillEntryItems PurchaseBillEntryItems[]
   orderItems             OrderItems[]
   proformaInvoiceItems   ProformaInvoiceItem[]
+  productionAllocation   ProductionAllocation[]
+  JobCard                JobCard[]
 }
 
 model DeliveryChallan {
@@ -1836,6 +1841,7 @@ model OrderItems {
   Hsn            Hsn?               @relation(fields: [hsnId], references: [id])
   price          Float?
   sizeBreakup    OrderSizeBreakup[]
+  JobCard        JobCard[]
 }
 
 model OrderSizeBreakup {
@@ -1944,13 +1950,15 @@ model Process {
   active           Boolean?           @default(true)
   Company          Company?           @relation(fields: [companyId], references: [id])
   companyId        Int?
+  isOutSide        Boolean            @default(false)
   processGroupList ProcessGroupList[]
 
-  laminationDetails LaminationDetails[]
-  varnishDetails    VarnishDetails[]
-  machineDetails    MachineDetails[]
-  processDetails    ProcessDetails[]
-  processRoutes     ProcessRoute[]
+  laminationDetails       LaminationDetails[]
+  varnishDetails          VarnishDetails[]
+  machineDetails          MachineDetails[]
+  processDetails          ProcessDetails[]
+  processRoutes           ProcessRoute[]
+  productionAllocationDtl ProductionAllocationDtl[]
 }
 
 model ProcessGroup {
@@ -2042,17 +2050,29 @@ model JobCard {
   totalPlateSet      Int?
   remarks            String?
   designerId         Int?
-  Designer           Employee?        @relation(fields: [designerId], references: [id])
+  Designer           Employee?        @relation("designer", fields: [designerId], references: [id])
+  followUpId         Int?
+  FollowUp           Employee?        @relation("followUp", fields: [followUpId], references: [id])
   tagCardUps         String?
   jobRunTime         String?
   department         String?
+  labelQuality       String?
+  labelBlock         String?
+  labelRollQty       String?
+  labelCutAndSeal    String?
+  itemGroup          String?
+  orderEntryItemId   Int?
+  OrderEntryItem     OrderItems?      @relation(fields: [orderEntryItemId], references: [id])
+  styleItemId        Int?
+  StyleItem          StyleItem?       @relation(fields: [styleItemId], references: [id])
 
-  boardQualities    BoardQuality[]
-  processDetails    ProcessDetails[]
-  laminationDetails LaminationDetails[]
-  varnishDetails    VarnishDetails[]
-  machineDetails    MachineDetails[]
-  processRoute      ProcessRoute[]
+  boardQualities       BoardQuality[]
+  processDetails       ProcessDetails[]
+  laminationDetails    LaminationDetails[]
+  varnishDetails       VarnishDetails[]
+  machineDetails       MachineDetails[]
+  processRoute         ProcessRoute[]
+  productionAllocation ProductionAllocation[]
 }
 
 model ProcessRoute {
@@ -2109,4 +2129,35 @@ model MachineDetails {
   JobCard   JobCard? @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
   machineId Int?
   Machine   Process? @relation(fields: [machineId], references: [id])
+}
+
+model ProductionAllocation {
+  id          Int        @id @default(autoincrement())
+  docId       String
+  docDate     DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  createdById Int?
+  createdBy   User?      @relation("AllocationCreatedBy", fields: [createdById], references: [id])
+  updatedById Int?
+  updatedBy   User?      @relation("AllocationUpdatedBy", fields: [updatedById], references: [id])
+  jobCardId   Int
+  JobCard     JobCard    @relation(fields: [jobCardId], references: [id])
+  remarks     String?
+  styleItemId Int?
+  StyleItem   StyleItem? @relation(fields: [styleItemId], references: [id])
+
+  allocationDetails ProductionAllocationDtl[]
+}
+
+model ProductionAllocationDtl {
+  id                     Int                  @id @default(autoincrement())
+  productionAllocationId Int
+  ProductionAllocation   ProductionAllocation @relation(fields: [productionAllocationId], references: [id], onDelete: Cascade)
+  isInHouse              Boolean              @default(false)
+  isOutSide              Boolean              @default(false)
+  processId              Int?
+  Process                Process?             @relation(fields: [processId], references: [id])
+  type                   String?
+  sequence               Int?
 }
