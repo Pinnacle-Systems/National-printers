@@ -433,7 +433,9 @@ async function create(body) {
           jobRunTime: jobRunTime || null,
           department: department || null,
           itemGroup: itemGroup || null,
-          orderEntryItemId: orderEntryItemId ? Number(orderEntryItemId) : null,
+          OrderEntryItem: orderEntryItemId
+            ? { connect: { id: Number(orderEntryItemId) } }
+            : undefined,
           labelQuality: labelQuality || null,
           labelBlock: labelBlock || null,
           labelRollQty: labelRollQty || null,
@@ -652,9 +654,9 @@ async function update(id, body) {
           jobRunTime: jobRunTime || null,
           department: department || null,
           itemGroup: itemGroup || null,
-          orderEntryItemId: orderEntryItemId
-            ? parseInt(orderEntryItemId)
-            : null,
+          OrderEntryItem: orderEntryItemId
+            ? { connect: { id: parseInt(orderEntryItemId) } }
+            : undefined,
           labelQuality: labelQuality || null,
           labelBlock: labelBlock || null,
           labelRollQty: labelRollQty || null,
