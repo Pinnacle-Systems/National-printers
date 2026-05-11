@@ -91,10 +91,16 @@ const ProformaInvoiceForm = ({
   const [discountValue, setDiscountValue] = useState(0);
   const [printModalOpen, setPrintModalOpen] = useState(false);
 
+  const [deliveryType, setDeliveryType] = useState("self");
+  const [deliveryCustomer, setDeliveryCustomer] = useState("");
+  const [modeOfPayment, setModeOfPayment] = useState("By cash");
+  const [deliveryCharge, setDeliveryCharge] = useState("");
+
   const [selectedQuoteVersion, setSelectedQuoteVersion] = useState("Latest");
   const [availableVersions, setAvailableVersions] = useState([]);
   const isOldVersion = selectedQuoteVersion !== "Latest";
   const effectiveReadOnly = readOnly || isOldVersion;
+  console.log(deliveryCustomer, "ddeliveryCustomere");
 
   const [customerDetails, setCustomerDetails] = useState({
     name: "",
@@ -161,7 +167,11 @@ const ProformaInvoiceForm = ({
       setTermsAndCondition(data.termsAndCondition || "");
       setTermsId(data.termsId || "");
       setTaxTemplateId(data.taxTemplateId || "");
-
+      setDeliveryType(data.deliveryType || "self");
+      setDeliveryCustomer(data.deliveryCustomerId || "");
+      setModeOfPayment(data.modeOfPayment || "By cash");
+      setDeliveryCharge(data.deliveryCharge || "");
+      console.log(data.deliveryCustomerId, "deliveryCustomerId");
       let loadedVersions = [];
       if (data.items?.length > 0) {
         loadedVersions = [
@@ -199,7 +209,9 @@ const ProformaInvoiceForm = ({
       let targetVersion;
       if (selectedQuoteVersion === "Latest") {
         const versions = [
-          ...new Set(singleData.data.items.map((i) => i.quoteVersion).filter(Boolean)),
+          ...new Set(
+            singleData.data.items.map((i) => i.quoteVersion).filter(Boolean),
+          ),
         ];
         targetVersion = versions.length > 0 ? Math.max(...versions) : 1;
       } else {
@@ -235,6 +247,8 @@ const ProformaInvoiceForm = ({
     }
   }, [customerId, customerList]);
 
+
+
   useEffect(() => {
     if (orderEntryId) {
       const fetchOrderDetails = async () => {
@@ -266,7 +280,8 @@ const ProformaInvoiceForm = ({
                   discountType: "Percentage",
                   discountValue: 0,
                   amount:
-                    (parseFloat(oi.orderQty) || 0) * (parseFloat(oi.price) || 0),
+                    (parseFloat(oi.orderQty) || 0) *
+                    (parseFloat(oi.price) || 0),
                   remarks: oi.remarks || "",
                   sizeBreakup: oi.sizeBreakup || [],
                 }));
@@ -323,13 +338,14 @@ const ProformaInvoiceForm = ({
       return;
     }
 
-    const hasMissingPrice = filteredItems.some(
-      (item) => !item.price || parseFloat(item.price) <= 0,
+    const missingPriceIndex = items.findIndex(
+      (item) => item.styleItemId && (!item.price || parseFloat(item.price) <= 0),
     );
-    if (hasMissingPrice) {
+
+    if (missingPriceIndex !== -1) {
       Swal.fire({
         title: "Warning",
-        text: "Please enter a valid price for all selected items.",
+        text: `Price missing in row no ${missingPriceIndex + 1}`,
         icon: "warning",
         confirmButtonColor: "#3085d6",
       });
@@ -350,6 +366,10 @@ const ProformaInvoiceForm = ({
       termsAndCondition,
       termsId,
       taxTemplateId,
+      deliveryType,
+      deliveryCustomerId: deliveryCustomer || null,
+      modeOfPayment,
+      deliveryCharge: Number(deliveryCharge) || 0,
       items: JSON.stringify(filteredItems),
     };
 
@@ -414,6 +434,10 @@ const ProformaInvoiceForm = ({
     setTermsAndCondition("");
     setTermsId("");
     setTaxTemplateId("");
+    setDeliveryType("self");
+    setDeliveryCustomer("");
+    setModeOfPayment("By cash");
+    setDeliveryCharge("");
     setItems(padItems([]));
     setCustomerDetails({ name: "", contactPerson: "", phone: "" });
     setSelectedQuoteVersion("Latest");
@@ -519,10 +543,10 @@ const ProformaInvoiceForm = ({
           Basic Details
         </h2>
         <div className="flex gap-2">
-          <div className="w-36">
+          <div className="w-32">
             <TextInput name="PI No" value={docId} disabled={true} />
           </div>
-          <div className="w-32">
+          <div className="w-24">
             <DateInputNew
               name="PI Date"
               value={docDate}
@@ -532,7 +556,7 @@ const ProformaInvoiceForm = ({
               type="date"
             />
           </div>
-          <div className="w-32">
+          <div className="w-24">
             <DateInputNew
               name="User Date"
               value={userDate}
@@ -545,12 +569,12 @@ const ProformaInvoiceForm = ({
         </div>
       </div>
 
-      <div className="flex-1 border border-slate-200 p-1.5 bg-white rounded-md shadow-sm">
+      <div className="w-fit border border-slate-200 p-1.5 bg-white rounded-md shadow-sm">
         <h2 className="text-[10px] font-bold text-gray-500 mb-1 uppercase border-b pb-0.5">
           Order Details
         </h2>
-        <div className="grid grid-cols-2 md:grid-cols-8 gap-2">
-          <div className="md:col-span-2">
+        <div className="flex gap-2">
+          <div className="w-60">
             <DropdownInput
               ref={customerRef}
               name="Customer"
@@ -560,26 +584,29 @@ const ProformaInvoiceForm = ({
                 setCustomerId(val);
                 setOrderEntryId(""); // Clear order if customer changes
                 setItems(padItems([])); // Clear table if customer changes
+                if (deliveryType === "self") {
+                  setDeliveryCustomer(val);
+                }
               }}
               readOnly={effectiveReadOnly || !!id}
               required={true}
             />
           </div>
-          <div className="md:col-span-2">
+          <div className="w-28">
             <TextInput
               name="Contact Person"
               value={customerDetails.contactPerson}
               disabled={true}
             />
           </div>
-          <div className="md:col-span-1">
+          <div className="w-24">
             <TextInput
               name="Phone"
               value={customerDetails.phone}
               disabled={true}
             />
           </div>
-          <div className="md:col-span-1">
+          <div className="w-32">
             <DropdownInput
               name="Order No"
               options={dropDownListObject(filteredOrderList, "docId", "id")}
@@ -589,7 +616,7 @@ const ProformaInvoiceForm = ({
               required={true}
             />
           </div>
-          <div className="md:col-span-2">
+          <div className="w-24">
             <DropdownInput
               name="Tax Type"
               options={dropDownListObject(
@@ -601,6 +628,56 @@ const ProformaInvoiceForm = ({
               setValue={setTaxTemplateId}
               required={true}
               readOnly={effectiveReadOnly || !!id}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 border border-slate-200 p-1.5 bg-white rounded-md shadow-sm overflow-hidden">
+        <h2 className="text-[10px] font-bold text-gray-500 mb-1 uppercase border-b pb-0.5">
+          Delivery Details
+        </h2>
+        <div className="flex gap-2">
+          <div className="w-24">
+            <DropdownInput
+              name="Delivery Type"
+              options={[
+                { show: "To Self", value: "self" },
+                { show: "To Others", value: "others" },
+              ]}
+              value={deliveryType}
+              setValue={(val) => {
+                setDeliveryType(val);
+                if (val === "self") {
+                  setDeliveryCustomer(customerId);
+                } else {
+                  setDeliveryCustomer("");
+                }
+              }}
+              readOnly={effectiveReadOnly}
+            />
+          </div>
+          <div className="w-64">
+            <DropdownInput
+              name="Delivery Customer"
+              options={dropDownListObject(customerList?.data, "name", "id")}
+              value={deliveryCustomer}
+              setValue={setDeliveryCustomer}
+              readOnly={effectiveReadOnly || deliveryType === "self"}
+            />
+          </div>
+          <div className="w-22">
+            <DropdownInput
+              name="Mode of Payment"
+              options={[
+                { show: "By cash", value: "By cash" },
+                { show: "By cheque", value: "By cheque" },
+                { show: "By UPI", value: "By UPI" },
+                { show: "By card", value: "By card" },
+              ]}
+              value={modeOfPayment}
+              setValue={setModeOfPayment}
+              readOnly={effectiveReadOnly}
             />
           </div>
         </div>
@@ -723,7 +800,7 @@ const ProformaInvoiceForm = ({
           {
             key: "totalQty",
             label: "Total Qty",
-            value: totalQty.toFixed(3),
+            value: totalQty,
             summaryColumn: "right",
           },
           {
@@ -733,9 +810,38 @@ const ProformaInvoiceForm = ({
             summaryColumn: "right",
           },
           {
+            key: "deliveryCharge",
+            label: "Delivery Charge",
+            renderValue: () => (
+              <div className="flex items-center">
+                <span className="text-slate-600 mr-1">Rs.</span>
+                <input
+                  type="number"
+                  className="w-20 text-right border border-gray-300 rounded px-1 py-0.5 outline-none focus:border-indigo-500 text-[11px]"
+                  value={deliveryCharge}
+                  onChange={(e) => setDeliveryCharge(e.target.value)}
+                  readOnly={effectiveReadOnly}
+                  placeholder="0.00"
+                  onBlur={(e) => {
+                    const val = e.target.value;
+                    if (val === "") {
+                      setDeliveryCharge(val);
+                    } else {
+                      const num = parseFloat(val);
+                      setDeliveryCharge(
+                        isNaN(num) ? "" : Number(num).toFixed(2),
+                      );
+                    }
+                  }}
+                />
+              </div>
+            ),
+            summaryColumn: "right",
+          },
+          {
             key: "netAmount",
             label: "Net Amount",
-            value: `Rs.${enrichedData.net.toFixed(2)}`,
+            value: `Rs.${(enrichedData.net + (Number(deliveryCharge) || 0)).toFixed(2)}`,
             summaryColumn: "right",
             emphasized: true,
           },
@@ -803,6 +909,7 @@ const ProformaInvoiceForm = ({
             readOnly={effectiveReadOnly}
             taxTemplateId={taxTemplateId}
             id={id}
+            isSupplierOutside={isSupplierOutside}
           />
         }
         footer={footerContent}

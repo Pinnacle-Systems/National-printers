@@ -79,10 +79,29 @@ const styles = StyleSheet.create({
     border: "1 solid #eee",
     borderRadius: 4,
   },
-  piDetailsBox: {
-    width: 180,
+  topDetailsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     border: "1 solid #eee",
     borderRadius: 4,
+    padding: "6 12",
+    marginBottom: 10,
+    backgroundColor: "#f8f9fa",
+  },
+  detailItem: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  detailLabel: {
+    fontSize: 8,
+    color: "#666",
+    marginRight: 4,
+    fontWeight: "bold",
+  },
+  detailValue: {
+    fontSize: 8.5,
+    color: "#000",
+    fontWeight: "bold",
   },
   sectionHeader: {
     backgroundColor: "#f8f9fa",
@@ -101,8 +120,8 @@ const styles = StyleSheet.create({
   },
   partyAddr: { fontSize: 7.5, color: "#555", lineHeight: 1.4, marginBottom: 6 },
   labelValueRow: { flexDirection: "row", marginBottom: 2 },
-  label: { width: 60, fontSize: 7.5, color: "#888" },
-  value: { flex: 1, fontSize: 7.5, color: "#000", fontWeight: "bold" },
+  label: { width: 60, fontSize: 8.5, color: "#888" },
+  value: { flex: 1, fontSize: 8.5, color: "#000", fontWeight: "bold" },
 
   table: {
     marginTop: 5,
@@ -163,6 +182,14 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingLeft: 2,
   },
+  colTax: {
+    width: 35,
+    textAlign: "right",
+    borderRight: "1 solid #eee",
+    justifyContent: "center",
+    paddingVertical: 4,
+    paddingRight: 4,
+  },
   colQty: {
     width: 50,
     textAlign: "right",
@@ -214,26 +241,6 @@ const styles = StyleSheet.create({
     color: "#1a1a2e",
   },
 
-  summaryContainer: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: 15,
-  },
-  taxBox: {
-    width: 160,
-    border: "1 solid #ddd",
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  taxHeader: {
-    backgroundColor: "#1a1a2e",
-    color: "#fff",
-    textAlign: "center",
-    fontSize: 8,
-    fontWeight: "bold",
-    letterSpacing: 1,
-    paddingVertical: 4,
-  },
   taxRow: {
     flexDirection: "row",
     borderTop: "1 solid #ebebeb",
@@ -245,13 +252,13 @@ const styles = StyleSheet.create({
   },
   taxLabel: {
     flex: 1,
-    fontSize: 7.5,
+    fontSize: 8.5,
     color: "#444",
     padding: 4,
     paddingLeft: 8,
   },
   taxValue: {
-    fontSize: 7.5,
+    fontSize: 8.5,
     color: "#000",
     textAlign: "right",
     padding: 4,
@@ -260,14 +267,14 @@ const styles = StyleSheet.create({
   },
   taxLabelNet: {
     flex: 1,
-    fontSize: 8.5,
+    fontSize: 9.5,
     color: "#fff",
     fontWeight: "bold",
     padding: 6,
     paddingLeft: 8,
   },
   taxValueNet: {
-    fontSize: 8.5,
+    fontSize: 9.5,
     color: "#fff",
     fontWeight: "bold",
     textAlign: "right",
@@ -277,18 +284,15 @@ const styles = StyleSheet.create({
   wordsBar: {
     backgroundColor: "#1a1a2e",
     color: "#fff",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginTop: 8,
-    borderRadius: 3,
+    padding: 6,
+    borderTop: "1 solid #1a1a2e",
   },
   wordsText: {
-    fontSize: 8,
-    fontStyle: "italic",
-    color: "#e8e8f0",
+    fontSize: 9,
+    color: "#fff",
   },
   wordsValue: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: "bold",
     color: "#fff",
     textTransform: "capitalize",
@@ -317,7 +321,8 @@ const ProformaInvoicePrintFormat = ({ data }) => {
   const totalDiscount =
     (calculations.itemDiscount || 0) + (calculations.overallDiscount || 0);
   const taxableAmount = calculations.taxable || 0;
-  const grandTotal = calculations.net || 0;
+  const deliveryCharge = Number(data.deliveryCharge) || 0;
+  const grandTotal = (calculations.net || 0) + deliveryCharge;
   const roundOff = calculations.roundOff || 0;
   const taxRows = calculations.slabBreakup || [];
 
@@ -334,22 +339,18 @@ const ProformaInvoicePrintFormat = ({ data }) => {
           <View style={styles.companyCenter}>
             <Text style={styles.companyName}>NATIONAL PRINTING PRESS</Text>
             <Text style={styles.companyAddr}>
-              {data.Branch?.address ||
-                "9(1)-MAARIYAMMAN LAYOUT 2ND STREET,KUMARANATHA PURAM,TIRUPUR : 641602"}
+              9(1)-MAARIYAMMAN LAYOUT 2ND STREET,{"\n"}
+              KUMARANATHA PURAM,TIRUPUR : 641602
             </Text>
           </View>
           <View style={styles.companyRight}>
             <View style={styles.companyRightRow}>
               <Text style={styles.companyLabel}>GSTIN :</Text>
-              <Text style={styles.companyValue}>
-                {data.Branch?.gstNo || "33BHEPC9190H1ZE"}
-              </Text>
+              <Text style={styles.companyValue}>33BHEPC9190H1ZE</Text>
             </View>
             <View style={styles.companyRightRow}>
               <Text style={styles.companyLabel}>Mobile :</Text>
-              <Text style={styles.companyValue}>
-                {data.Branch?.contactMobile || "9952138129"}
-              </Text>
+              <Text style={styles.companyValue}>9952138129</Text>
             </View>
           </View>
         </View>
@@ -358,43 +359,45 @@ const ProformaInvoicePrintFormat = ({ data }) => {
           PROFORMA INVOICE
         </Text>
 
-        <View style={styles.docInfoSection} fixed>
-          <View style={styles.piDetailsBox}>
-            <Text style={styles.sectionHeader}>INVOICE DETAILS</Text>
-            <View style={styles.sectionBody}>
-              <View style={styles.labelValueRow}>
-                <Text style={styles.label}>PI No</Text>
-                <Text
-                  style={[
-                    styles.value,
-                    data.quoteVersion > 1 && { color: "#b91c1c" },
-                  ]}
-                >
-                  : {data.docId}
-                </Text>
-              </View>
-              <View style={styles.labelValueRow}>
-                <Text style={styles.label}>PI Date</Text>
-                <Text style={styles.value}>
-                  : {moment(data.docDate).format("DD-MM-YYYY")}
-                </Text>
-              </View>
-              <View style={styles.labelValueRow}>
-                <Text style={styles.label}>Order No</Text>
-                <Text style={styles.value}>
-                  : {data.OrderEntry?.docId || "-"}
-                </Text>
-              </View>
-              {data.quoteVersion > 1 && (
-                <View style={styles.labelValueRow}>
-                  <Text style={styles.label}>Version</Text>
-                  <Text style={[styles.value, { color: "#b91c1c" }]}>
-                    : v{data.quoteVersion}
-                  </Text>
-                </View>
-              )}
-            </View>
+        <View style={styles.topDetailsRow} fixed>
+          <View style={styles.detailItem}>
+            <Text style={styles.detailLabel}>PI No :</Text>
+            <Text
+              style={[
+                styles.detailValue,
+                data.quoteVersion > 1 && { color: "#b91c1c" },
+              ]}
+            >
+              {data.docId}
+            </Text>
           </View>
+          <View style={styles.detailItem}>
+            <Text style={styles.detailLabel}>PI Date :</Text>
+            <Text style={styles.detailValue}>
+              {moment(data.docDate).format("DD-MM-YYYY")}
+            </Text>
+          </View>
+          <View style={styles.detailItem}>
+            <Text style={styles.detailLabel}>Order No :</Text>
+            <Text style={styles.detailValue}>
+              {data.OrderEntry?.docId || "-"}
+            </Text>
+          </View>
+          <View style={styles.detailItem}>
+            <Text style={styles.detailLabel}>Payment Mode :</Text>
+            <Text style={styles.detailValue}>{data.modeOfPayment || "-"}</Text>
+          </View>
+          {data.quoteVersion > 1 && (
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Version :</Text>
+              <Text style={[styles.detailValue, { color: "#b91c1c" }]}>
+                v{data.quoteVersion}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.docInfoSection} fixed>
           <View style={styles.box}>
             <Text style={styles.sectionHeader}>BILL TO</Text>
             <View style={styles.sectionBody}>
@@ -418,6 +421,40 @@ const ProformaInvoicePrintFormat = ({ data }) => {
               </View>
             </View>
           </View>
+
+          <View style={styles.box}>
+            <Text style={styles.sectionHeader}>SHIP TO</Text>
+            <View style={styles.sectionBody}>
+              <Text style={styles.partyName}>
+                {data.deliveryType === "others"
+                  ? data.deliveryCustomer?.name || "N/A"
+                  : data.customer?.name || "N/A"}
+              </Text>
+              <Text style={styles.partyAddr}>
+                {data.deliveryType === "others"
+                  ? data.deliveryCustomer?.address || ""
+                  : data.customer?.address || ""}
+              </Text>
+              <View style={styles.labelValueRow}>
+                <Text style={styles.label}>GSTIN</Text>
+                <Text style={styles.value}>
+                  :{" "}
+                  {data.deliveryType === "others"
+                    ? data.deliveryCustomer?.gstNo || "N/A"
+                    : data.customer?.gstNo || "N/A"}
+                </Text>
+              </View>
+              <View style={styles.labelValueRow}>
+                <Text style={styles.label}>Mobile No</Text>
+                <Text style={styles.value}>
+                  :{" "}
+                  {data.deliveryType === "others"
+                    ? data.deliveryCustomer?.contactNumber || "N/A"
+                    : data.customer?.contactNumber || "N/A"}
+                </Text>
+              </View>
+            </View>
+          </View>
         </View>
 
         <View style={styles.contentArea}>
@@ -429,9 +466,11 @@ const ProformaInvoicePrintFormat = ({ data }) => {
               </Text>
               <Text style={[styles.colHSN, styles.headerCell]}>HSN</Text>
               <Text style={[styles.colUOM, styles.headerCell]}>UOM</Text>
+
               <Text style={[styles.colQty, styles.headerCell]}>Qty</Text>
               <Text style={[styles.colPrice, styles.headerCell]}>Price</Text>
               <Text style={[styles.colGross, styles.headerCell]}>Gross</Text>
+              <Text style={[styles.colTax, styles.headerCell]}>Tax%</Text>
             </View>
             {items.map((item, index) => {
               const gross =
@@ -452,10 +491,11 @@ const ProformaInvoicePrintFormat = ({ data }) => {
                       >
                         {item.StyleItem?.name || "N/A"}
                       </Text>
-                      {item.sizeBreakup?.filter((sb) => (Number(sb.qty) || 0) > 0)
-                        .length > 0 && (
+                      {item.sizeBreakup?.filter(
+                        (sb) => (Number(sb.qty) || 0) > 0,
+                      ).length > 0 && (
                         <View style={{ marginTop: 2 }}>
-                          <Text style={{ fontSize: 9, color: "black" }}>
+                          <Text style={{ fontSize: 9 }}>
                             {item.sizeBreakup
                               .filter((sb) => (Number(sb.qty) || 0) > 0)
                               .map((sb) => {
@@ -470,7 +510,8 @@ const ProformaInvoicePrintFormat = ({ data }) => {
                                 if (item.trackingType === "Size Template")
                                   return `${size}/${qty}`;
                                 if (
-                                  item.trackingType === "Size Template + Barcode"
+                                  item.trackingType ===
+                                  "Size Template + Barcode"
                                 )
                                   return `${size}/${range}/${qty}`;
                                 return null;
@@ -487,6 +528,7 @@ const ProformaInvoicePrintFormat = ({ data }) => {
                     <View style={styles.colUOM}>
                       <Text>{item.Uom?.name || "-"}</Text>
                     </View>
+
                     <View style={styles.colQty}>
                       <Text>{Number(item.qty || 0).toFixed(3)}</Text>
                     </View>
@@ -496,25 +538,21 @@ const ProformaInvoicePrintFormat = ({ data }) => {
                     <View style={styles.colGross}>
                       <Text>{gross.toFixed(2)}</Text>
                     </View>
+                    <View style={styles.colTax}>
+                      <Text>{Number(item.taxPercent || 0)}%</Text>
+                    </View>
                   </View>
                 </View>
               );
             })}
             <View style={styles.tableFooter}>
               <View
-                style={[
-                  styles.colSno,
-                  styles.colDesc,
-                  styles.colHSN,
-                  styles.colUOM,
-                  {
-                    width: "auto",
-                    flex: 1,
-                    textAlign: "right",
-                    paddingRight: 10,
-                    borderRight: "none",
-                  },
-                ]}
+                style={{
+                  flex: 1,
+                  textAlign: "right",
+                  paddingRight: 10,
+                  justifyContent: "center",
+                }}
               >
                 <Text>TOTALS</Text>
               </View>
@@ -525,45 +563,57 @@ const ProformaInvoicePrintFormat = ({ data }) => {
                     .toFixed(3)}
                 </Text>
               </View>
-              <View style={[styles.colPrice, { borderRight: "none" }]} />
+              <View style={[styles.colPrice, { borderRight: "none" }]}>
+                <Text>
+                  {items
+                    .reduce((sum, item) => sum + (Number(item.price) || 0), 0)
+                    .toFixed(2)}
+                </Text>
+              </View>
               <View style={[styles.colGross, { borderRight: "none" }]}>
                 <Text>{subTotal.toFixed(2)}</Text>
               </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Summary Section */}
-        {/* Summary Section */}
-        <View style={styles.summaryContainer}>
-          <View style={styles.taxBox}>
-            <Text style={styles.taxHeader}>TAX DETAILS</Text>
-            
-            <View style={styles.taxRow}>
-              <Text style={styles.taxLabel}>Taxable Amt</Text>
-              <Text style={styles.taxValue}>{taxableAmount.toFixed(2)}</Text>
+              <View style={[styles.colTax, { borderRight: "none" }]} />
             </View>
 
-            {taxRows.map((tax, idx) => (
-              <View style={styles.taxRow} key={idx}>
-                <Text style={styles.taxLabel}>{tax.tax}</Text>
-                <Text style={styles.taxValue}>{tax.amount.toFixed(2)}</Text>
+            {/* Attached Tax Details */}
+            <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
+              <View style={{ width: 160, borderLeft: "1 solid #eee" }}>
+                <View style={styles.taxRow}>
+                  <Text style={styles.taxLabel}>Taxable Amt</Text>
+                  <Text style={styles.taxValue}>{taxableAmount.toFixed(2)}</Text>
+                </View>
+
+                {taxRows.map((tax, idx) => (
+                  <View style={styles.taxRow} key={idx}>
+                    <Text style={styles.taxLabel}>{tax.tax}</Text>
+                    <Text style={styles.taxValue}>{tax.amount.toFixed(2)}</Text>
+                  </View>
+                ))}
+
+                {deliveryCharge > 0 && (
+                  <View style={styles.taxRow}>
+                    <Text style={styles.taxLabel}>Delivery Charge</Text>
+                    <Text style={styles.taxValue}>{deliveryCharge.toFixed(2)}</Text>
+                  </View>
+                )}
+
+                <View style={styles.taxRowNet}>
+                  <Text style={styles.taxLabelNet}>Net Amount</Text>
+                  <Text style={styles.taxValueNet}>{grandTotal.toFixed(2)}</Text>
+                </View>
               </View>
-            ))}
+            </View>
 
-            <View style={styles.taxRowNet}>
-              <Text style={styles.taxLabelNet}>Net Amount</Text>
-              <Text style={styles.taxValueNet}>
-                {grandTotal.toFixed(2)}
+            <View style={styles.wordsBar}>
+              <Text style={styles.wordsText}>
+                Amount in Words:{" "}
+                <Text style={{ fontWeight: "bold" }}>
+                  {amountInWords(grandTotal)}
+                </Text>
               </Text>
             </View>
           </View>
-        </View>
-
-        <View style={styles.wordsBar}>
-          <Text style={styles.wordsText}>
-            Amount in Words: <Text style={styles.wordsValue}>{amountInWords(grandTotal)} Only</Text>
-          </Text>
         </View>
 
         <View style={styles.footerGrid}>

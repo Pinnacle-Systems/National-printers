@@ -19,6 +19,7 @@ const ProformaInvoiceItems = ({
   readOnly,
   taxTemplateId,
   id,
+  isSupplierOutside,
 }) => {
   console.log("items", items);
   const { companyId } = getCommonParams();
@@ -110,8 +111,10 @@ const ProformaInvoiceItems = ({
             setCurrentSelectedIndex(null); // Ensure modal is closed
             setTimeout(() => {
               const nextIndex = index + 1;
-              const nextSizeBtn = document.getElementById(`size-btn-${nextIndex}`);
-              
+              const nextSizeBtn = document.getElementById(
+                `size-btn-${nextIndex}`,
+              );
+
               if (nextSizeBtn && items[nextIndex]?.styleItemId) {
                 nextSizeBtn.focus();
               } else {
@@ -251,9 +254,10 @@ const ProformaInvoiceItems = ({
                         Total
                       </td>
                       <td className="border-b border-r border-slate-200 px-2 py-1 text-right text-[11px]">
-                        {(items[activeRowIndex]?.sizeBreakup || [])
-                          .reduce((sum, b) => sum + (Number(b.qty) || 0), 0)
-                          .toFixed(3)}
+                        {(items[activeRowIndex]?.sizeBreakup || []).reduce(
+                          (sum, b) => sum + (Number(b.qty) || 0),
+                          0,
+                        )}
                       </td>
                     </tr>
                   </tfoot>
@@ -265,7 +269,7 @@ const ProformaInvoiceItems = ({
       )}
 
       <div className="w-full h-full overflow-y-auto bg-white">
-        <table className="w-[80vw] border-collapse table-fixed min-h-full bg-white">
+        <table className="w-[88vw] border-collapse table-fixed min-h-full bg-white">
           <thead className="bg-gray-200 text-gray-800 sticky top-0 z-10 text-[11px]">
             <tr>
               <th className="w-6 px-1 py-1.5 text-center font-medium border border-gray-300">
@@ -293,118 +297,137 @@ const ProformaInvoiceItems = ({
                 Price
               </th>
               <th className="w-16 px-1 py-1.5 text-center font-medium border border-gray-300">
-                Gross
+                Gross Amt
               </th>
               <th className="w-12 px-1 py-1.5 text-center font-medium border border-gray-300">
                 Tax
               </th>
+              <th className="w-12 px-1 py-1.5 text-center font-medium border border-gray-300">
+                Tax %
+              </th>
+              <th className="w-12 px-1 py-1.5 text-center font-medium border border-gray-300">
+                Net Amt
+              </th>
             </tr>
           </thead>
           <tbody>
-            {items?.map((item, index) => (
-              <tr
-                key={index}
-                className={`h-7 hover:bg-indigo-50 transition-colors ${
-                  index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
-                }`}
-              >
-                <td className="text-[11px] text-center border border-gray-300">
-                  {index + 1}
-                </td>
-                <td className="border border-gray-300 overflow-hidden text-ellipsis whitespace-nowrap px-1 text-[11px]">
-                  {findFromList(item.styleItemId, styleItemList?.data, "name")}
-                </td>
-                <td className="border border-gray-300 text-right pr-1 text-[11px]">
-                  {findFromList(item.hsnId, hsnList?.data, "name")}
-                </td>
-                <td className="border border-gray-300 text-left pl-1 text-[11px]">
-                  {item.trackingType || ""}
-                </td>
-                <td className="border border-gray-300 text-center">
-                  <button
-                    id={`size-btn-${index}`}
-                    disabled={!item.styleItemId || item.trackingType === "None"}
-                    className="text-indigo-600 hover:text-indigo-800 disabled:text-gray-300 transition-colors outline-none focus:ring-2 focus:ring-indigo-500 rounded"
-                    onClick={() => handleOpenSizeModal(index)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleOpenSizeModal(index);
+            {items?.map((item, index) => {
+              const isFilled = !!item.styleItemId;
+              const enrichedIdx =
+                items.slice(0, index + 1).filter((i) => i.styleItemId).length -
+                1;
+              const enrichedItem =
+                isFilled && enrichedItems?.items
+                  ? enrichedItems.items[enrichedIdx]
+                  : null;
+
+              let taxPercentStr = "";
+              let netAmountStr = "";
+
+              if (enrichedItem) {
+                const taxPct = Number(enrichedItem._taxPct) || 0;
+                taxPercentStr = `${taxPct}%`;
+                netAmountStr = enrichedItem.totals?.net?.toFixed(2) || "";
+              }
+
+              return (
+                <tr
+                  key={index}
+                  className={`h-7 hover:bg-indigo-50 transition-colors ${
+                    index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                  }`}
+                >
+                  <td className="text-[11px] text-center border border-gray-300">
+                    {index + 1}
+                  </td>
+                  <td className="border border-gray-300 overflow-hidden text-ellipsis whitespace-nowrap px-1 text-[11px]">
+                    {findFromList(
+                      item.styleItemId,
+                      styleItemList?.data,
+                      "name",
+                    )}
+                  </td>
+                  <td className="border border-gray-300 text-right pr-1 text-[11px]">
+                    {findFromList(item.hsnId, hsnList?.data, "name")}
+                  </td>
+                  <td className="border border-gray-300 text-left pl-1 text-[11px]">
+                    {item.trackingType || ""}
+                  </td>
+                  <td className="border border-gray-300 text-center">
+                    <button
+                      id={`size-btn-${index}`}
+                      disabled={
+                        !item.styleItemId || item.trackingType === "None"
                       }
-                    }}
-                    title="View Size Breakup"
-                  >
-                    <FiEye size={16} className="inline" />
-                  </button>
-                </td>
-                <td className="border border-gray-300 text-left pl-1 text-[11px]">
-                  {findFromList(item.uomId, uomList?.data, "name")}
-                </td>
-                <td className="border border-gray-300 text-right px-1 text-[11px]">
-                  {item?.qty || ""}
-                </td>
-                <td className="border border-gray-300 text-right px-1 grid-editable-cell">
-                  <input
-                    id={`price-input-${index}`}
-                    type="number"
-                    className="w-full text-[11px] text-right outline-none bg-transparent"
-                    value={
-                      focusedField === `${index}`
-                        ? (item.price ?? "")
-                        : item.price !== undefined &&
-                            item.price !== null &&
-                            item.price !== ""
-                          ? Number(item.price).toFixed(2)
-                          : ""
-                    }
-                    onChange={(e) =>
-                      handleInputChange(e.target.value, index, "price")
-                    }
-                    readOnly={readOnly || !item.styleItemId}
-                    onFocus={(e) => {
-                      e.target.select();
-                      setFocusedField(`${index}`);
-                    }}
-                    onBlur={(e) => {
-                      const val = e.target.value;
-                      if (val === "") {
-                        handleInputChange("", index, "price");
-                      } else {
-                        const num = parseFloat(val);
-                        handleInputChange(
-                          isNaN(num) ? "" : Number(num).toFixed(2),
-                          index,
-                          "price",
-                        );
+                      className="text-indigo-600 hover:text-indigo-800 disabled:text-gray-300 transition-colors outline-none focus:ring-2 focus:ring-indigo-500 rounded"
+                      onClick={() => handleOpenSizeModal(index)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleOpenSizeModal(index);
+                        }
+                      }}
+                      title="View Size Breakup"
+                    >
+                      <FiEye size={16} className="inline" />
+                    </button>
+                  </td>
+                  <td className="border border-gray-300 text-left pl-1 text-[11px]">
+                    {findFromList(item.uomId, uomList?.data, "name")}
+                  </td>
+                  <td className="border border-gray-300 text-right px-1 text-[11px]">
+                    {item?.qty || ""}
+                  </td>
+                  <td className="border border-gray-300 text-right px-1 grid-editable-cell">
+                    <input
+                      id={`price-input-${index}`}
+                      type="number"
+                      className="w-full text-[11px] text-right outline-none bg-transparent"
+                      value={
+                        focusedField === `${index}`
+                          ? (item.price ?? "")
+                          : item.price !== undefined &&
+                              item.price !== null &&
+                              item.price !== ""
+                            ? Number(item.price).toFixed(2)
+                            : ""
                       }
-                      setFocusedField(null);
-                    }}
-                  />
-                </td>
-                <td className="border border-gray-300 text-right px-1 text-[11px]">
-                  {item.styleItemId ? Number(item.amount || 0).toFixed(2) : ""}
-                </td>
-                <td className="border border-gray-300 text-center text-[11px]">
-                  <button
-                    id={`tax-btn-${index}`}
-                    disabled={!item.styleItemId}
-                    className="text-indigo-600 hover:text-indigo-800 disabled:text-gray-300 transition-colors outline-none focus:ring-2 focus:ring-indigo-500 rounded"
-                    onClick={() => {
-                      if (!taxTemplateId) {
-                        return Swal.fire({
-                          title: "Information",
-                          text: "Please select Tax Type",
-                          icon: "info",
-                          confirmButtonColor: "#3085d6",
-                        });
+                      onChange={(e) =>
+                        handleInputChange(e.target.value, index, "price")
                       }
-                      setCurrentSelectedIndex(index);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        e.stopPropagation();
+                      readOnly={readOnly || !item.styleItemId}
+                      onFocus={(e) => {
+                        e.target.select();
+                        setFocusedField(`${index}`);
+                      }}
+                      onBlur={(e) => {
+                        const val = e.target.value;
+                        if (val === "") {
+                          handleInputChange("", index, "price");
+                        } else {
+                          const num = parseFloat(val);
+                          handleInputChange(
+                            isNaN(num) ? "" : Number(num).toFixed(2),
+                            index,
+                            "price",
+                          );
+                        }
+                        setFocusedField(null);
+                      }}
+                    />
+                  </td>
+                  <td className="border border-gray-300 text-right px-1 text-[11px]">
+                    {item.styleItemId
+                      ? Number(item.amount || 0).toFixed(2)
+                      : ""}
+                  </td>
+                  <td className="border border-gray-300 text-center text-[11px]">
+                    <button
+                      id={`tax-btn-${index}`}
+                      disabled={!item.styleItemId}
+                      className="text-indigo-600 hover:text-indigo-800 disabled:text-gray-300 transition-colors outline-none focus:ring-2 focus:ring-indigo-500 rounded"
+                      onClick={() => {
                         if (!taxTemplateId) {
                           return Swal.fire({
                             title: "Information",
@@ -414,14 +437,35 @@ const ProformaInvoiceItems = ({
                           });
                         }
                         setCurrentSelectedIndex(index);
-                      }
-                    }}
-                  >
-                    <FiEye size={16} className="inline" />
-                  </button>
-                </td>
-              </tr>
-            ))}
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (!taxTemplateId) {
+                            return Swal.fire({
+                              title: "Information",
+                              text: "Please select Tax Type",
+                              icon: "info",
+                              confirmButtonColor: "#3085d6",
+                            });
+                          }
+                          setCurrentSelectedIndex(index);
+                        }
+                      }}
+                    >
+                      <FiEye size={16} className="inline" />
+                    </button>
+                  </td>
+                  <td className="border border-gray-300 text-right pr-1 text-[11px] ">
+                    {taxPercentStr}
+                  </td>
+                  <td className="border border-gray-300 text-right pr-1 text-[11px] ">
+                    {netAmountStr}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
           <tfoot>
             <tr className="bg-gray-100 h-7 font-bold text-gray-800 text-[11px]">
@@ -432,17 +476,21 @@ const ProformaInvoiceItems = ({
                 Total
               </td>
               <td className="text-right px-1 border border-gray-300">
-                {items
-                  ?.reduce((sum, i) => sum + (parseFloat(i.qty) || 0), 0)
-                  .toFixed(3)}
+                {items?.reduce((sum, i) => sum + (parseFloat(i.qty) || 0), 0)}
               </td>
-              <td className="border border-gray-300"></td>
+              <td className="text-right pr-1 border border-gray-300">
+                {items?.reduce((sum, i) => sum + (parseFloat(i.price) || 0), 0)}
+              </td>
               <td className="text-right px-1 border border-gray-300">
                 {items
                   ?.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0)
                   .toFixed(2)}
               </td>
               <td className="border border-gray-300"></td>
+              <td className="border border-gray-300"></td>
+              <td className="text-right px-1 border border-gray-300 text-[11px]">
+                {enrichedItems?.net?.toFixed(2) || ""}
+              </td>
             </tr>
           </tfoot>
         </table>

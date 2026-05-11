@@ -468,7 +468,8 @@ model Party {
   purchaseLedgers       PurchaseLedger[]
   orderEntries          OrderEntry[]
   JobCard               JobCard[]
-  proformaInvoices      ProformaInvoice[]
+  proformaInvoices      ProformaInvoice[]      @relation("customer")
+  proformaInvoices2     ProformaInvoice[]      @relation("deliveryCustomer")
 }
 
 model PartyBranch {
@@ -1856,39 +1857,44 @@ model OrderSizeBreakup {
 }
 
 model ProformaInvoice {
-  id                Int                   @id @default(autoincrement())
-  docId             String
-  docDate           DateTime?
-  userDate          DateTime?
-  deliveryDate      DateTime?
-  createdAt         DateTime              @default(now())
-  updatedAt         DateTime              @updatedAt
-  createdBy         User?                 @relation("proformaCreatedBy", fields: [createdById], references: [id])
-  createdById       Int?
-  updatedBy         User?                 @relation("proformaUpdatedBy", fields: [updatedById], references: [id])
-  updatedById       Int?
-  Branch            Branch?               @relation(fields: [branchId], references: [id])
-  branchId          Int?
-  Company           Company?              @relation(fields: [companyId], references: [id])
-  companyId         Int?
-  customer          Party?                @relation(fields: [customerId], references: [id])
-  customerId        Int?
-  finYear           FinYear?              @relation(fields: [finYearId], references: [id])
-  finYearId         Int?
-  remarks           String?
-  termsAndCondition String?
-  Terms             TermsAndConditions?   @relation(fields: [termsId], references: [id])
-  termsId           Int?
-  items             ProformaInvoiceItem[]
-  attachments       ProformaAttachments[]
-  OrderEntry        OrderEntry?           @relation(fields: [orderEntryId], references: [id])
-  orderEntryId      Int?
-  TaxTemplate       TaxTemplate?          @relation(fields: [taxTemplateId], references: [id])
-  taxTemplateId     Int?
-  quoteVersion      Int                   @default(1)
-  isApproved        Boolean               @default(false)
-  approvalStatus    String                @default("PENDING")
-  JobCards          JobCard[]
+  id                 Int                   @id @default(autoincrement())
+  docId              String
+  docDate            DateTime?
+  userDate           DateTime?
+  deliveryDate       DateTime?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  createdBy          User?                 @relation("proformaCreatedBy", fields: [createdById], references: [id])
+  createdById        Int?
+  updatedBy          User?                 @relation("proformaUpdatedBy", fields: [updatedById], references: [id])
+  updatedById        Int?
+  Branch             Branch?               @relation(fields: [branchId], references: [id])
+  branchId           Int?
+  Company            Company?              @relation(fields: [companyId], references: [id])
+  companyId          Int?
+  customer           Party?                @relation("customer", fields: [customerId], references: [id])
+  customerId         Int?
+  deliveryCustomer   Party?                @relation("deliveryCustomer", fields: [deliveryCustomerId], references: [id])
+  deliveryCustomerId Int?
+  finYear            FinYear?              @relation(fields: [finYearId], references: [id])
+  finYearId          Int?
+  remarks            String?
+  termsAndCondition  String?
+  Terms              TermsAndConditions?   @relation(fields: [termsId], references: [id])
+  termsId            Int?
+  items              ProformaInvoiceItem[]
+  attachments        ProformaAttachments[]
+  OrderEntry         OrderEntry?           @relation(fields: [orderEntryId], references: [id])
+  orderEntryId       Int?
+  TaxTemplate        TaxTemplate?          @relation(fields: [taxTemplateId], references: [id])
+  taxTemplateId      Int?
+  quoteVersion       Int                   @default(1)
+  isApproved         Boolean               @default(false)
+  approvalStatus     String                @default("PENDING")
+  deliveryType       String?
+  modeOfPayment      String?
+  deliveryCharge     Float?
+  JobCards           JobCard[]
 }
 
 model ProformaInvoiceItem {
