@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import FxSelect, { FxSelectWithAdd } from "../../../Inputs";
 import { useGetGsmMasterQuery } from "../../../redux/services/GsmMasterService";
 import { useGetHsnMasterQuery } from "../../../redux/services/HsnMasterServices";
+import { toast } from "react-toastify";
 import { findFromList, getCommonParams } from "../../../Utils/helper";
 import { Gsm, Size, StyleItemMaster, UomMaster } from "..";
 import { FiEye } from "react-icons/fi";
@@ -86,6 +87,44 @@ const OrderItems = ({
       }, 200);
     }
   }, [sizeModalOpen, activeRowIndex]);
+
+  const handleCloseSizeModal = () => {
+    if (activeRowIndex !== null && orderItems[activeRowIndex]) {
+      const currentRow = orderItems[activeRowIndex];
+      if (
+        currentRow?.trackingType === "Barcode" ||
+        currentRow?.trackingType === "Size Template + Barcode"
+      ) {
+        let hasError = false;
+        for (let i = 0; i < (currentRow.sizeBreakup?.length || 0); i++) {
+          const item = currentRow.sizeBreakup[i];
+          const hasFrom =
+            item.barcodeFrom && String(item.barcodeFrom).trim() !== "";
+          const hasTo = item.barcodeTo && String(item.barcodeTo).trim() !== "";
+          const hasQty =
+            item.qty !== undefined &&
+            item.qty !== null &&
+            String(item.qty).trim() !== "" &&
+            Number(item.qty) !== 0;
+
+          if (hasFrom || hasTo || hasQty) {
+            if (!(hasFrom && hasTo && hasQty)) {
+              hasError = true;
+              break;
+            }
+          }
+        }
+        if (hasError) {
+          toast.warning(
+            "Barcode From, Barcode To and Qty are mandatory for a row.",
+            { autoClose: 3000 },
+          );
+          return;
+        }
+      }
+    }
+    setSizeModalOpen(false);
+  };
 
   const handleOpenSizeModal = async (index) => {
     setActiveRowIndex(index);
@@ -771,7 +810,7 @@ const OrderItems = ({
       {sizeModalOpen && activeRowIndex !== null && (
         <Modal
           isOpen={sizeModalOpen}
-          onClose={() => setSizeModalOpen(false)}
+          onClose={handleCloseSizeModal}
           widthClass="w-[750px]"
         >
           <div className="bg-slate-100 p-3 rounded-lg">
@@ -788,7 +827,7 @@ const OrderItems = ({
               <div className="flex gap-2">
                 <button
                   className="bg-white text-indigo-600 border border-indigo-600 px-4 py-0.5 rounded text-[12px] hover:bg-indigo-50 font-semibold transition-colors flex items-center gap-1 shadow-sm"
-                  onClick={() => setSizeModalOpen(false)}
+                  onClick={handleCloseSizeModal}
                 >
                   Done
                 </button>

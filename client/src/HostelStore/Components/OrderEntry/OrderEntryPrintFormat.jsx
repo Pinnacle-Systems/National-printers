@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8f9fa",
     borderBottom: "1 solid #eee",
     padding: "4 8",
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: "bold",
     color: "#1a1a2e",
   },
@@ -105,8 +105,8 @@ const styles = StyleSheet.create({
   },
   partyAddr: { fontSize: 7.5, color: "#555", lineHeight: 1.4, marginBottom: 6 },
   labelValueRow: { flexDirection: "row", marginBottom: 2 },
-  label: { width: 60, fontSize: 7.5, color: "#888" },
-  value: { flex: 1, fontSize: 7.5, color: "#000", fontWeight: "bold" },
+  label: { width: 60, fontSize: 8.5, color: "#888" },
+  value: { flex: 1, fontSize: 8.5, color: "#000", fontWeight: "bold" },
 
   table: {
     marginTop: 5,
@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "#1a1a2e",
     color: "#fff",
-    fontSize: 6.5,
+    fontSize: 7.5,
     fontWeight: "bold",
     alignItems: "stretch",
   },
@@ -291,7 +291,8 @@ const OrderEntryPrintFormat = ({
             <Text style={styles.companyAddr}>
               {branchData?.address || (
                 <Text>
-                  9(1)-MAARIYAMMAN LAYOUT 2ND STREET,{"\n"}KUMARANATHA PURAM,TIRUPUR : 641602
+                  9(1)-MAARIYAMMAN LAYOUT 2ND STREET,{"\n"}KUMARANATHA
+                  PURAM,TIRUPUR : 641602
                 </Text>
               )}
             </Text>
@@ -411,7 +412,7 @@ const OrderEntryPrintFormat = ({
                     {item.sizeBreakup?.filter((sb) => (Number(sb.qty) || 0) > 0)
                       .length > 0 && (
                       <View style={{ marginTop: 2 }}>
-                        <Text style={{ fontSize: 9, color: "black" }}>
+                        <Text style={{ fontSize: 9 }}>
                           {item.sizeBreakup
                             .filter((sb) => (Number(sb.qty) || 0) > 0)
                             .map((sb) => {

@@ -117,6 +117,7 @@ async function getOne(id) {
       attachments: true,
       Branch: true,
       customer: true,
+      deliveryCustomer: true,
       OrderEntry: {
         include: {
           customer: true,
@@ -190,6 +191,10 @@ async function create(body) {
     termsId,
     orderEntryId,
     taxTemplateId,
+    deliveryType,
+    deliveryCustomerId,
+    modeOfPayment,
+    deliveryCharge,
   } = body;
 
   let finYearDate = await getFinYearStartTimeEndTime(finYearId);
@@ -220,6 +225,10 @@ async function create(body) {
       finYearId: parseInt(finYearId),
       orderEntryId: orderEntryId ? parseInt(orderEntryId) : null,
       taxTemplateId: taxTemplateId ? parseInt(taxTemplateId) : null,
+      deliveryType,
+      deliveryCustomerId: deliveryCustomerId ? parseInt(deliveryCustomerId) : null,
+      modeOfPayment,
+      deliveryCharge: deliveryCharge && deliveryCharge !== "" ? parseFloat(deliveryCharge) : null,
       remarks,
       termsAndCondition,
       termsId: termsId ? parseInt(termsId) : null,
@@ -285,6 +294,10 @@ async function update(id, body, files) {
     orderEntryId,
     taxTemplateId,
     isApproved,
+    deliveryType,
+    deliveryCustomerId,
+    modeOfPayment,
+    deliveryCharge,
   } = body;
 
   const parseItems = JSON.parse(items || "[]");
@@ -402,6 +415,10 @@ async function update(id, body, files) {
       termsId: termsId ? parseInt(termsId) : null,
       orderEntryId: orderEntryId ? parseInt(orderEntryId) : null,
       taxTemplateId: taxTemplateId ? parseInt(taxTemplateId) : null,
+      deliveryType,
+      deliveryCustomerId: deliveryCustomerId ? parseInt(deliveryCustomerId) : null,
+      modeOfPayment,
+      deliveryCharge: deliveryCharge && deliveryCharge !== "" ? parseFloat(deliveryCharge) : null,
       quoteVersion: nextQuoteVersion,
       ...(isApproved !== undefined && { isApproved: isApproved === "true" || isApproved === true }),
       items: isTableChanged ? {
