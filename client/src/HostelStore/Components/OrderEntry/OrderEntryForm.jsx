@@ -16,7 +16,6 @@ import {
   ModeChip,
   renameFile,
 } from "../../../Utils/helper";
-import { toast } from "react-toastify";
 import { HiOutlineRefresh, HiX } from "react-icons/hi";
 import Swal from "sweetalert2";
 import { dropDownListObject } from "../../../Utils/contructObject";
@@ -229,7 +228,8 @@ const OrderEntryForm = ({
     termsId,
     docId,
     orderItems: orderItems
-      ?.filter((i) => i.styleItemId && i.orderQty)
+      ?.map((item, idx) => ({ ...item, uiIndex: idx + 1 }))
+      ?.filter((i) => i.styleItemId)
       .map((item, idx) => ({ ...item, itemOrder: idx })),
   };
 
@@ -269,7 +269,11 @@ const OrderEntryForm = ({
         returnData = await callback(formData).unwrap();
       }
       if (returnData.statusCode === 1) {
-        toast.error(returnData.message);
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: returnData.message,
+        });
       } else {
         Swal.fire({
           icon: "success",
@@ -292,7 +296,11 @@ const OrderEntryForm = ({
                 onClose();
               }
             } else {
-              toast.error(returnData?.message);
+              Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: returnData?.message,
+              });
             }
           },
         });
@@ -308,15 +316,15 @@ const OrderEntryForm = ({
     const duplicates = [];
 
     items.forEach((item, index) => {
-      // Key consists of item (styleItemId), itemGroup (itemGroupId), and type (trackingType)
-      const key = `${item.styleItemId}-${item.itemGroupId}-${item.trackingType}`;
+      // Key consists of styleItem (styleItemId) and type (trackingType)
+      const key = `${item.styleItemId}-${item.trackingType}`;
       if (seen.has(key)) {
         duplicates.push({
-          firstIndex: seen.get(key),
-          duplicateIndex: index,
+          firstIndex: seen.get(key).uiIndex,
+          duplicateIndex: item.uiIndex,
         });
       } else {
-        seen.set(key, index);
+        seen.set(key, { index, uiIndex: item.uiIndex });
       }
     });
 
@@ -327,16 +335,17 @@ const OrderEntryForm = ({
   const validateRows = (items) => {
     const errors = [];
 
-    items.forEach((item, index) => {
+    items.forEach((item) => {
+      const rowIndex = item.uiIndex;
       if (!item.orderQty || Number(item.orderQty) <= 0) {
-        errors.push(`Row ${index + 1}: Order Qty must be greater than 0`);
+        errors.push(`Row ${rowIndex}: Order Qty must be greater than 0`);
       }
       if (!item.styleItemId) {
-        errors.push(`Row ${index + 1}: Style is required`);
+        errors.push(`Row ${rowIndex}: Style is required`);
       }
 
       if (!item.uomId) {
-        errors.push(`Row ${index + 1}: UOM is required`);
+        errors.push(`Row ${rowIndex}: UOM is required`);
       }
     });
 
@@ -385,7 +394,7 @@ const OrderEntryForm = ({
       const message = duplicates
         .map(
           (d) =>
-            `Row ${d.duplicateIndex + 1} is duplicate of Row ${d.firstIndex + 1}`,
+            `Row ${d.duplicateIndex} is duplicate of Row ${d.firstIndex}`,
         )
         .join("<br/>");
 
@@ -495,7 +504,11 @@ const OrderEntryForm = ({
 
   const handleConfirmAction = async () => {
     if (actionType === "REJECT" && !approvalRemarks.trim()) {
-      toast.warning("Remarks required for sending back!");
+      Swal.fire({
+        icon: "warning",
+        title: "Validation Error",
+        text: "Remarks required for sending back!",
+      });
       return;
     }
     setActionLoading(true);
@@ -510,20 +523,33 @@ const OrderEntryForm = ({
       }).unwrap();
 
       if (result.statusCode === 0) {
-        toast.success(
-          result.message ||
+        Swal.fire({
+          icon: "success",
+          title: "Success",
+          text:
+            result.message ||
             (actionType === "APPROVE"
               ? "Order Entry Approved!"
               : "Sent Back for Review!"),
-        );
+          timer: 2000,
+          showConfirmButton: false,
+        });
         setApprovalModal(false);
         onClose();
       } else {
-        toast.error(result.message || "Action failed");
+        Swal.fire({
+          icon: "error",
+          title: "Action Failed",
+          text: result.message || "Action failed",
+        });
         setApprovalModal(false);
       }
     } catch (err) {
-      toast.error(err?.data?.message || "Something went wrong!");
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: err?.data?.message || "Something went wrong!",
+      });
       setApprovalModal(false);
     } finally {
       setActionLoading(false);

@@ -98,6 +98,7 @@ import { useDispatch } from "react-redux";
 import { invalidateOrderEntryModule } from "../../../redux/Dispatch/OrderInvalidateTags.js";
 import { useGetEmployeeQuery } from "../../../redux/services/EmployeeMasterService.js";
 import { useGetSizeMasterQuery } from "../../../redux/services/SizemasterService.js";
+import { useGetStyleItemMasterQuery } from "../../../redux/services/StyleItemMasterService.js";
 import { ProcessRoutePanel, routeKeysToDb } from "./ProcessRoutePanel.jsx";
 import { MdKeyboardDoubleArrowLeft, MdArrowBack } from "react-icons/md";
 import TransactionLayout from "../../../Basic/components/Reuseable/TransactionLayout.jsx";
@@ -260,6 +261,7 @@ const JobCardForm = ({
   const [orderEntryItemId, setOrderEntryItemId] = useState("");
   const [styleItemId, setStyleItemId] = useState("");
   const [sizeModal, setSizeModal] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState(null);
   const qrRef = useRef(null);
 
   // LABEL DETAILS STATE
@@ -300,6 +302,8 @@ const JobCardForm = ({
     { params: { companyId, branchId } },
     { skip: isProformaEnabled },
   );
+
+  const { data: styleItemList } = useGetStyleItemMasterQuery({ params });
 
   // ✅ added back
   const { data: proformaList } = useGetProformaInvoiceQuery(
@@ -610,10 +614,12 @@ const JobCardForm = ({
   const validateData = (data) => {
     const checks = [
       // { condition: !data.orderEntryId, title: "Order No is required!" },
-      { condition: !data.docDate, title: "Document Date is required!" },
+      { condition: !data.docDate, title: "Job Card Date  is required!" },
       { condition: !data.orderType, title: "Order Type is required!" },
       { condition: !data.orderQty, title: "Order Quantity is required!" },
       { condition: !data.customerId, title: "Customer is required!" },
+      { condition: !data.followUpId, title: "Follow Up is required!" },
+      { condition: !data.designerId, title: "Designer is required!" },
     ];
     const failed = checks.find((c) => c.condition);
     if (failed) {
@@ -659,6 +665,19 @@ const JobCardForm = ({
   useEffect(() => {
     customerRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    if (printModalOpen && qrRef.current) {
+      // Small timeout to ensure canvas is fully rendered
+      const timeoutId = setTimeout(() => {
+        const canvas = qrRef.current.querySelector("canvas") || qrRef.current;
+        if (canvas && canvas.toDataURL) {
+          setQrCodeDataUrl(canvas.toDataURL());
+        }
+      }, 500);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [printModalOpen]);
 
   useEffect(() => {
     if (formOrderCustomerId && fromOrderId && fromOrderType && !id) {
@@ -787,8 +806,8 @@ const JobCardForm = ({
 
       {/* ORDER DETAILS */}
       <SectionCard title="Order Details">
-        <div className="grid grid-cols-6 gap-x-2 gap-y-2">
-          <Field label="Order No" required>
+        <div className="grid grid-cols-12 gap-x-2 gap-y-2">
+          <Field label="Order No" required className="col-span-3">
             {isProformaEnabled ? (
               <DropdownNew
                 name=""
@@ -860,7 +879,7 @@ const JobCardForm = ({
             )}
           </Field>
 
-          <Field label="Production Type" required>
+          <Field label="Production Type" required className="col-span-2">
             <TextInput
               name=""
               value={orderType}
@@ -870,7 +889,7 @@ const JobCardForm = ({
             />
           </Field>
 
-          <Field label="Item Description" className="col-span-2">
+          <Field label="Item Description" className="col-span-4">
             <DropdownNew
               name=""
               dataList={
@@ -897,7 +916,7 @@ const JobCardForm = ({
               disabled={readOnly || !orderEntryId}
             />
           </Field>
-          <Field label="Item Group" className="col-span-2">
+          <Field label="Item Group" className="col-span-3">
             <TextInput
               value={itemGroup}
               setValue={setItemGroup}
@@ -906,7 +925,7 @@ const JobCardForm = ({
               className="w-full bg-slate-50"
             />
           </Field>
-          <Field label="Order Qty" required>
+          <Field label="Order Qty" required className="col-span-2">
             <TextInput
               name=""
               value={orderQty}
@@ -921,7 +940,7 @@ const JobCardForm = ({
           </Field>
 
           {!isLabel && (
-            <Field label="Tag/Card ups" className="col-span-1">
+            <Field label="Tag/Card ups" className="col-span-2">
               <TextInput
                 value={tagCardUps}
                 setValue={setTagCardUps}
@@ -932,7 +951,7 @@ const JobCardForm = ({
           )}
 
           {!isLabel && (
-            <Field label="Job Run time">
+            <Field label="Job Run time" className="col-span-2">
               <TextInput
                 value={jobRunTime}
                 setValue={setJobRunTime}
@@ -942,7 +961,7 @@ const JobCardForm = ({
             </Field>
           )}
 
-          <Field label="Follow Up">
+          <Field label="Follow Up" required className="col-span-3">
             <DropdownNew
               name=""
               dataList={employeeList?.data || []}
@@ -955,7 +974,7 @@ const JobCardForm = ({
             />
           </Field>
 
-          <Field label="Designer">
+          <Field label="Designer" required className="col-span-3">
             <DropdownNew
               name=""
               dataList={employeeList?.data || []}
@@ -1004,47 +1023,73 @@ const JobCardForm = ({
         {/* LEFT SIDE: TECHNICAL FIELDS & REMARKS */}
         <div className="flex-1 flex flex-col gap-4 min-h-0">
           {/* Single Row for all Technical Fields */}
-          <div className="grid grid-cols-6 gap-3 shrink-0">
-            <Field label="Label Quality">
-              <TextInput
-                value={labelQuality}
-                setValue={setLabelQuality}
-                readOnly={readOnly}
-                className="w-full"
-              />
-            </Field>
-            <Field label="Block" className="col-span-2">
-              <TextInput
-                value={labelBlock}
-                setValue={setLabelBlock}
-                readOnly={readOnly}
-                className="w-full"
-              />
-            </Field>
-            <Field label="Label Qty">
-              <TextInput
-                value={orderQty}
-                readOnly
-                disabled
-                className="w-full bg-slate-50 text-right"
-              />
-            </Field>
-            <Field label="Roll Qty">
-              <TextInput
-                value={labelRollQty}
-                setValue={setLabelRollQty}
-                readOnly={readOnly}
-                className="w-full text-right"
-              />
-            </Field>
-            <Field label="Cut & Seal">
-              <TextInput
-                value={labelCutAndSeal}
-                setValue={setLabelCutAndSeal}
-                readOnly={readOnly}
-                className="w-full"
-              />
-            </Field>
+          {/* Table for all Technical Fields */}
+          <div className="shrink-0 border border-slate-200 rounded overflow-hidden">
+            <table className="w-full text-[11px] border-collapse bg-white">
+              <thead>
+                <tr className="bg-slate-50 text-[10px] font-bold text-black uppercase tracking-wider">
+                  <th className="border-b border-r border-slate-200 px-2 py-1.5 text-left w-[20%]">
+                    Label Quality
+                  </th>
+                  <th className="border-b border-r border-slate-200 px-2 py-1.5 text-left w-[30%]">
+                    Block
+                  </th>
+                  <th className="border-b border-r border-slate-200 px-2 py-1.5 text-center w-[15%]">
+                    Label Qty
+                  </th>
+                  <th className="border-b border-r border-slate-200 px-2 py-1.5 text-center w-[15%]">
+                    Roll Qty
+                  </th>
+                  <th className="border-b border-slate-200 px-2 py-1.5 text-left w-[20%]">
+                    Cut & Seal
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="border-r border-slate-200 p-0">
+                    <TextInput
+                      value={labelQuality}
+                      setValue={setLabelQuality}
+                      readOnly={readOnly}
+                      className="w-full border-none focus:ring-0 text-[11px] px-2 py-1.5"
+                    />
+                  </td>
+                  <td className="border-r border-slate-200 p-0">
+                    <TextInput
+                      value={labelBlock}
+                      setValue={setLabelBlock}
+                      readOnly={readOnly}
+                      className="w-full border-none focus:ring-0 text-[11px] px-2 py-1.5"
+                    />
+                  </td>
+                  <td className="border-r border-slate-200 p-0">
+                    <TextInput
+                      value={orderQty}
+                      readOnly
+                      disabled
+                      className="w-full border-none focus:ring-0 text-[11px] px-2 py-1.5 bg-slate-50 text-right font-bold"
+                    />
+                  </td>
+                  <td className="border-r border-slate-200 p-0">
+                    <TextInput
+                      value={labelRollQty}
+                      setValue={setLabelRollQty}
+                      readOnly={readOnly}
+                      className="w-full border-none focus:ring-0 text-[11px] px-2 py-1.5 text-right"
+                    />
+                  </td>
+                  <td className="p-0">
+                    <TextInput
+                      value={labelCutAndSeal}
+                      setValue={setLabelCutAndSeal}
+                      readOnly={readOnly}
+                      className="w-full border-none focus:ring-0 text-[11px] px-2 py-1.5"
+                    />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
           {/* Remarks (Fills remaining height below the row) */}
@@ -1065,76 +1110,158 @@ const JobCardForm = ({
         <div className="flex-1 flex flex-col min-h-0">
           <div className="border border-slate-200 rounded-md overflow-hidden bg-white shadow-sm flex flex-col h-full">
             <div className="bg-slate-50 px-3 py-1.5 border-b border-slate-200 shrink-0">
-              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+              <span className="text-[10px] font-bold text-black uppercase tracking-wider">
                 Size / Barcode wise Details
               </span>
             </div>
             <div className="p-2 flex-1 overflow-auto min-h-0">
               {selectedItem?.sizeBreakup?.length > 0 ? (
-                <table className="w-full text-[11px] border-collapse">
-                  <thead className="sticky top-0 z-20">
-                    <tr className="bg-slate-50 text-black uppercase text-[10px] font-bold">
-                      <th className="border border-slate-200 px-2 py-1.5 text-center w-11">
-                        S.NO
-                      </th>
-                      {selectedItem?.trackingType !== "Barcode" && (
-                        <th className="border border-slate-200 px-2 py-1.5 text-center">
-                          SIZE
-                        </th>
-                      )}
-                      {selectedItem?.trackingType !== "Size Template" && (
-                        <>
+                <>
+                  {/* --- BARCODE TYPE TABLE --- */}
+                  {selectedItem?.trackingType === "Barcode" && (
+                    <table className="w-[450px] ml-0 text-[11px] border-collapse">
+                      <thead className="sticky top-0 z-20">
+                        <tr className="bg-slate-50 text-black uppercase text-[10px] font-bold">
+                          <th className="border border-slate-200 px-2 py-1.5 text-center w-11">
+                            S.NO
+                          </th>
                           <th className="border border-slate-200 px-2 py-1.5 text-center">
                             FROM
                           </th>
                           <th className="border border-slate-200 px-2 py-1.5 text-center">
                             TO
                           </th>
-                        </>
-                      )}
-                      <th className="border border-slate-200 px-2 py-1.5 text-center w-24">
-                        QTY
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedItem?.sizeBreakup
-                      ?.filter((row) => (Number(row.qty) || 0) > 0)
-                      ?.map((row, idx) => (
-                        <tr
-                          key={idx}
-                          className="hover:bg-slate-50 transition-colors"
-                        >
-                          <td className="border border-slate-200 px-2 py-1.5 text-center text-slate-500">
-                            {idx + 1}
-                          </td>
-                          {selectedItem?.trackingType !== "Barcode" && (
-                            <td className="border border-slate-200 px-2 py-1.5 text-left font-medium text-slate-700">
-                              {row.Size?.name ||
-                                sizeList?.data?.find(
-                                  (s) => String(s.id) === String(row.sizeId),
-                                )?.name ||
-                                row.size ||
-                                "All Items"}
-                            </td>
-                          )}
-                          {selectedItem?.trackingType !== "Size Template" && (
-                            <>
-                              <td className="border border-slate-200 px-2 py-1.5 text-left text-slate-600 font-mono">
+                          <th className="border border-slate-200 px-2 py-1.5 text-center w-16">
+                            QTY
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedItem?.sizeBreakup
+                          ?.filter((row) => (Number(row.qty) || 0) > 0)
+                          ?.map((row, idx) => (
+                            <tr
+                              key={idx}
+                              className="hover:bg-slate-50 transition-colors"
+                            >
+                              <td className="border border-slate-200 px-2 py-1 text-center text-slate-500">
+                                {idx + 1}
+                              </td>
+                              <td className="border border-slate-200 px-2 py-1 text-left text-slate-600 font-mono">
                                 {row.barcodeFrom || "-"}
                               </td>
-                              <td className="border border-slate-200 px-2 py-1.5 text-left text-slate-600 font-mono">
+                              <td className="border border-slate-200 px-2 py-1 text-left text-slate-600 font-mono">
                                 {row.barcodeTo || "-"}
                               </td>
-                            </>
-                          )}
-                          <td className="border border-slate-200 px-2 py-1.5 text-right font-bold text-indigo-600">
-                            {row.qty}
-                          </td>
+                              <td className="border border-slate-200 px-2 py-1 text-right font-bold text-indigo-600">
+                                {row.qty}
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  )}
+
+                  {/* --- SIZE TEMPLATE TYPE TABLE --- */}
+                  {selectedItem?.trackingType === "Size Template" && (
+                    <table className="w-[350px] ml-0 text-[11px] border-collapse">
+                      <thead className="sticky top-0 z-20">
+                        <tr className="bg-slate-50 text-black uppercase text-[10px] font-bold">
+                          <th className="border border-slate-200 px-2 py-1.5 text-center w-11">
+                            S.NO
+                          </th>
+                          <th className="border border-slate-200 px-2 py-1.5 text-center">
+                            SIZE
+                          </th>
+                          <th className="border border-slate-200 px-2 py-1.5 text-center w-20">
+                            QTY
+                          </th>
                         </tr>
-                      ))}
-                  </tbody>
-                </table>
+                      </thead>
+                      <tbody>
+                        {selectedItem?.sizeBreakup
+                          ?.filter((row) => (Number(row.qty) || 0) > 0)
+                          ?.map((row, idx) => (
+                            <tr
+                              key={idx}
+                              className="hover:bg-slate-50 transition-colors"
+                            >
+                              <td className="border border-slate-200 px-2 py-1 text-center text-slate-500">
+                                {idx + 1}
+                              </td>
+                              <td className="border border-slate-200 px-2 py-1 text-left font-medium text-slate-700">
+                                {row.Size?.name ||
+                                  sizeList?.data?.find(
+                                    (s) => String(s.id) === String(row.sizeId),
+                                  )?.name ||
+                                  row.size ||
+                                  "All Items"}
+                              </td>
+                              <td className="border border-slate-200 px-2 py-1 text-right font-bold text-indigo-600">
+                                {row.qty}
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  )}
+
+                  {/* --- SIZE TEMPLATE + BARCODE TYPE TABLE --- */}
+                  {selectedItem?.trackingType === "Size Template + Barcode" && (
+                    <table className="w-[600px] ml-0 text-[11px] border-collapse">
+                      <thead className="sticky top-0 z-20">
+                        <tr className="bg-slate-50 text-black uppercase text-[10px] font-bold">
+                          <th className="border border-slate-200 px-2 py-1.5 text-center w-11">
+                            S.NO
+                          </th>
+                          <th className="border border-slate-200 px-2 py-1.5 text-center w-24">
+                            SIZE
+                          </th>
+                          <th className="border border-slate-200 px-2 py-1.5 text-center w-24">
+                            FROM
+                          </th>
+                          <th className="border border-slate-200 px-2 py-1.5 text-center w-24">
+                            TO
+                          </th>
+                          <th className="border border-slate-200 px-2 py-1.5 text-center w-16">
+                            QTY
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedItem?.sizeBreakup
+                          ?.filter((row) => (Number(row.qty) || 0) > 0)
+                          ?.map((row, idx) => (
+                            <tr
+                              key={idx}
+                              className="hover:bg-slate-50 transition-colors"
+                            >
+                              <td className="border border-slate-200 px-2 py-1 text-center text-slate-500">
+                                {idx + 1}
+                              </td>
+                              <td className="border border-slate-200 px-2 py-1 text-left font-medium text-slate-700">
+                                {row.Size?.name ||
+                                  sizeList?.data?.find(
+                                    (s) => String(s.id) === String(row.sizeId),
+                                  )?.name ||
+                                  row.size ||
+                                  "All Items"}
+                              </td>
+                              <td className="border border-slate-200 px-2 py-1 text-left text-slate-600 font-mono">
+                                {row.barcodeFrom || "-"}
+                              </td>
+                              <td className="border border-slate-200 px-2 py-1 text-left text-slate-600 font-mono">
+                                {row.barcodeTo || "-"}
+                              </td>
+                              <td className="border border-slate-200 px-2 py-1 text-right font-bold text-indigo-600">
+                                {row.qty}
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  )}
+                </>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full py-8 text-slate-400 gap-2">
                   <FiEye className="text-2xl opacity-20" />
@@ -1706,6 +1833,10 @@ const JobCardForm = ({
               machineList={machineList}
               branchData={branchData?.data}
               orderList={orderList}
+              sizeList={sizeList}
+              qrCodeDataUrl={qrCodeDataUrl}
+              employeeList={employeeList}
+              styleItemList={styleItemList}
             />
           </PDFViewer>
         </Modal>
@@ -1813,7 +1944,7 @@ const JobCardForm = ({
 
                 {/* --- SIZE TEMPLATE TYPE TABLE --- */}
                 {selectedItem?.trackingType === "Size Template" && (
-                  <table className="w-[450px] border-separate border-spacing-0 border-t border-l border-slate-200 mx-auto">
+                  <table className="w-[450px] border-separate border-spacing-0 border-t border-l border-slate-200 ml-0">
                     <thead>
                       <tr>
                         <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-10">

@@ -247,8 +247,6 @@ const ProformaInvoiceForm = ({
     }
   }, [customerId, customerList]);
 
-
-
   useEffect(() => {
     if (orderEntryId) {
       const fetchOrderDetails = async () => {
@@ -339,7 +337,8 @@ const ProformaInvoiceForm = ({
     }
 
     const missingPriceIndex = items.findIndex(
-      (item) => item.styleItemId && (!item.price || parseFloat(item.price) <= 0),
+      (item) =>
+        item.styleItemId && (!item.price || parseFloat(item.price) <= 0),
     );
 
     if (missingPriceIndex !== -1) {
@@ -537,7 +536,7 @@ const ProformaInvoiceForm = ({
   ].filter((a) => !a.hidden);
 
   const headerContent = (
-    <div className="flex flex-col md:flex-row gap-1">
+    <div className="flex flex-wrap gap-1 items-stretch">
       <div className="w-fit border border-slate-200 p-1.5 bg-white rounded-md shadow-sm">
         <h2 className="text-[10px] font-bold text-gray-500 mb-1 uppercase border-b pb-0.5">
           Basic Details
@@ -556,7 +555,7 @@ const ProformaInvoiceForm = ({
               type="date"
             />
           </div>
-          <div className="w-24">
+          {/* <div className="w-24">
             <DateInputNew
               name="User Date"
               value={userDate}
@@ -565,7 +564,7 @@ const ProformaInvoiceForm = ({
               required={false}
               type="date"
             />
-          </div>
+          </div> */}
         </div>
       </div>
 
@@ -574,7 +573,7 @@ const ProformaInvoiceForm = ({
           Order Details
         </h2>
         <div className="flex gap-2">
-          <div className="w-60">
+          <div className="w-72">
             <DropdownInput
               ref={customerRef}
               name="Customer"
@@ -606,7 +605,7 @@ const ProformaInvoiceForm = ({
               disabled={true}
             />
           </div>
-          <div className="w-32">
+          <div className="w-36">
             <DropdownInput
               name="Order No"
               options={dropDownListObject(filteredOrderList, "docId", "id")}
@@ -657,7 +656,7 @@ const ProformaInvoiceForm = ({
               readOnly={effectiveReadOnly}
             />
           </div>
-          <div className="w-64">
+          <div className="w-72">
             <DropdownInput
               name="Delivery Customer"
               options={dropDownListObject(customerList?.data, "name", "id")}
@@ -666,7 +665,7 @@ const ProformaInvoiceForm = ({
               readOnly={effectiveReadOnly || deliveryType === "self"}
             />
           </div>
-          <div className="w-22">
+          <div className="w-24">
             <DropdownInput
               name="Mode of Payment"
               options={[

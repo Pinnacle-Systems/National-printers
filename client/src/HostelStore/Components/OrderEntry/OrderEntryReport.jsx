@@ -13,7 +13,6 @@ import { ApprovalBadge } from "../../../Utils/ApprovalHelper";
 import Modal from "../../../UiComponents/Modal";
 import { MdKeyboardDoubleArrowLeft } from "react-icons/md";
 import { FiCheck } from "react-icons/fi";
-import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 
 const OrderEntryReport = ({
@@ -185,7 +184,11 @@ const OrderEntryReport = ({
 
   const handleConfirmAction = async () => {
     if (actionType === "REJECT" && !remarks.trim()) {
-      toast.warning("Remarks required for sending back!");
+      Swal.fire({
+        icon: "warning",
+        title: "Validation Error",
+        text: "Remarks required for sending back!",
+      });
       return;
     }
 
@@ -201,20 +204,32 @@ const OrderEntryReport = ({
       }).unwrap();
 
       if (result.statusCode === 0) {
-        toast.success(
-          result.message
+        Swal.fire({
+          icon: "success",
+          title: "Success",
+          text: result.message
             ? result?.message
             : actionType === "APPROVE"
               ? "Order Entry Approved!"
               : "Order Entry Sent Back for Review!",
-        );
+          timer: 2000,
+          showConfirmButton: false,
+        });
         setApprovalModal(false);
       } else {
-        toast.error(result.message || "Action failed");
+        Swal.fire({
+          icon: "error",
+          title: "Action Failed",
+          text: result.message || "Action failed",
+        });
         setApprovalModal(false);
       }
     } catch (err) {
-      toast.error(err?.data?.message || "Something went wrong!");
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: err?.data?.message || "Something went wrong!",
+      });
       setApprovalModal(false);
     } finally {
       setActionLoading(false);
