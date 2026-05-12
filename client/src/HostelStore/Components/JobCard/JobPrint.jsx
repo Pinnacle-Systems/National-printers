@@ -6,7 +6,7 @@ import {
   Image,
   StyleSheet,
 } from "@react-pdf/renderer";
-import Logo from "../../../assets/NationalPrintLogo.jpeg";
+import Logo from "../../../../src/assets/mplogo.png";
 import {
   findFromList,
   getDateFromDateTimeToDisplay,
@@ -24,38 +24,31 @@ const styles = StyleSheet.create({
   // ── HEADER ──
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingBottom: 15,
-    borderBottom: "1.5 solid #1a1a2e",
-    marginBottom: 15,
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingTop: 14,
+    paddingBottom: 10,
+    borderBottom: "1.5 solid #1a1a2e",
   },
-  logoContainer: { width: 130, alignItems: "flex-start" },
-  logo: { height: 60, width: 130 },
-  companyCenter: { flex: 2, alignItems: "center", paddingHorizontal: 10 },
+  logo: { height: 52, width: 52 },
+  companyCenter: { alignItems: "center", flex: 1, paddingHorizontal: 10 },
   companyName: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: "bold",
     color: "#1a1a2e",
-    marginBottom: 4,
+    letterSpacing: 0.5,
   },
-  companyAddr: {
+  companyRight: { width: 150, alignItems: "flex-start" },
+  companyRightRow: { flexDirection: "row", marginBottom: 2, width: "100%" },
+  companyLabel: { fontSize: 7.5, color: "#888", width: 38 },
+  companyColon: { fontSize: 7.5, color: "#888", width: 8 },
+  companyValue: {
     fontSize: 7.5,
-    color: "#444",
-    textAlign: "center",
-    lineHeight: 1.3,
-    maxWidth: 250,
+    color: "#1a1a2e",
+    fontWeight: "bold",
+    flex: 1,
   },
-  companyRight: { width: 130, alignItems: "flex-end" },
-  companyRightRow: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginBottom: 3,
-  },
-  companyLabel: { fontSize: 8, color: "#444", marginRight: 4 },
-  companyValue: { fontSize: 8, color: "#1a1a2e", fontWeight: "bold" },
 
   // ── TITLE BAND ──
   titleBand: {
@@ -71,7 +64,7 @@ const styles = StyleSheet.create({
   // ── META PILLS ──
   metaRow: {
     flexDirection: "row",
-    justifyContent: "flex-start",
+    justifyContent: "flex-end",
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 4,
@@ -87,21 +80,19 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 2,
   },
-  metaLabel: { fontSize: 8.5, color: "#444", marginRight: 3 },
-  metaValue: { fontSize: 8.5, fontWeight: "bold", color: "#1a1a2e" },
+  metaLabel: { fontSize: 7.5, color: "#888", marginRight: 3 },
+  metaValue: { fontSize: 7.5, fontWeight: "bold", color: "#1a1a2e" },
 
-  // ── SECTION WRAPS ──
+  // ── TWO COLUMN ──
   twoCol: {
     flexDirection: "row",
     marginHorizontal: 20,
     marginBottom: 8,
     border: "1 solid #ddd",
     borderRadius: 3,
-    overflow: "hidden",
   },
   colHalf: { flex: 1 },
   colThird: { flex: 1 },
-
   sectionHeader: {
     backgroundColor: "#2d2d44",
     color: "#e8e8f0",
@@ -112,19 +103,24 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   sectionBody: { padding: 8 },
-
-  // ── DATA ROWS ──
-  orderInfoRow: { flexDirection: "row", marginBottom: 3 },
-  orderInfoLabel: { fontSize: 8.5, color: "#444", width: 72 },
-  orderInfoColon: { fontSize: 8.5, color: "#444", width: 8 },
-  orderInfoValue: {
-    fontSize: 8.5,
-    color: "#1a1a2e",
+  infoName: {
+    fontSize: 9,
     fontWeight: "bold",
-    flex: 1,
+    color: "#1a1a2e",
+    marginBottom: 3,
   },
+  infoRow: { flexDirection: "row", marginBottom: 2 },
+  infoLabel: { fontSize: 7.5, color: "#888", width: 70 },
+  infoValue: { fontSize: 7.5, color: "#222", fontWeight: "bold", flex: 1 },
 
   // ── SECTION WRAPPER ──
+  sectionWrap: {
+    marginHorizontal: 20,
+    marginBottom: 8,
+    border: "1 solid #ddd",
+    borderRadius: 3,
+    overflow: "hidden",
+  },
   sectionTitle: {
     backgroundColor: "#2d2d44",
     color: "#e8e8f0",
@@ -134,27 +130,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  sectionWrap: {
-    marginHorizontal: 20,
-    marginBottom: 8,
-    border: "1 solid #ddd",
-    borderRadius: 3,
-    overflow: "hidden",
-  },
   sectionContent: { padding: 8 },
-
-  // ── SPEC FIELDS ──
-  specTable: { flexDirection: "row", flexWrap: "wrap" },
-  specCell: { width: "25%", paddingVertical: 3, paddingRight: 8 },
-  specLabel: {
-    fontSize: 7.5,
-    color: "#444",
-    fontWeight: "bold",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-    marginBottom: 1,
-  },
-  specValue: { fontSize: 9, color: "#1a1a2e", fontWeight: "bold" },
 
   // ── GRID / CHECKBOX ──
   gridRow: { flexDirection: "row", flexWrap: "wrap" },
@@ -167,7 +143,7 @@ const styles = StyleSheet.create({
   checkboxBox: {
     width: 9,
     height: 9,
-    border: "1 solid #444",
+    border: "1 solid #888",
     borderRadius: 1,
     marginRight: 4,
     backgroundColor: "#fff",
@@ -178,7 +154,20 @@ const styles = StyleSheet.create({
   checkboxTick: { color: "#fff", fontSize: 6 },
   checkLabel: { fontSize: 7.5, color: "#333" },
 
-  // ── LV TABLE ──
+  // ── SPEC FIELDS ──
+  specTable: { flexDirection: "row", flexWrap: "wrap" },
+  specCell: { width: "25%", paddingVertical: 3, paddingRight: 8 },
+  specLabel: {
+    fontSize: 6.5,
+    color: "#888",
+    fontWeight: "bold",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    marginBottom: 1,
+  },
+  specValue: { fontSize: 8, color: "#1a1a2e", fontWeight: "bold" },
+
+  // ── LV TABLE (Lamination / Varnish) ──
   lvTableHeader: {
     flexDirection: "row",
     borderBottom: "1 solid #ddd",
@@ -187,17 +176,17 @@ const styles = StyleSheet.create({
   },
   lvHeaderType: {
     flex: 3,
-    fontSize: 8,
+    fontSize: 7,
     fontWeight: "bold",
-    color: "#444",
+    color: "#888",
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   lvHeaderCenter: {
     flex: 1,
-    fontSize: 8,
+    fontSize: 7,
     fontWeight: "bold",
-    color: "#444",
+    color: "#888",
     textTransform: "uppercase",
     letterSpacing: 0.5,
     textAlign: "center",
@@ -208,7 +197,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderBottom: "1 solid #f0f0f0",
   },
-  lvName: { flex: 3, fontSize: 8.5, color: "#333" },
+  lvName: { flex: 3, fontSize: 7.5, color: "#333" },
   lvCheck: { flex: 1, alignItems: "center" },
 
   // ── THREE COLUMN ──
@@ -234,7 +223,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   remarksBody: { padding: 8, minHeight: 30 },
-  remarksText: { fontSize: 8.5, color: "#333", lineHeight: 1.5 },
+  remarksText: { fontSize: 7.5, color: "#555", lineHeight: 1.5 },
 
   // ── SIGNATURES ──
   sigArea: { marginHorizontal: 20, marginTop: 14, marginBottom: 8 },
@@ -254,23 +243,23 @@ const styles = StyleSheet.create({
   sigItem: {
     flex: 1,
     textAlign: "center",
-    fontSize: 8.5,
-    color: "#333",
+    fontSize: 7.5,
+    color: "#555",
     fontWeight: "bold",
   },
 
-  // ── FOOTER BAR ──
+  // ── FOOTER ──
   footerBar: {
-    backgroundColor: "#fff",
+    backgroundColor: "#1a1a2e",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 4,
-    marginTop: "auto",
-    borderTop: "1 solid #ddd",
+    marginTop: 8,
   },
-  footerRight: { fontSize: 8, color: "#444" },
+  footerLeft: { fontSize: 7, color: "rgba(255,255,255,0.5)" },
+  footerRight: { fontSize: 7, color: "rgba(255,255,255,0.5)" },
 
   // ── SIZE BREAKUP TABLE ──
   breakupTable: {
@@ -311,21 +300,34 @@ const styles = StyleSheet.create({
     borderRight: "1 solid #eee",
   },
 
-  qrBox: { alignItems: "center", justifyContent: "center", padding: 6 },
-  qrImage: { width: 56, height: 56 },
-  qrLabel: { fontSize: 7, color: "#444", marginTop: 2, textAlign: "center" },
-
+  // ── LABEL DETAIL FIELDS ──
   labelFieldRow: { flexDirection: "row", marginBottom: 4 },
-  labelFieldLabel: { fontSize: 8.5, color: "#444", width: 70 },
+  labelFieldLabel: { fontSize: 7.5, color: "#888", width: 70 },
   labelFieldValue: {
     fontSize: 7.5,
     color: "#1a1a2e",
     fontWeight: "bold",
     flex: 1,
   },
+
+  // ── ORDER INFO FIELD ROW ──
+  orderInfoRow: { flexDirection: "row", marginBottom: 3 },
+  orderInfoLabel: { fontSize: 7, color: "#888", width: 72 },
+  orderInfoColon: { fontSize: 7, color: "#888", width: 8 },
+  orderInfoValue: {
+    fontSize: 7,
+    color: "#1a1a2e",
+    fontWeight: "bold",
+    flex: 1,
+  },
+
+  // ── QR ──
+  qrBox: { alignItems: "center", justifyContent: "center", padding: 6 },
+  qrImage: { width: 56, height: 56 },
+  qrLabel: { fontSize: 6, color: "#aaa", marginTop: 2, textAlign: "center" },
 });
 
-// ── REUSABLE COMPONENTS ──
+// ── SHARED HELPERS ────────────────────────────────────────────────────────────
 
 const Checkbox = ({ checked, label, width }) => (
   <View style={[styles.gridCell, width ? { width } : {}]}>
@@ -413,114 +415,7 @@ const LVSection = ({ title, items, selectedList }) => (
   </View>
 );
 
-const BarcodeTable = ({ data }) => (
-  <View style={[styles.breakupTable, { width: "75%" }]}>
-    <View style={styles.breakupTh}>
-      <Text style={[styles.breakupThCell, { flex: 0.4 }]}>S.No</Text>
-      <Text style={[styles.breakupThCell, { flex: 2 }]}>Barcode From</Text>
-      <Text style={[styles.breakupThCell, { flex: 2 }]}>Barcode To</Text>
-      <Text style={[styles.breakupThCell, { flex: 0.8, borderRight: "none" }]}>
-        Qty
-      </Text>
-    </View>
-    {data.map((item, idx) => (
-      <View
-        key={idx}
-        style={idx % 2 === 0 ? styles.breakupTrEven : styles.breakupTrOdd}
-      >
-        <Text style={[styles.breakupTd, { flex: 0.4 }]}>{idx + 1}</Text>
-        <Text style={[styles.breakupTd, { flex: 2, textAlign: "left" }]}>
-          {item.barcodeFrom}
-        </Text>
-        <Text style={[styles.breakupTd, { flex: 2, textAlign: "left" }]}>
-          {item.barcodeTo}
-        </Text>
-        <Text
-          style={[
-            styles.breakupTd,
-            { flex: 0.8, textAlign: "right", borderRight: "none" },
-          ]}
-        >
-          {item.qty}
-        </Text>
-      </View>
-    ))}
-  </View>
-);
-
-const SizeTemplateTable = ({ data, sizeList }) => (
-  <View style={[styles.breakupTable, { width: "50%" }]}>
-    <View style={styles.breakupTh}>
-      <Text style={[styles.breakupThCell, { flex: 0.4 }]}>S.No</Text>
-      <Text style={[styles.breakupThCell, { flex: 2 }]}>Size</Text>
-      <Text style={[styles.breakupThCell, { flex: 0.8, borderRight: "none" }]}>
-        Qty
-      </Text>
-    </View>
-    {data.map((item, idx) => (
-      <View
-        key={idx}
-        style={idx % 2 === 0 ? styles.breakupTrEven : styles.breakupTrOdd}
-      >
-        <Text style={[styles.breakupTd, { flex: 0.4 }]}>{idx + 1}</Text>
-        <Text style={[styles.breakupTd, { flex: 2, textAlign: "left" }]}>
-          {item.Size?.name ||
-            findFromList(item.sizeId, sizeList?.data, "name") ||
-            "—"}
-        </Text>
-        <Text
-          style={[
-            styles.breakupTd,
-            { flex: 0.8, textAlign: "right", borderRight: "none" },
-          ]}
-        >
-          {item.qty}
-        </Text>
-      </View>
-    ))}
-  </View>
-);
-
-const SizeTemplateBarcodeTable = ({ data, sizeList }) => (
-  <View style={[styles.breakupTable, { width: "85%" }]}>
-    <View style={styles.breakupTh}>
-      <Text style={[styles.breakupThCell, { flex: 0.4 }]}>S.No</Text>
-      <Text style={[styles.breakupThCell, { flex: 1.5 }]}>Size</Text>
-      <Text style={[styles.breakupThCell, { flex: 1.5 }]}>From</Text>
-      <Text style={[styles.breakupThCell, { flex: 1.5 }]}>To</Text>
-      <Text style={[styles.breakupThCell, { flex: 0.8, borderRight: "none" }]}>
-        Qty
-      </Text>
-    </View>
-    {data.map((item, idx) => (
-      <View
-        key={idx}
-        style={idx % 2 === 0 ? styles.breakupTrEven : styles.breakupTrOdd}
-      >
-        <Text style={[styles.breakupTd, { flex: 0.4 }]}>{idx + 1}</Text>
-        <Text style={[styles.breakupTd, { flex: 1.5, textAlign: "left" }]}>
-          {item.Size?.name ||
-            findFromList(item.sizeId, sizeList?.data, "name") ||
-            "—"}
-        </Text>
-        <Text style={[styles.breakupTd, { flex: 1.5, textAlign: "left" }]}>
-          {item.barcodeFrom}
-        </Text>
-        <Text style={[styles.breakupTd, { flex: 1.5, textAlign: "left" }]}>
-          {item.barcodeTo}
-        </Text>
-        <Text
-          style={[
-            styles.breakupTd,
-            { flex: 0.8, textAlign: "right", borderRight: "none" },
-          ]}
-        >
-          {item.qty}
-        </Text>
-      </View>
-    ))}
-  </View>
-);
+// ── SIZE BREAKUP TABLE (PDF) ──────────────────────────────────────────────────
 
 const SizeBreakupTable = ({ trackingType, sizeDetails, sizeList }) => {
   if (!sizeDetails || sizeDetails.length === 0) return null;
@@ -530,106 +425,174 @@ const SizeBreakupTable = ({ trackingType, sizeDetails, sizeList }) => {
   if (filtered.length === 0) return null;
 
   if (trackingType === "Barcode") {
-    return <BarcodeTable data={filtered} />;
+    return (
+      <View style={styles.breakupTable}>
+        <View style={styles.breakupTh}>
+          <Text style={[styles.breakupThCell, { flex: 0.4 }]}>S.No</Text>
+          <Text style={[styles.breakupThCell, { flex: 2 }]}>Barcode From</Text>
+          <Text style={[styles.breakupThCell, { flex: 2 }]}>Barcode To</Text>
+          <Text
+            style={[styles.breakupThCell, { flex: 1, borderRight: "none" }]}
+          >
+            Qty
+          </Text>
+        </View>
+        {filtered.map((item, idx) => (
+          <View
+            key={idx}
+            style={idx % 2 === 0 ? styles.breakupTrOdd : styles.breakupTrEven}
+          >
+            <Text style={[styles.breakupTd, { flex: 0.4 }]}>{idx + 1}</Text>
+            <Text style={[styles.breakupTd, { flex: 2 }]}>
+              {item.barcodeFrom || ""}
+            </Text>
+            <Text style={[styles.breakupTd, { flex: 2 }]}>
+              {item.barcodeTo || ""}
+            </Text>
+            <Text
+              style={[
+                styles.breakupTd,
+                { flex: 1, textAlign: "right", borderRight: "none" },
+              ]}
+            >
+              {Number(item.qty) || ""}
+            </Text>
+          </View>
+        ))}
+      </View>
+    );
   }
 
-  if (trackingType === "Size Template") {
-    return <SizeTemplateTable data={filtered} sizeList={sizeList} />;
+  if (trackingType === "SizeTemplate") {
+    return (
+      <View style={styles.breakupTable}>
+        <View style={styles.breakupTh}>
+          <Text style={[styles.breakupThCell, { flex: 0.4 }]}>S.No</Text>
+          <Text style={[styles.breakupThCell, { flex: 2 }]}>Size</Text>
+          <Text
+            style={[styles.breakupThCell, { flex: 1, borderRight: "none" }]}
+          >
+            Qty
+          </Text>
+        </View>
+        {filtered.map((item, idx) => (
+          <View
+            key={idx}
+            style={idx % 2 === 0 ? styles.breakupTrOdd : styles.breakupTrEven}
+          >
+            <Text style={[styles.breakupTd, { flex: 0.4 }]}>{idx + 1}</Text>
+            <Text style={[styles.breakupTd, { flex: 2, textAlign: "left" }]}>
+              {findFromList(item.sizeId, sizeList?.data, "name") || "—"}
+            </Text>
+            <Text
+              style={[
+                styles.breakupTd,
+                { flex: 1, textAlign: "right", borderRight: "none" },
+              ]}
+            >
+              {Number(item.qty) || ""}
+            </Text>
+          </View>
+        ))}
+      </View>
+    );
   }
 
-  if (trackingType === "Size Template + Barcode") {
-    return <SizeTemplateBarcodeTable data={filtered} sizeList={sizeList} />;
+  if (trackingType === "SizeTemplateBarcode") {
+    return (
+      <View style={styles.breakupTable}>
+        <View style={styles.breakupTh}>
+          <Text style={[styles.breakupThCell, { flex: 0.4 }]}>S.No</Text>
+          <Text style={[styles.breakupThCell, { flex: 1.5 }]}>Size</Text>
+          <Text style={[styles.breakupThCell, { flex: 1.5 }]}>From</Text>
+          <Text style={[styles.breakupThCell, { flex: 1.5 }]}>To</Text>
+          <Text
+            style={[styles.breakupThCell, { flex: 1, borderRight: "none" }]}
+          >
+            Qty
+          </Text>
+        </View>
+        {filtered.map((item, idx) => (
+          <View
+            key={idx}
+            style={idx % 2 === 0 ? styles.breakupTrOdd : styles.breakupTrEven}
+          >
+            <Text style={[styles.breakupTd, { flex: 0.4 }]}>{idx + 1}</Text>
+            <Text style={[styles.breakupTd, { flex: 1.5, textAlign: "left" }]}>
+              {findFromList(item.sizeId, sizeList?.data, "name") || "—"}
+            </Text>
+            <Text style={[styles.breakupTd, { flex: 1.5 }]}>
+              {item.barcodeFrom || ""}
+            </Text>
+            <Text style={[styles.breakupTd, { flex: 1.5 }]}>
+              {item.barcodeTo || ""}
+            </Text>
+            <Text
+              style={[
+                styles.breakupTd,
+                { flex: 1, textAlign: "right", borderRight: "none" },
+              ]}
+            >
+              {Number(item.qty) || ""}
+            </Text>
+          </View>
+        ))}
+      </View>
+    );
   }
 
   return null;
 };
 
-const ProcessRouteSection = ({ processRoute }) => {
-  if (!processRoute || processRoute.length === 0) return null;
+// ── FOOTER BLOCK (shared) ─────────────────────────────────────────────────────
 
-  return (
-    <View style={styles.sectionWrap} wrap={false}>
-      <Text style={styles.sectionTitle}>PROCESS ROUTE / SEQUENCE</Text>
-      <View
-        style={[
-          styles.sectionContent,
-          {
-            flexDirection: "row",
-            flexWrap: "wrap",
-            alignItems: "center",
-            gap: 6,
-          },
-        ]}
-      >
-        {processRoute.map((item, index) => (
-          <View
-            key={index}
-            style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
-          >
-            <View
-              style={{
-                paddingHorizontal: 10,
-                paddingVertical: 5,
-                backgroundColor: "#f4f4f6",
-                border: "1 solid #1a1a2e",
-                borderRadius: 4,
-              }}
-            >
-              <Text
-                style={{ fontSize: 8, fontWeight: "bold", color: "#1a1a2e" }}
-              >
-                {item.Process?.name || item.name || "Process"}
-              </Text>
-            </View>
-            {index < processRoute.length - 1 && (
-              <Text style={{ fontSize: 10, color: "#999", fontWeight: "bold" }}>
-                {">"}
-              </Text>
-            )}
-          </View>
+const FooterBlock = ({ remarks, branchName }) => (
+  <>
+    {/* REMARKS */}
+    <View style={styles.remarksBar}>
+      <Text style={styles.sectionTitle}>REMARKS</Text>
+      <View style={styles.remarksBody}>
+        <Text style={styles.remarksText}>{remarks || ""}</Text>
+      </View>
+    </View>
+
+    {/* SIGNATURES */}
+    <View style={styles.sigArea}>
+      <Text style={styles.sigCompany}>For {branchName || ""}</Text>
+      <View style={styles.sigRow}>
+        {[
+          "Designer Sign",
+          "Incharge Sign",
+          "Proprietor Sign",
+          "Operator Sign",
+        ].map((role) => (
+          <Text key={role} style={styles.sigItem}>
+            {role}
+          </Text>
         ))}
       </View>
     </View>
-  );
-};
 
-const FooterBlock = ({ remarks }) => (
-  <View style={{ marginTop: 10, paddingBottom: 60 }}>
-    <View style={styles.remarksBar} wrap={false}>
-      <Text style={styles.sectionTitle}>REMARKS / INSTRUCTIONS</Text>
-      <View style={styles.remarksBody}>
-        <Text style={styles.remarksText}>
-          {remarks || "No special instructions."}
-        </Text>
-      </View>
+    {/* FOOTER BAR */}
+    <View style={styles.footerBar}>
+      <Text style={styles.footerLeft}></Text>
+      <Text
+        style={styles.footerRight}
+        render={({ pageNumber, totalPages }) =>
+          `Page ${pageNumber} / ${totalPages}`
+        }
+      />
     </View>
-  </View>
+  </>
 );
 
-const Signatures = ({ branchName }) => (
-  <View style={styles.sigArea} wrap={false}>
-    <View style={styles.sigRow}>
-      {[
-        "Designer Sign",
-        "Incharge Sign",
-        "Proprietor Sign",
-        "Operator Sign",
-      ].map((role) => (
-        <Text key={role} style={styles.sigItem}>
-          {role}
-        </Text>
-      ))}
-    </View>
-  </View>
-);
+// ── MAIN COMPONENT ────────────────────────────────────────────────────────────
 
-// ── MAIN COMPONENT ──
-
-const JobCardPrintFormat = ({
+const JobPrint = ({
   singleData,
   customerList,
-  gsmList,
   boardList,
+  gsmList,
   plateList,
   dieList,
   defaultList,
@@ -650,11 +613,12 @@ const JobCardPrintFormat = ({
     docDate,
     orderQty,
     customerId,
+    remarks,
     gsmId,
     boardId,
-    fullBoard,
+    fullBoardId,
+    cuttingSizeId,
     noOfPockets,
-    cuttingSize,
     runningQty,
     isFourColor,
     isCutColor,
@@ -666,57 +630,44 @@ const JobCardPrintFormat = ({
     isFrontBackMachine,
     plateId,
     dieId,
-    totalPlateSet: totalPlatesets,
+    totalPlatesets,
     boardQualities,
     processDetails,
     laminationDetails,
     varnishDetails,
     machineDetails,
     jobRunTime,
-    itemGroup: itemType,
+    itemType,
     styleItemId,
     labelQuality,
-    labelBlock: block,
-    labelRollQty: rollQty,
-    labelCutAndSeal: cutAndSeal,
+    block,
+    rollQty,
+    cutAndSeal,
+    jobCardSizeDetails,
+    trackingType,
+    productionType,
     tagCardUps,
     followUpId,
     designerId,
-    remarks,
   } = singleData;
 
-  const trackingType =
-    singleData.trackingType || singleData.OrderEntryItem?.trackingType || "";
-  const productionType =
-    singleData.productionType || singleData.OrderEntry?.productionType || "";
-  const jobCardSizeDetails =
-    singleData.jobCardSizeDetails ||
-    singleData.OrderEntryItem?.sizeBreakup ||
-    [];
-
   const isLabel = itemType === "LABEL";
-  const customer =
-    singleData?.customer ||
-    singleData?.Customer ||
-    customerList?.data?.find((c) => c.id === customerId);
-  const orderEntry =
-    singleData?.OrderEntry ||
-    orderList?.data?.find((o) => o.id === singleData?.orderEntryId);
-
+  const customer = customerList?.data?.find((c) => c.id === customerId);
+  const orderEntry = orderList?.data?.find(
+    (o) => o.id === singleData?.orderEntryId,
+  );
   const styleItemName =
     singleData?.StyleItem?.name ||
-    singleData?.OrderEntryItem?.StyleItem?.name ||
     findFromList(styleItemId, styleItemList?.data, "name") ||
     "";
   const followUpName =
-    employeeList?.data?.find((e) => String(e.id) === String(followUpId))
-      ?.name || "";
+    employeeList?.data?.find((e) => e.id === followUpId)?.name || "";
   const designerName =
-    employeeList?.data?.find((e) => String(e.id) === String(designerId))
-      ?.name || "";
-  const fullBoardName = fullBoard || "—";
-  const cuttingSizeName = cuttingSize || "—";
+    employeeList?.data?.find((e) => e.id === designerId)?.name || "";
+  const fullBoardName = findFromList(fullBoardId, sizeList?.data, "name");
+  const cuttingSizeName = findFromList(cuttingSizeId, sizeList?.data, "name");
 
+  // Normalise arrays
   const selectedBoardIds = boardQualities?.map((b) => b.boardId) || [];
   const selectedProcessIds = processDetails?.map((p) => p.processId) || [];
   const selectedMachineIds = machineDetails?.map((m) => m.machineId) || [];
@@ -733,62 +684,61 @@ const JobCardPrintFormat = ({
       isFrontAndBack: v.isFrontAndBack,
     })) || [];
 
-  const processRoute =
-    singleData.processRoute ||
-    singleData.processDetails?.map((p) => ({ Process: p.Process })) ||
-    [];
-
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        <View
-          fixed
-          render={({ pageNumber }) =>
-            pageNumber > 1 ? <View style={{ height: 35 }} /> : null
-          }
-        />
+        {/* ── TOP ACCENT BAR ── */}
         <View style={styles.topBar} />
 
+        {/* ── HEADER ── */}
         <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <Image src={Logo} style={styles.logo} />
-          </View>
+          <Image src={Logo} style={styles.logo} />
           <View style={styles.companyCenter}>
-            <Text style={styles.companyName}>NATIONAL PRINTING PRESS</Text>
-            <Text style={styles.companyAddr}>
-              {branchData?.address ||
-                "9(1)-MAARIYAMMAN LAYOUT 2ND STREET, KUMARANATHA PURAM, TIRUPUR : 641602"}
+            <Text style={styles.companyName}>
+              {branchData?.branchName || ""}
             </Text>
+            {branchData?.address ? (
+              <Text
+                style={{
+                  fontSize: 7.5,
+                  color: "#666",
+                  marginTop: 2,
+                  textAlign: "center",
+                }}
+              >
+                {branchData.address}
+              </Text>
+            ) : null}
           </View>
           <View style={styles.companyRight}>
-            <View style={styles.companyRightRow}>
-              <Text style={styles.companyLabel}>GSTIN :</Text>
-              <Text style={styles.companyValue}>
-                {branchData?.gstNo || "33BHEPC9190H1ZE"}
-              </Text>
-            </View>
-            <View style={styles.companyRightRow}>
-              <Text style={styles.companyLabel}>Mobile :</Text>
-              <Text style={styles.companyValue}>
-                {branchData?.contactMobile || "9952138129"}
-              </Text>
-            </View>
+            {[
+              { label: "Mobile", value: branchData?.contactMobile },
+              { label: "GST No", value: branchData?.company?.gstNo },
+              { label: "Email", value: branchData?.contactEmail },
+            ].map(({ label, value }) =>
+              value ? (
+                <View key={label} style={styles.companyRightRow}>
+                  <Text style={styles.companyLabel}>{label}</Text>
+                  <Text style={styles.companyColon}> : </Text>
+                  <Text style={styles.companyValue}>{value}</Text>
+                </View>
+              ) : null,
+            )}
           </View>
         </View>
 
+        {/* ── TITLE BAND ── */}
         <Text style={styles.titleBand}>
           {isLabel ? "JOB CARD — LABEL" : "JOB CARD"}
         </Text>
 
+        {/* ── META PILLS: Job Card No, Date, Order No, Order Qty ── */}
         <View style={styles.metaRow}>
           {[
             { label: "Job Card No", value: docId },
             { label: "Date", value: getDateFromDateTimeToDisplay(docDate) },
-            { label: "Order No", value: orderEntry?.docId || "—" },
-            {
-              label: "Production Type",
-              value: singleData?.orderType || orderEntry?.productionType || "—",
-            },
+            { label: "Order No", value: orderEntry?.docId || "-" },
+            { label: "Order Qty", value: orderQty ? Number(orderQty) : "" },
           ].map(({ label, value }) => (
             <View key={label} style={styles.metaPill}>
               <Text style={styles.metaLabel}>{label}:</Text>
@@ -797,11 +747,13 @@ const JobCardPrintFormat = ({
           ))}
         </View>
 
+        {/* ── CUSTOMER + ORDER DETAILS + QR (three-column row) ── */}
         <View style={[styles.twoCol, { alignItems: "stretch" }]}>
+          {/* Customer — compact */}
           <View
             style={[
               styles.colThird,
-              { borderRight: "1 solid #ddd", width: "35%" },
+              { borderRight: "1 solid #ddd", flex: 1.2 },
             ]}
           >
             <Text style={styles.sectionHeader}>CUSTOMER</Text>
@@ -811,71 +763,28 @@ const JobCardPrintFormat = ({
               >
                 {customer?.name || "—"}
               </Text>
-              <Text
-                style={{
-                  fontSize: 8.5,
-                  color: "#333",
-                  marginTop: 2,
-                  lineHeight: 1.3,
-                }}
-              >
-                {customer?.address || "—"}
+              <Text style={{ fontSize: 7, color: "#888", marginTop: 2 }}>
+                Production: {productionType || "—"}
               </Text>
-              <View style={{ flexDirection: "row", marginTop: 4 }}>
-                <Text style={{ fontSize: 8.5, color: "#444", width: 35 }}>
-                  GST
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 8.5,
-                    color: "#1a1a2e",
-                    fontWeight: "bold",
-                  }}
-                >
-                  : {customer?.gstNo || "—"}
-                </Text>
-              </View>
-              <View style={{ flexDirection: "row", marginTop: 1 }}>
-                <Text style={{ fontSize: 8.5, color: "#444", width: 35 }}>
-                  Mobile
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 8.5,
-                    color: "#1a1a2e",
-                    fontWeight: "bold",
-                  }}
-                >
-                  :{" "}
-                  {customer?.contactNumber ||
-                    (customer?.contactMobile && customer.contactMobile !== 0
-                      ? String(customer.contactMobile)
-                      : customer?.mobile || "—")}
-                </Text>
-              </View>
             </View>
           </View>
 
+          {/* Order Details: Item Desc, Tag/Card Ups, Job Run Time, Follow Up, Designer */}
           <View
-            style={[
-              styles.colThird,
-              { borderRight: "1 solid #ddd", width: "50%" },
-            ]}
+            style={[styles.colThird, { borderRight: "1 solid #ddd", flex: 2 }]}
           >
             <Text style={styles.sectionHeader}>ORDER DETAILS</Text>
             <View style={styles.sectionBody}>
               {[
-                { label: "Item Group", value: itemType || "—" },
                 { label: "Item Description", value: styleItemName },
-                { label: "Order Qty", value: orderQty || "0" },
-                { label: "Follow Up", value: followUpName },
-                { label: "Designer", value: designerName },
                 ...(!isLabel
                   ? [
                       { label: "Tag / Card Ups", value: tagCardUps },
                       { label: "Job Run Time", value: jobRunTime },
                     ]
                   : []),
+                { label: "Follow Up", value: followUpName },
+                { label: "Designer", value: designerName },
               ].map(({ label, value }) => (
                 <View key={label} style={styles.orderInfoRow}>
                   <Text style={styles.orderInfoLabel}>{label}</Text>
@@ -886,9 +795,10 @@ const JobCardPrintFormat = ({
             </View>
           </View>
 
+          {/* QR Code */}
           <View
             style={{
-              width: "15%",
+              flex: 0.6,
               alignItems: "center",
               justifyContent: "center",
               padding: 8,
@@ -900,32 +810,33 @@ const JobCardPrintFormat = ({
                 <Text style={styles.qrLabel}>Scan to identify</Text>
               </>
             ) : (
-              <View style={styles.qrBox}>
-                <Text style={{ fontSize: 6, color: "#bbb" }}>QR Code</Text>
+              <View
+                style={{
+                  width: 56,
+                  height: 56,
+                  border: "1 dashed #ccc",
+                  borderRadius: 2,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text
+                  style={{ fontSize: 6, color: "#bbb", textAlign: "center" }}
+                >
+                  QR Code
+                </Text>
               </View>
             )}
           </View>
         </View>
-        {!isLabel && boardList?.length > 0 && (
-          <View style={styles.sectionWrap}>
-            <Text style={styles.sectionTitle}>BOARD QUALITY</Text>
-            <View style={styles.sectionContent}>
-              <View style={styles.gridRow}>
-                {boardList.map((item) => (
-                  <Checkbox
-                    key={item.id}
-                    checked={selectedBoardIds.includes(item.id)}
-                    label={item.name}
-                  />
-                ))}
-              </View>
-            </View>
-          </View>
-        )}
 
+        {/* ══════════════════════════════════════════════════
+                    NON-LABEL LAYOUT
+                ══════════════════════════════════════════════════ */}
         {!isLabel && (
           <>
-            <View style={styles.sectionWrap} wrap={false}>
+            {/* ── SPECIFICATIONS ── */}
+            <View style={styles.sectionWrap}>
               <Text style={styles.sectionTitle}>SPECIFICATIONS</Text>
               <View style={styles.sectionContent}>
                 <View style={styles.specTable}>
@@ -939,16 +850,50 @@ const JobCardPrintFormat = ({
                   />
                   <SpecField label="Full Board" value={fullBoardName} />
                   <SpecField label="Cutting Size" value={cuttingSizeName} />
-                  <SpecField label="No. of Pockets" value={noOfPockets} />
-                  <SpecField label="Running Qty" value={runningQty} />
+                  <SpecField
+                    label="No. of Pockets"
+                    value={noOfPockets || "—"}
+                  />
+                  <SpecField label="Running Qty" value={runningQty || "—"} />
+                  <SpecField
+                    label="Plate Details"
+                    value={findFromList(plateId, plateList?.data, "name")}
+                  />
+                  <SpecField
+                    label="Die Details"
+                    value={findFromList(dieId, dieList?.data, "name")}
+                  />
+                  <SpecField
+                    label="Total Plate Sets"
+                    value={totalPlatesets || "—"}
+                  />
                 </View>
+              </View>
+            </View>
 
-                <View
-                  style={[
-                    styles.gridRow,
-                    { marginTop: 8, paddingTop: 6, borderTop: "1 solid #eee" },
-                  ]}
-                >
+            {/* ── BOARD QUALITY ── */}
+            {boardList?.length > 0 && (
+              <View style={styles.sectionWrap}>
+                <Text style={styles.sectionTitle}>BOARD QUALITY</Text>
+                <View style={[styles.sectionContent, { paddingVertical: 6 }]}>
+                  <View style={styles.gridRow}>
+                    {boardList.map((item) => (
+                      <Checkbox
+                        key={item.id}
+                        checked={selectedBoardIds.includes(item.id)}
+                        label={item.name}
+                      />
+                    ))}
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* ── PRINTING OPTIONS ── */}
+            <View style={styles.sectionWrap}>
+              <Text style={styles.sectionTitle}>PRINTING OPTIONS</Text>
+              <View style={[styles.sectionContent, { paddingVertical: 6 }]}>
+                <View style={styles.gridRow}>
                   <Checkbox checked={isFourColor} label="4 Color" />
                   <Checkbox checked={isCutColor} label="Cut Color" />
                   <Checkbox checked={isFront} label="Front" />
@@ -957,7 +902,9 @@ const JobCardPrintFormat = ({
               </View>
             </View>
 
+            {/* ── PROCESS / VARNISH / LAMINATION ── */}
             <View style={styles.threeCol}>
+              {/* Process */}
               <View style={styles.threeColItem}>
                 <Text style={styles.sectionHeader}>PROCESS</Text>
                 <View style={styles.sectionContent}>
@@ -991,11 +938,15 @@ const JobCardPrintFormat = ({
                   </View>
                 </View>
               </View>
+
+              {/* Varnish */}
               <LVSection
                 title="VARNISH"
                 items={varnishList}
                 selectedList={savedVarnishes}
               />
+
+              {/* Lamination */}
               <LVSection
                 title="LAMINATION"
                 items={laminationList}
@@ -1003,10 +954,11 @@ const JobCardPrintFormat = ({
               />
             </View>
 
+            {/* ── MACHINE DETAILS ── */}
             {machineList?.length > 0 && (
-              <View style={styles.sectionWrap} wrap={false}>
+              <View style={styles.sectionWrap}>
                 <Text style={styles.sectionTitle}>MACHINE DETAILS</Text>
-                <View style={styles.sectionContent}>
+                <View style={[styles.sectionContent, { paddingVertical: 6 }]}>
                   <View style={styles.gridRow}>
                     {machineList.map((item) => (
                       <Checkbox
@@ -1016,6 +968,7 @@ const JobCardPrintFormat = ({
                       />
                     ))}
                   </View>
+                  {/* Machine Specifications — inline, no heading */}
                   <View
                     style={[
                       styles.gridRow,
@@ -1038,40 +991,16 @@ const JobCardPrintFormat = ({
               </View>
             )}
 
-            {(plateId || dieId || totalPlatesets) && (
-              <View style={styles.sectionWrap} wrap={false}>
-                <Text style={styles.sectionTitle}>PLATE & DIE DETAILS</Text>
-                <View style={styles.sectionContent}>
-                  <View style={styles.specTable}>
-                    <SpecField
-                      label="Plate Details"
-                      value={findFromList(plateId, plateList?.data, "name")}
-                      width="33%"
-                    />
-                    <SpecField
-                      label="Die Details"
-                      value={findFromList(dieId, dieList?.data, "name")}
-                      width="33%"
-                    />
-                    <SpecField
-                      label="Total Plate Sets"
-                      value={totalPlatesets}
-                      width="33%"
-                    />
-                  </View>
-                </View>
-              </View>
-            )}
-
+            {/* ── SIZE DETAILS (non-label) ── */}
             {jobCardSizeDetails &&
               jobCardSizeDetails.length > 0 &&
               trackingType &&
               trackingType !== "None" && (
-                <View style={styles.sectionWrap} wrap={false}>
+                <View style={styles.sectionWrap}>
                   <Text style={styles.sectionTitle}>
                     {trackingType === "Barcode"
                       ? "BARCODE WISE DETAILS"
-                      : trackingType === "Size Template + Barcode"
+                      : trackingType === "SizeTemplateBarcode"
                         ? "SIZE + BARCODE WISE DETAILS"
                         : "SIZE WISE DETAILS"}
                   </Text>
@@ -1084,109 +1013,80 @@ const JobCardPrintFormat = ({
                   </View>
                 </View>
               )}
-
-            <ProcessRouteSection processRoute={processRoute} />
           </>
         )}
 
+        {/* ══════════════════════════════════════════════════
+                    LABEL LAYOUT
+                ══════════════════════════════════════════════════ */}
         {isLabel && (
           <>
-            <View style={styles.sectionWrap} wrap={false}>
-              <Text style={styles.sectionTitle}>LABEL DETAILS</Text>
-              <View style={styles.sectionContent}>
-                <View style={{ flexDirection: "row" }}>
+            {/* ── LABEL DETAILS + SIZE BREAKUP ── */}
+            <View style={styles.twoCol}>
+              <View style={[styles.colHalf, { borderRight: "1 solid #ddd" }]}>
+                <Text style={styles.sectionHeader}>LABEL DETAILS</Text>
+                <View style={styles.sectionBody}>
                   {[
-                    { label: "Quality", value: labelQuality },
+                    { label: "Label Quality", value: labelQuality },
                     { label: "Block", value: block },
-                    { label: "Qty", value: orderQty },
+                    {
+                      label: "Label Qty",
+                      value: orderQty ? Number(orderQty) : "",
+                    },
                     { label: "Roll Qty", value: rollQty },
                     { label: "Cut & Seal", value: cutAndSeal },
                   ].map(({ label, value }) => (
-                    <View
-                      key={label}
-                      style={{
-                        flex: 1,
-                        flexDirection: "column",
-                        borderRight:
-                          label === "Cut & Seal" ? "none" : "1 solid #eee",
-                        paddingRight: 5,
-                        marginLeft: label === "Quality" ? 0 : 5,
-                      }}
-                    >
-                      <Text
-                        style={[styles.labelFieldLabel, { marginBottom: 2 }]}
-                      >
-                        {label}
-                      </Text>
-                      <Text
-                        style={[styles.labelFieldValue, { fontWeight: "bold" }]}
-                      >
-                        {value || "—"}
+                    <View key={label} style={styles.labelFieldRow}>
+                      <Text style={styles.labelFieldLabel}>{label}</Text>
+                      <Text style={styles.labelFieldValue}>
+                        : {value || "—"}
                       </Text>
                     </View>
                   ))}
                 </View>
               </View>
-            </View>
 
-            {jobCardSizeDetails &&
-              jobCardSizeDetails.length > 0 &&
-              trackingType &&
-              trackingType !== "None" && (
-                <View style={styles.sectionWrap} wrap={false}>
-                  <Text style={styles.sectionTitle}>
-                    {trackingType === "Barcode"
-                      ? "BARCODE WISE DETAILS"
-                      : trackingType === "Size Template + Barcode"
-                        ? "SIZE + BARCODE WISE DETAILS"
-                        : "SIZE WISE DETAILS"}
-                  </Text>
-                  <View style={styles.sectionContent}>
+              {/* Size breakup for label — size name shown, never "All Items" */}
+              <View style={styles.colHalf}>
+                <Text style={styles.sectionHeader}>
+                  {trackingType === "Barcode"
+                    ? "BARCODE WISE DETAILS"
+                    : trackingType === "SizeTemplateBarcode"
+                      ? "SIZE + BARCODE WISE DETAILS"
+                      : "SIZE WISE DETAILS"}
+                </Text>
+                <View style={styles.sectionBody}>
+                  {jobCardSizeDetails && jobCardSizeDetails.length > 0 ? (
                     <SizeBreakupTable
                       trackingType={trackingType}
                       sizeDetails={jobCardSizeDetails}
                       sizeList={sizeList}
                     />
-                  </View>
+                  ) : (
+                    <Text
+                      style={{
+                        fontSize: 7.5,
+                        color: "#aaa",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      No size details available.
+                    </Text>
+                  )}
                 </View>
-              )}
+              </View>
+            </View>
 
-            <ProcessRouteSection processRoute={processRoute} />
+            {/* Label layout: push remarks + signatures + footer to bottom */}
+            <View style={{ flex: 1 }} />
           </>
         )}
 
-        <FooterBlock remarks={remarks} />
-
-        <View
-          style={{ position: "absolute", bottom: 15, left: 0, right: 0 }}
-          fixed
-          render={({ pageNumber, totalPages }) =>
-            pageNumber === totalPages ? (
-              <Signatures branchName={branchData?.branchName} />
-            ) : null
-          }
-        />
-
-        <View
-          style={[
-            styles.footerBar,
-            { position: "absolute", bottom: 0, left: 0, right: 0 },
-          ]}
-          fixed
-        >
-          <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.5)" }}>
-            National Printing Press
-          </Text>
-          <Text
-            style={styles.footerRight}
-            render={({ pageNumber, totalPages }) =>
-              `Page ${pageNumber} / ${totalPages}`
-            }
-          />
-        </View>
+        {/* ── REMARKS + SIGNATURES + FOOTER (both layouts, always at bottom for label) ── */}
+        <FooterBlock remarks={remarks} branchName={branchData?.branchName} />
       </Page>
     </Document>
   );
 };
 
-export default JobCardPrintFormat;
+export default JobPrint;

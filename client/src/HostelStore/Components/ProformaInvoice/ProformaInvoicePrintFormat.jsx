@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   detailLabel: {
-    fontSize: 8,
+    fontSize: 8.5,
     color: "#666",
     marginRight: 4,
     fontWeight: "bold",
@@ -221,6 +221,7 @@ const styles = StyleSheet.create({
     borderRight: "1 solid #333",
     paddingVertical: 6,
     justifyContent: "center",
+    fontSize: 8.5,
   },
 
   footerGrid: {
@@ -581,7 +582,9 @@ const ProformaInvoicePrintFormat = ({ data }) => {
               <View style={{ width: 160, borderLeft: "1 solid #eee" }}>
                 <View style={styles.taxRow}>
                   <Text style={styles.taxLabel}>Taxable Amt</Text>
-                  <Text style={styles.taxValue}>{taxableAmount.toFixed(2)}</Text>
+                  <Text style={styles.taxValue}>
+                    {taxableAmount.toFixed(2)}
+                  </Text>
                 </View>
 
                 {taxRows.map((tax, idx) => (
@@ -594,13 +597,17 @@ const ProformaInvoicePrintFormat = ({ data }) => {
                 {deliveryCharge > 0 && (
                   <View style={styles.taxRow}>
                     <Text style={styles.taxLabel}>Delivery Charge</Text>
-                    <Text style={styles.taxValue}>{deliveryCharge.toFixed(2)}</Text>
+                    <Text style={styles.taxValue}>
+                      {deliveryCharge.toFixed(2)}
+                    </Text>
                   </View>
                 )}
 
                 <View style={styles.taxRowNet}>
                   <Text style={styles.taxLabelNet}>Net Amount</Text>
-                  <Text style={styles.taxValueNet}>{grandTotal.toFixed(2)}</Text>
+                  <Text style={styles.taxValueNet}>
+                    {grandTotal.toFixed(2)}
+                  </Text>
                 </View>
               </View>
             </View>

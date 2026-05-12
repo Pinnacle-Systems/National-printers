@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import FxSelect, { FxSelectWithAdd } from "../../../Inputs";
 import { useGetGsmMasterQuery } from "../../../redux/services/GsmMasterService";
 import { useGetHsnMasterQuery } from "../../../redux/services/HsnMasterServices";
-import { toast } from "react-toastify";
 import { findFromList, getCommonParams } from "../../../Utils/helper";
+import Swal from "sweetalert2";
 import { Gsm, Size, StyleItemMaster, UomMaster } from "..";
 import { FiEye } from "react-icons/fi";
 import Modal from "../../../UiComponents/Modal";
@@ -115,10 +115,12 @@ const OrderItems = ({
           }
         }
         if (hasError) {
-          toast.warning(
-            "Barcode From, Barcode To and Qty are mandatory for a row.",
-            { autoClose: 3000 },
-          );
+          Swal.fire({
+            icon: "warning",
+            title: "Validation Error",
+            text: "Barcode From, Barcode To and Qty are mandatory for a row.",
+            timer: 3000,
+          });
           return;
         }
       }
@@ -283,6 +285,20 @@ const OrderItems = ({
 
     // Auto-fill Item Group, UOM, GSM, and HSN when item is chosen
     if (field === "styleItemId" && value) {
+      const isDuplicate = orderItems.some(
+        (row, idx) => idx !== index && row.styleItemId === value,
+      );
+
+      if (isDuplicate) {
+        Swal.fire({
+          icon: "warning",
+          title: "Duplicate Item",
+          text: "This item is already added to the order. Each style item must be unique.",
+          timer: 2500,
+        });
+        return;
+      }
+
       const selectedItem = styleItemList?.data?.find(
         (item) => item.id === value,
       );

@@ -103,10 +103,10 @@ const styles = StyleSheet.create({
     color: "#000",
     marginBottom: 4,
   },
-  partyAddr: { fontSize: 7.5, color: "#555", lineHeight: 1.4, marginBottom: 6 },
+  partyAddr: { fontSize: 9, color: "#555", lineHeight: 1.4, marginBottom: 6 },
   labelValueRow: { flexDirection: "row", marginBottom: 2 },
-  label: { width: 60, fontSize: 8.5, color: "#888" },
-  value: { flex: 1, fontSize: 8.5, color: "#000", fontWeight: "bold" },
+  label: { width: 80, fontSize: 9, color: "#888" },
+  value: { flex: 1, fontSize: 9, color: "#000", fontWeight: "bold" },
 
   table: {
     marginTop: 5,
@@ -206,6 +206,7 @@ const styles = StyleSheet.create({
     borderRight: "1 solid #333",
     paddingVertical: 6,
     justifyContent: "center",
+    fontSize: 8,
   },
 
   footerGrid: {
@@ -380,17 +381,17 @@ const OrderEntryPrintFormat = ({
             <View style={styles.tableHeader}>
               <Text style={[styles.colSno, styles.headerCell]}>S.No</Text>
               <Text style={[styles.colDesc, styles.headerCell]}>
-                Description of Goods
+                DESCRIPTION OF GOODS
               </Text>
               <Text style={[styles.colItemGroup, styles.headerCell]}>
-                Item Group
+                ITEM GROUP
               </Text>
               <Text style={[styles.colHSN, styles.headerCell]}>HSN</Text>
               <Text style={[styles.colUOM, styles.headerCell]}>UOM</Text>
-              <Text style={[styles.colQty, styles.headerCell]}>Qty</Text>
-              <Text style={[styles.colPrice, styles.headerCell]}>Price</Text>
+              <Text style={[styles.colQty, styles.headerCell]}>QTY</Text>
+              <Text style={[styles.colPrice, styles.headerCell]}>PRICE</Text>
               <Text style={[styles.colRemarks, styles.headerCell]}>
-                Remarks
+                REMARKS
               </Text>
             </View>
             {data?.orderItems?.map((item, index) => (

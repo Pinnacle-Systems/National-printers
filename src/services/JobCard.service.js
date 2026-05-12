@@ -183,7 +183,17 @@ async function getOne(id) {
   const data = await prisma.jobCard.findUnique({
     where: { id: parseInt(id) },
     include: {
-      customer: { select: { id: true, name: true } },
+      customer: {
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          gstNo: true,
+          contactMobile: true,
+          contactNumber: true,
+          contactPersonName: true,
+        },
+      },
       gsm: { select: { id: true, name: true } },
       Branch: { select: { branchName: true } },
       Plate: { select: { id: true, name: true } },
@@ -205,6 +215,15 @@ async function getOne(id) {
       },
       processRoute: {
         include: { Process: { select: { id: true, name: true } } },
+      },
+      OrderEntryItem: {
+        include: {
+          StyleItem: { select: { name: true } },
+          ItemGroup: { select: { name: true } },
+          sizeBreakup: {
+            include: { Size: { select: { id: true, name: true } } },
+          },
+        },
       },
     },
   });
@@ -578,6 +597,7 @@ async function update(id, body) {
       selectedMachines,
       processRoute,
       submitApproval,
+      remarks,
     } = body;
 
     const dataFound = await prisma.jobCard.findUnique({
