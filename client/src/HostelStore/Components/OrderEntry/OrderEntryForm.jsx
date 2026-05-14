@@ -7,7 +7,7 @@ import {
   TextInput,
 } from "../../../Inputs";
 import { poTypes, productionTypes } from "../../../Utils/DropdownData";
-import { FiCheck, FiEdit2, FiSave, FiSend } from "react-icons/fi";
+import { FiCheck, FiEdit2, FiPrinter, FiSave, FiSend } from "react-icons/fi";
 import { useCallback, useEffect, useRef, useState } from "react";
 import moment from "moment";
 import {
@@ -393,8 +393,7 @@ const OrderEntryForm = ({
     if (duplicates.length > 0) {
       const message = duplicates
         .map(
-          (d) =>
-            `Row ${d.duplicateIndex} is duplicate of Row ${d.firstIndex}`,
+          (d) => `Row ${d.duplicateIndex} is duplicate of Row ${d.firstIndex}`,
         )
         .join("<br/>");
 
@@ -767,8 +766,8 @@ const OrderEntryForm = ({
     },
     {
       key: "pdf",
-      icon: <FiFileText className="w-4 h-4 mr-1" />,
-      label: "PDF Export",
+      icon: <FiPrinter className="h-5 w-4" />,
+      label: "",
       onClick: () => {
         setPrintModalOpen(true);
       },
