@@ -68,6 +68,7 @@ model Company {
   plates              Plate[]
   dies                Die[]
   proformaInvoices    ProformaInvoice[]
+  machines            Machine[]
 }
 
 model Subscription {
@@ -1597,6 +1598,10 @@ model Size {
   orderSizeBreakups      OrderSizeBreakup[]
   proformaInvoiceItems   ProformaInvoiceItem[]
   proformaSizeBreakups   ProformaSizeBreakup[]
+  Machine                Machine[]
+  jobCardFullBoardSize   JobCard[]                @relation("fullBoardSize")
+  jobCardCuttingSize     JobCard[]                @relation("cuttingSizeDtl")
+  jobCardLabelSize       JobCard[]                @relation("labelSize")
 }
 
 model Gsm {
@@ -1961,10 +1966,11 @@ model Process {
 
   laminationDetails       LaminationDetails[]
   varnishDetails          VarnishDetails[]
-  machineDetails          MachineDetails[]
   processDetails          ProcessDetails[]
   processRoutes           ProcessRoute[]
   productionAllocationDtl ProductionAllocationDtl[]
+  inishingProcess         FinishingProcess[]
+  printingDetails         PrintingDetails[]
 }
 
 model ProcessGroup {
@@ -2014,64 +2020,69 @@ model Die {
 }
 
 model JobCard {
-  id                 Int              @id @default(autoincrement())
-  docId              String
-  docDate            DateTime?
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
-  createdBy          User?            @relation("createdBy", fields: [createdById], references: [id])
-  createdById        Int?
-  updatedBy          User?            @relation("updatedBy", fields: [updatedById], references: [id])
-  updatedById        Int?
-  Branch             Branch?          @relation(fields: [branchId], references: [id])
-  branchId           Int?
-  OrderEntry         OrderEntry?      @relation(fields: [orderEntryId], references: [id])
-  orderEntryId       Int?
-  ProformaInvoice    ProformaInvoice? @relation(fields: [proformaInvoiceId], references: [id])
-  proformaInvoiceId  Int?
-  orderType          String?
-  orderQty           Int?
-  customerId         Int?
-  customer           Party?           @relation(fields: [customerId], references: [id])
-  gsmId              Int?
-  gsm                Gsm?             @relation(fields: [gsmId], references: [id])
-  Board              Board?           @relation(fields: [boardId], references: [id])
-  boardId            Int?
-  fullBoard          Int?
-  noOfPockets        Int?
-  cuttingSize        String?
-  runningQty         Int?
-  isFourColor        Boolean?         @default(false)
-  isCutColor         Boolean?         @default(false)
-  isFront            Boolean?         @default(false)
-  isFrontAndBack     Boolean?         @default(false)
-  isCMYK             Boolean?         @default(false)
-  isCutColMachine    Boolean?         @default(false)
-  isFrontMachine     Boolean?         @default(false)
-  isFrontBackMachine Boolean?         @default(false)
-  plateId            Int?
-  Plate              Plate?           @relation(fields: [plateId], references: [id])
-  dieId              Int?
-  Die                Die?             @relation(fields: [dieId], references: [id])
-  totalPlateSet      Int?
-  remarks            String?
-  designerId         Int?
-  Designer           Employee?        @relation("designer", fields: [designerId], references: [id])
-  followUpId         Int?
-  FollowUp           Employee?        @relation("followUp", fields: [followUpId], references: [id])
-  tagCardUps         String?
-  jobRunTime         String?
-  department         String?
-  labelQuality       String?
-  labelBlock         String?
-  labelRollQty       String?
-  labelCutAndSeal    String?
-  itemGroup          String?
-  orderEntryItemId   Int?
-  OrderEntryItem     OrderItems?      @relation(fields: [orderEntryItemId], references: [id])
-  styleItemId        Int?
-  StyleItem          StyleItem?       @relation(fields: [styleItemId], references: [id])
-
+  id                   Int                    @id @default(autoincrement())
+  docId                String
+  docDate              DateTime?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  createdBy            User?                  @relation("createdBy", fields: [createdById], references: [id])
+  createdById          Int?
+  updatedBy            User?                  @relation("updatedBy", fields: [updatedById], references: [id])
+  updatedById          Int?
+  Branch               Branch?                @relation(fields: [branchId], references: [id])
+  branchId             Int?
+  OrderEntry           OrderEntry?            @relation(fields: [orderEntryId], references: [id])
+  orderEntryId         Int?
+  ProformaInvoice      ProformaInvoice?       @relation(fields: [proformaInvoiceId], references: [id])
+  proformaInvoiceId    Int?
+  orderType            String?
+  orderQty             Int?
+  customerId           Int?
+  customer             Party?                 @relation(fields: [customerId], references: [id])
+  gsmId                Int?
+  gsm                  Gsm?                   @relation(fields: [gsmId], references: [id])
+  Board                Board?                 @relation(fields: [boardId], references: [id])
+  boardId              Int?
+  fullBoardId          Int?
+  FullBoardSize        Size?                  @relation("fullBoardSize", fields: [fullBoardId], references: [id])
+  noOfPockets          Int?
+  cuttingSizeId        Int?
+  CuttingSizeDtl       Size?                  @relation("cuttingSizeDtl", fields: [cuttingSizeId], references: [id])
+  labelSizeId          Int?
+  LabelSize            Size?                  @relation("labelSize", fields: [labelSizeId], references: [id])
+  styleItemId          Int?
+  StyleItem            StyleItem?             @relation(fields: [styleItemId], references: [id])
+  cuttingSize          String?
+  runningQty           Int?
+  isFourColor          Boolean?               @default(false)
+  isCutColor           Boolean?               @default(false)
+  isFront              Boolean?               @default(false)
+  isFrontAndBack       Boolean?               @default(false)
+  isCMYK               Boolean?               @default(false)
+  isCutColMachine      Boolean?               @default(false)
+  isFrontMachine       Boolean?               @default(false)
+  isFrontBackMachine   Boolean?               @default(false)
+  plateId              Int?
+  Plate                Plate?                 @relation(fields: [plateId], references: [id])
+  dieId                Int?
+  Die                  Die?                   @relation(fields: [dieId], references: [id])
+  totalPlateSet        Int?
+  remarks              String?
+  designerId           Int?
+  Designer             Employee?              @relation("designer", fields: [designerId], references: [id])
+  followUpId           Int?
+  FollowUp             Employee?              @relation("followUp", fields: [followUpId], references: [id])
+  tagCardUps           String?
+  jobRunTime           Int?
+  department           String?
+  labelQuality         String?
+  labelBlock           String?
+  labelRollQty         String?
+  labelCutAndSeal      String?
+  itemGroup            String?
+  orderEntryItemId     Int?
+  OrderEntryItem       OrderItems?            @relation(fields: [orderEntryItemId], references: [id])
+  totalMeter           Int?
   boardQualities       BoardQuality[]
   processDetails       ProcessDetails[]
   laminationDetails    LaminationDetails[]
@@ -2079,6 +2090,9 @@ model JobCard {
   machineDetails       MachineDetails[]
   processRoute         ProcessRoute[]
   productionAllocation ProductionAllocation[]
+  printingDetails      PrintingDetails[]
+  plateDetails         PlateDetails[]
+  finishingProcesses   FinishingProcess[]
 }
 
 model ProcessRoute {
@@ -2099,6 +2113,30 @@ model BoardQuality {
   JobCard   JobCard? @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
   boardId   Int?
   Board     Board?   @relation(fields: [boardId], references: [id])
+}
+
+model FinishingProcess {
+  id        Int      @id @default(autoincrement())
+  jobCardId Int?
+  JobCard   JobCard? @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
+  processId Int?
+  Process   Process? @relation(fields: [processId], references: [id])
+}
+
+model PrintingDetails {
+  id        Int      @id @default(autoincrement())
+  jobCardId Int?
+  JobCard   JobCard? @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
+  processId Int?
+  Process   Process? @relation(fields: [processId], references: [id])
+}
+
+model PlateDetails {
+  id        Int      @id @default(autoincrement())
+  jobCardId Int?
+  JobCard   JobCard? @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
+  plateName String?
+  qty       Int?
 }
 
 model ProcessDetails {
@@ -2133,8 +2171,9 @@ model MachineDetails {
   id        Int      @id @default(autoincrement())
   jobCardId Int?
   JobCard   JobCard? @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
-  machineId Int?
-  Machine   Process? @relation(fields: [machineId], references: [id])
+
+  macId Int?
+  Mac   Machine? @relation(fields: [macId], references: [id])
 }
 
 model ProductionAllocation {
@@ -2166,4 +2205,15 @@ model ProductionAllocationDtl {
   Process                Process?             @relation(fields: [processId], references: [id])
   type                   String?
   sequence               Int?
+}
+
+model Machine {
+  id             Int              @id @default(autoincrement())
+  name           String?
+  active         Boolean?         @default(true)
+  Company        Company?         @relation(fields: [companyId], references: [id])
+  companyId      Int?
+  Size           Size?            @relation(fields: [sizeId], references: [id])
+  sizeId         Int?
+  machineDetails MachineDetails[]
 }

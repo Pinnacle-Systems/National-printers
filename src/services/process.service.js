@@ -14,8 +14,11 @@ async function get(req) {
           processGroupList: true,
           laminationDetails: true,
           varnishDetails: true,
-          machineDetails: true,
           processDetails: true,
+          processRoutes: true,
+          productionAllocationDtl: true,
+          inishingProcess: true,
+          printingDetails: true,
         },
       },
     },
@@ -28,8 +31,11 @@ async function get(req) {
         process._count.processGroupList +
         process._count.laminationDetails +
         process._count.varnishDetails +
-        process._count.machineDetails +
-        process._count.processDetails,
+        process._count.processDetails +
+        process._count.processRoutes +
+        process._count.productionAllocationDtl +
+        process._count.inishingProcess +
+        process._count.printingDetails,
     })),
   };
 }
