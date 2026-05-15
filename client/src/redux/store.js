@@ -44,6 +44,7 @@ import {
   ProcessGroupMasterApi,
   PlateMasterApi,
   DieMasterApi,
+  MachineMasterApi,
 } from "./services";
 import paymentApi from "./services/PaymentService";
 import StyleMasterApi from "./services/StyleMasterService";
@@ -128,6 +129,7 @@ const commonReducers = {
   die: DieMasterApi.reducer,
   board: BoardMasterApi.reducer,
   [ProductionAllocationApi.reducerPath]: ProductionAllocationApi.reducer,
+  machine: MachineMasterApi.reducer,
 };
 const commonMiddleware = [
   countryMasterApi.middleware,
@@ -190,6 +192,7 @@ const commonMiddleware = [
   DieMasterApi.middleware,
   BoardMasterApi.middleware,
   ProductionAllocationApi.middleware,
+  MachineMasterApi.middleware,
 ];
 
 const store = configureStore({

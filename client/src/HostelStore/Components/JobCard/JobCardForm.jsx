@@ -73,6 +73,7 @@ import {
   Gsm,
   PartyMaster,
   PlateMaster,
+  Size,
 } from "../index.js";
 import { DropdownWithModal } from "../../../Inputs/Reuseable.js";
 import {
@@ -105,6 +106,7 @@ import TransactionLayout from "../../../Basic/components/Reuseable/TransactionLa
 import TransactionActions from "../../../Basic/components/Reuseable/TransactionActions.jsx";
 import { HiX } from "react-icons/hi";
 import { useAddApprovalStausMutation } from "../../../redux/uniformService/PoServices.js";
+import { useGetMachineMasterQuery } from "../../../redux/services/MachineMasterService.js";
 
 // ── Section card ─────────────────────────────────────────────
 const SectionCard = ({ title, children, className = "" }) => (
@@ -220,14 +222,16 @@ const JobCardForm = ({
 
   const [gsmId, setGsmId] = useState("");
   const [boardId, setBoardId] = useState("");
-  const [fullBoard, setFullBoard] = useState("");
+  const [fullBoardId, setFullBoardId] = useState("");
   const [noOfPockets, setNoOfPockets] = useState("");
-  const [cuttingSize, setCuttingSize] = useState("");
+  const [cuttingSizeId, setCuttingSizeId] = useState("");
   const [runningQty, setRunningQty] = useState("");
   const [isFourColor, setIsFourColor] = useState(false);
   const [isCutColor, setIsCutColor] = useState(false);
   const [isFront, setIsFront] = useState(false);
   const [isFrontAndBack, setIsFrontAndBack] = useState(false);
+  const [selectedPrinting, setSelectedPrinting] = useState([]);
+  const [selectedFinishing, setSelectedFinishing] = useState([]);
 
   const [isCMYK, setIsCMYK] = useState(false);
   const [isCutColMachine, setIsCutColMachine] = useState(false);
@@ -269,6 +273,14 @@ const JobCardForm = ({
   const [labelBlock, setLabelBlock] = useState("");
   const [labelRollQty, setLabelRollQty] = useState("");
   const [labelCutAndSeal, setLabelCutAndSeal] = useState("");
+  const [labelSizeId, setLabelSizeId] = useState("");
+  const [totalMeter, setTotalMeter] = useState("");
+
+  const [plateDetailsModal, setPlateDetailsModal] = useState(false);
+  const [plateDetails, setPlateDetails] = useState(
+    Array(6).fill({ plateName: "", qty: "" }),
+  );
+  const [contextMenu, setContextMenu] = useState(null);
 
   const dispatch = useDispatch();
 
@@ -286,7 +298,9 @@ const JobCardForm = ({
     useGetProcessGroupMasterQuery({ params });
   const { data: employeeList } = useGetEmployeeQuery({ params });
   const { data: sizeList } = useGetSizeMasterQuery({ params: { companyId } });
-  console.log(employeeList, "employeeList");
+  const { data: machineList } = useGetMachineMasterQuery({
+    params: { companyId, branchId },
+  });
 
   // ✅ added back — branch feature flags
   const { data: currentBranch } = useGetBranchByIdQuery(branchId, {
@@ -325,8 +339,6 @@ const JobCardForm = ({
     );
   };
 
-  const boardList = boardData?.data || [];
-
   const { data: selectedOrderData } = useGetOrderEntryByIdQuery(orderEntryId, {
     skip: !orderEntryId,
   });
@@ -339,6 +351,8 @@ const JobCardForm = ({
   const laminationIds = getGroupIds("LAMINATION");
   const varnishIds = getGroupIds("VARNISH");
   const machineIds = getGroupIds("MACHINE");
+  const printingIds = getGroupIds("PRINTING");
+  const finishingIds = getGroupIds("FINISHING");
 
   const defaultList =
     filterByGroup("DEFAULT").length > 0
@@ -347,15 +361,19 @@ const JobCardForm = ({
           (p) =>
             !laminationIds.includes(p.id) &&
             !varnishIds.includes(p.id) &&
-            !machineIds.includes(p.id),
+            !machineIds.includes(p.id) &&
+            !printingIds.includes(p.id) &&
+            !finishingIds.includes(p.id),
         ) || [];
 
   const laminationList = filterByGroup("LAMINATION");
   const varnishList = filterByGroup("VARNISH");
-  const machineList = filterByGroup("MACHINE");
-
+  // const machineList = filterByGroup("MACHINE");
+  const finishingList = filterByGroup("FINISHING");
   const isLabel = itemGroup?.toUpperCase() === "LABEL";
-
+  const printingList = filterByGroup("PRINTING");
+  const boardList =
+    boardData?.data?.filter((i) => (id ? true : i?.active)) || [];
   const {
     data: singleData,
     isFetching: isSingleFetching,
@@ -385,9 +403,9 @@ const JobCardForm = ({
     );
     setDepartment(data?.department || "");
     setGsmId(data?.gsmId || "");
-    setFullBoard(data?.fullBoard || "");
+    setFullBoardId(data?.fullBoardId || "");
     setNoOfPockets(data?.noOfPockets || "");
-    setCuttingSize(data?.cuttingSize || "");
+    setCuttingSizeId(data?.cuttingSizeId || "");
     setRunningQty(data?.runningQty || "");
     setIsFourColor(data?.isFourColor || false);
     setIsCutColor(data?.isCutColor || false);
@@ -402,6 +420,11 @@ const JobCardForm = ({
     setTotalPlateSet(data?.totalPlateSet || "");
     setBoardItems(data?.boardQualities?.map((b) => b.boardId) || []);
     setSelectedProcesses(data?.processDetails?.map((p) => p.processId) || []);
+    setSelectedPrinting(data?.printingDetails?.map((p) => p.processId) || []);
+    setSelectedFinishing(
+      data?.finishingProcesses?.map((p) => p.processId) || [],
+    );
+
     setLaminations(
       data?.laminationDetails?.map((l) => ({
         processId: l.laminationId,
@@ -416,7 +439,7 @@ const JobCardForm = ({
         isFrontAndBack: v.isFrontAndBack,
       })) || [],
     );
-    setSelectedMachines(data?.machineDetails?.map((m) => m.machineId) || []);
+    setSelectedMachines(data?.machineDetails?.map((m) => m.macId) || []);
     setOrderEntryId(data?.orderEntryId || "");
     setProformaInvoiceId(data?.proformaInvoiceId || ""); // ✅ added back
     setBoardId(data?.boardId || "");
@@ -445,9 +468,16 @@ const JobCardForm = ({
     setLabelCutAndSeal(data?.labelCutAndSeal || "");
     setOrderEntryItemId(data?.orderEntryItemId || "");
     setStyleItemId(data?.styleItemId || "");
+    setPlateDetails(
+      data?.plateDetails?.length > 0
+        ? [...data.plateDetails]
+        : Array(6).fill({ plateName: "", qty: "" }),
+    );
     setReadOnly(
       (["PENDING", "APPROVED"].includes(status) && !canApprove) || readOnly,
     );
+    setLabelSizeId(data?.labelSizeId || "");
+    setTotalMeter(data?.totalMeter || "");
   }, []);
 
   useEffect(() => {
@@ -473,6 +503,71 @@ const JobCardForm = ({
       prev.map((l) => (l.processId === id ? { ...l, [prop]: !l[prop] } : l)),
     );
 
+  const handlePlateDetailsChange = (index, field, value) => {
+    const updated = [...plateDetails];
+    updated[index] = { ...updated[index], [field]: value };
+    setPlateDetails(updated);
+  };
+
+  const handlePlateDetailsKeyDown = (e, index) => {
+    if (e.key === "Enter" && index === plateDetails.length - 1) {
+      setPlateDetails([...plateDetails, { plateName: "", qty: "" }]);
+    }
+  };
+
+  const handlePlateDetailsContextMenu = (e, index) => {
+    e.preventDefault();
+    setContextMenu({
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      rowId: index,
+    });
+  };
+
+  const handleCloseContextMenu = () => {
+    setContextMenu(null);
+  };
+
+  const deletePlateRow = (index) => {
+    setPlateDetails((prev) => {
+      const filtered = prev.filter((_, i) => i !== index);
+      // Ensure at least 6 rows always show
+      if (filtered.length < 6) {
+        return [
+          ...filtered,
+          ...Array(6 - filtered.length).fill({ plateName: "", qty: "" }),
+        ];
+      }
+      return filtered;
+    });
+    handleCloseContextMenu();
+  };
+
+  const deleteAllPlateRows = () => {
+    setPlateDetails(Array(6).fill({ plateName: "", qty: "" }));
+    handleCloseContextMenu();
+  };
+
+  const handleClosePlateModal = () => {
+    // Check if any row has one field filled but not the other
+    const invalidRow = plateDetails.find(
+      (row) =>
+        (row.plateName?.trim() && !row.qty) ||
+        (!row.plateName?.trim() && row.qty),
+    );
+
+    if (invalidRow) {
+      Swal.fire({
+        title: "Incomplete Row",
+        text: "Please provide both Plate Name and Quantity for all filled rows.",
+        icon: "warning",
+        confirmButtonColor: "#4f46e5",
+      });
+      return;
+    }
+    setPlateDetailsModal(false);
+  };
+
   const data = {
     id,
     docDate,
@@ -486,9 +581,9 @@ const JobCardForm = ({
     gsmId,
     boardId,
     remarks,
-    fullBoard,
+    fullBoardId,
     noOfPockets,
-    cuttingSize,
+    cuttingSizeId,
     runningQty,
     isFourColor,
     isCutColor,
@@ -516,11 +611,14 @@ const JobCardForm = ({
     designerId: designer,
     orderEntryItemId,
     styleItemId,
-    // Label specific fields
-    labelQuality,
-    labelBlock,
-    labelRollQty,
     labelCutAndSeal,
+    plateDetails: plateDetails?.filter(
+      (plate) => plate?.plateName && plate?.qty,
+    ),
+    labelSizeId,
+    totalMeter,
+    selectedPrinting,
+    selectedFinishing,
   };
 
   const handleSubmitCustom = async (callback, data, text, nextProcess) => {
@@ -951,12 +1049,13 @@ const JobCardForm = ({
           )}
 
           {!isLabel && (
-            <Field label="Job Run time" className="col-span-2">
+            <Field label="Job Run time (Hours)" className="col-span-2">
               <TextInput
+                type="number"
                 value={jobRunTime}
                 setValue={setJobRunTime}
                 readOnly={readOnly}
-                className="w-full"
+                className="w-full text-right"
               />
             </Field>
           )}
@@ -1018,85 +1117,79 @@ const JobCardForm = ({
   );
 
   const labelDetailsContent = (
-    <SectionCard title="LABEL DETAILS" className="min-h-full flex-1">
-      <div className="flex gap-6 p-2 flex-1 min-h-0">
-        {/* LEFT SIDE: TECHNICAL FIELDS & REMARKS */}
-        <div className="flex-1 flex flex-col gap-4 min-h-0">
-          {/* Single Row for all Technical Fields */}
-          {/* Table for all Technical Fields */}
-          <div className="shrink-0 border border-slate-200 rounded overflow-hidden">
-            <table className="w-full text-[11px] border-collapse bg-white">
-              <thead>
-                <tr className="bg-slate-50 text-[10px] font-bold text-black uppercase tracking-wider">
-                  <th className="border-b border-r border-slate-200 px-2 py-1.5 text-left w-[20%]">
-                    Label Quality
-                  </th>
-                  <th className="border-b border-r border-slate-200 px-2 py-1.5 text-left w-[30%]">
-                    Block
-                  </th>
-                  <th className="border-b border-r border-slate-200 px-2 py-1.5 text-center w-[15%]">
-                    Label Qty
-                  </th>
-                  <th className="border-b border-r border-slate-200 px-2 py-1.5 text-center w-[15%]">
-                    Roll Qty
-                  </th>
-                  <th className="border-b border-slate-200 px-2 py-1.5 text-left w-[20%]">
-                    Cut & Seal
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="border-r border-slate-200 p-0">
-                    <TextInput
-                      value={labelQuality}
-                      setValue={setLabelQuality}
-                      readOnly={readOnly}
-                      className="w-full border-none focus:ring-0 text-[11px] px-2 py-1.5"
-                    />
-                  </td>
-                  <td className="border-r border-slate-200 p-0">
-                    <TextInput
-                      value={labelBlock}
-                      setValue={setLabelBlock}
-                      readOnly={readOnly}
-                      className="w-full border-none focus:ring-0 text-[11px] px-2 py-1.5"
-                    />
-                  </td>
-                  <td className="border-r border-slate-200 p-0">
-                    <TextInput
-                      value={orderQty}
-                      readOnly
-                      disabled
-                      className="w-full border-none focus:ring-0 text-[11px] px-2 py-1.5 bg-slate-50 text-right font-bold"
-                    />
-                  </td>
-                  <td className="border-r border-slate-200 p-0">
-                    <TextInput
-                      value={labelRollQty}
-                      setValue={setLabelRollQty}
-                      readOnly={readOnly}
-                      className="w-full border-none focus:ring-0 text-[11px] px-2 py-1.5 text-right"
-                    />
-                  </td>
-                  <td className="p-0">
-                    <TextInput
-                      value={labelCutAndSeal}
-                      setValue={setLabelCutAndSeal}
-                      readOnly={readOnly}
-                      className="w-full border-none focus:ring-0 text-[11px] px-2 py-1.5"
-                    />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+    <div className="grid grid-cols-3 gap-3 h-full items-stretch">
+      {/* COLUMN 1: LABEL DETAILS & TECHNICAL FIELDS & REMARKS */}
+      <div className="flex flex-col gap-3 h-full">
+        <SectionCard title="Label Details">
+          <div className="grid grid-cols-1 gap-3">
+            <Field label="Label Quality">
+              <TextInput
+                value={findFromList(styleItemId, styleItemList?.data, "name")}
+                setValue={setLabelQuality}
+                readOnly={true}
+                className="w-full bg-slate-50"
+              />
+            </Field>
+            <Field label="Label Size">
+              <DropdownWithModal
+                options={dropDownListObject(
+                  id
+                    ? sizeList?.data
+                    : sizeList?.data?.filter((i) => i?.active),
+                  "name",
+                  "id",
+                )}
+                value={labelSizeId}
+                setValue={setLabelSizeId}
+                readOnly={readOnly}
+                addNewLabel="+ Add Size"
+                childComponent={Size}
+                addNewModalWidth="w-[30%] h-[45%]"
+              />
+            </Field>
+            <Field label="Total Meter">
+              <TextInput
+                value={totalMeter}
+                setValue={setTotalMeter}
+                readOnly={readOnly}
+                type="number"
+                className="w-full text-right"
+              />
+            </Field>
           </div>
+        </SectionCard>
 
-          {/* Remarks (Fills remaining height below the row) */}
-          <div className="flex-1 flex flex-col min-h-0">
-            <Field label="Remarks" className="h-full flex flex-col">
+        <SectionCard title="TECHNICAL FIELDS & REMARKS" className="flex-1">
+          <div className="flex flex-col gap-3 h-full">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Block">
+                <TextInput
+                  value={labelBlock}
+                  setValue={setLabelBlock}
+                  readOnly={readOnly}
+                  className="w-full"
+                />
+              </Field>
+              <Field label="Roll Qty">
+                <TextInput
+                  value={labelRollQty}
+                  setValue={setLabelRollQty}
+                  readOnly={readOnly}
+                  className="w-full text-right"
+                />
+              </Field>
+              <Field label="Label Qty" className="col-span-2">
+                <TextInput
+                  value={orderQty}
+                  readOnly
+                  disabled
+                  className="w-full bg-slate-50 text-right font-bold"
+                />
+              </Field>
+            </div>
+            <Field label="Remarks" className="flex-1">
               <textarea
-                className="w-full p-2 border border-slate-300 rounded-md text-[11px] focus:ring-1 focus:ring-indigo-500 outline-none flex-1 min-h-0 bg-white transition-all shadow-inner resize-none"
+                className="w-full p-2 border border-slate-300 rounded-md text-[11px] focus:ring-1 focus:ring-indigo-500 outline-none flex-1 min-h-[100px] bg-white transition-all shadow-inner resize-none"
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 readOnly={readOnly}
@@ -1104,177 +1197,185 @@ const JobCardForm = ({
               />
             </Field>
           </div>
+        </SectionCard>
+      </div>
+
+      {/* COLUMN 2: Finishing Processes */}
+      <SectionCard title="Finishing Processes" className="h-full">
+        <div className="grid grid-cols-2 gap-x-2 gap-y-3">
+          {finishingList?.map((item) => (
+            <CheckBox
+              key={item.id}
+              name={item.name}
+              value={selectedFinishing.includes(item.id)}
+              setValue={() => toggleArr(setSelectedFinishing, item.id)}
+              readOnly={readOnly}
+            />
+          ))}
         </div>
+      </SectionCard>
 
-        {/* RIGHT SIDE: SIZE BREAKUP */}
-        <div className="flex-1 flex flex-col min-h-0">
-          <div className="border border-slate-200 rounded-md overflow-hidden bg-white shadow-sm flex flex-col h-full">
-            <div className="bg-slate-50 px-3 py-1.5 border-b border-slate-200 shrink-0">
-              <span className="text-[10px] font-bold text-black uppercase tracking-wider">
-                Size / Barcode wise Details
-              </span>
-            </div>
-            <div className="p-2 flex-1 overflow-auto min-h-0">
-              {selectedItem?.sizeBreakup?.length > 0 ? (
-                <>
-                  {/* --- BARCODE TYPE TABLE --- */}
-                  {selectedItem?.trackingType === "Barcode" && (
-                    <table className="w-[450px] ml-0 text-[11px] border-collapse">
-                      <thead className="sticky top-0 z-20">
-                        <tr className="bg-slate-50 text-black uppercase text-[10px] font-bold">
-                          <th className="border border-slate-200 px-2 py-1.5 text-center w-11">
-                            S.NO
-                          </th>
-                          <th className="border border-slate-200 px-2 py-1.5 text-center">
-                            FROM
-                          </th>
-                          <th className="border border-slate-200 px-2 py-1.5 text-center">
-                            TO
-                          </th>
-                          <th className="border border-slate-200 px-2 py-1.5 text-center w-16">
-                            QTY
-                          </th>
+      {/* COLUMN 3: SIZE BREAKUP */}
+      <SectionCard title="SIZE BREAKUP" className="h-full">
+        <div className="h-full overflow-auto">
+          {selectedItem?.sizeBreakup?.length > 0 ? (
+            <div className="min-w-full">
+              {/* --- BARCODE TYPE TABLE --- */}
+              {selectedItem?.trackingType === "Barcode" && (
+                <table className="w-full text-[11px] border-collapse">
+                  <thead className="sticky top-0 z-20">
+                    <tr className="bg-slate-50 text-black uppercase text-[10px] font-bold">
+                      <th className="border border-slate-200 px-2 py-1.5 text-center w-11">
+                        S.NO
+                      </th>
+                      <th className="border border-slate-200 px-2 py-1.5 text-center">
+                        FROM
+                      </th>
+                      <th className="border border-slate-200 px-2 py-1.5 text-center">
+                        TO
+                      </th>
+                      <th className="border border-slate-200 px-2 py-1.5 text-center w-16">
+                        QTY
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedItem?.sizeBreakup
+                      ?.filter((row) => (Number(row.qty) || 0) > 0)
+                      ?.map((row, idx) => (
+                        <tr
+                          key={idx}
+                          className="hover:bg-slate-50 transition-colors"
+                        >
+                          <td className="border border-slate-200 px-2 py-1 text-center text-slate-500">
+                            {idx + 1}
+                          </td>
+                          <td className="border border-slate-200 px-2 py-1 text-left text-slate-600 font-mono">
+                            {row.barcodeFrom || "-"}
+                          </td>
+                          <td className="border border-slate-200 px-2 py-1 text-left text-slate-600 font-mono">
+                            {row.barcodeTo || "-"}
+                          </td>
+                          <td className="border border-slate-200 px-2 py-1 text-right font-bold text-indigo-600">
+                            {row.qty}
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {selectedItem?.sizeBreakup
-                          ?.filter((row) => (Number(row.qty) || 0) > 0)
-                          ?.map((row, idx) => (
-                            <tr
-                              key={idx}
-                              className="hover:bg-slate-50 transition-colors"
-                            >
-                              <td className="border border-slate-200 px-2 py-1 text-center text-slate-500">
-                                {idx + 1}
-                              </td>
-                              <td className="border border-slate-200 px-2 py-1 text-left text-slate-600 font-mono">
-                                {row.barcodeFrom || "-"}
-                              </td>
-                              <td className="border border-slate-200 px-2 py-1 text-left text-slate-600 font-mono">
-                                {row.barcodeTo || "-"}
-                              </td>
-                              <td className="border border-slate-200 px-2 py-1 text-right font-bold text-indigo-600">
-                                {row.qty}
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  )}
+                      ))}
+                  </tbody>
+                </table>
+              )}
 
-                  {/* --- SIZE TEMPLATE TYPE TABLE --- */}
-                  {selectedItem?.trackingType === "Size Template" && (
-                    <table className="w-[350px] ml-0 text-[11px] border-collapse">
-                      <thead className="sticky top-0 z-20">
-                        <tr className="bg-slate-50 text-black uppercase text-[10px] font-bold">
-                          <th className="border border-slate-200 px-2 py-1.5 text-center w-11">
-                            S.NO
-                          </th>
-                          <th className="border border-slate-200 px-2 py-1.5 text-center">
-                            SIZE
-                          </th>
-                          <th className="border border-slate-200 px-2 py-1.5 text-center w-20">
-                            QTY
-                          </th>
+              {/* --- SIZE TEMPLATE TYPE TABLE --- */}
+              {selectedItem?.trackingType === "Size Template" && (
+                <table className="w-full text-[11px] border-collapse">
+                  <thead className="sticky top-0 z-20">
+                    <tr className="bg-slate-50 text-black uppercase text-[10px] font-bold">
+                      <th className="border border-slate-200 px-2 py-1.5 text-center w-11">
+                        S.NO
+                      </th>
+                      <th className="border border-slate-200 px-2 py-1.5 text-center">
+                        SIZE
+                      </th>
+                      <th className="border border-slate-200 px-2 py-1.5 text-center w-20">
+                        QTY
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedItem?.sizeBreakup
+                      ?.filter((row) => (Number(row.qty) || 0) > 0)
+                      ?.map((row, idx) => (
+                        <tr
+                          key={idx}
+                          className="hover:bg-slate-50 transition-colors"
+                        >
+                          <td className="border border-slate-200 px-2 py-1 text-center text-slate-500">
+                            {idx + 1}
+                          </td>
+                          <td className="border border-slate-200 px-2 py-1 text-left font-medium text-slate-700">
+                            {row.Size?.name ||
+                              sizeList?.data?.find(
+                                (s) => String(s.id) === String(row.sizeId),
+                              )?.name ||
+                              row.size ||
+                              "All Items"}
+                          </td>
+                          <td className="border border-slate-200 px-2 py-1 text-right font-bold text-indigo-600">
+                            {row.qty}
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {selectedItem?.sizeBreakup
-                          ?.filter((row) => (Number(row.qty) || 0) > 0)
-                          ?.map((row, idx) => (
-                            <tr
-                              key={idx}
-                              className="hover:bg-slate-50 transition-colors"
-                            >
-                              <td className="border border-slate-200 px-2 py-1 text-center text-slate-500">
-                                {idx + 1}
-                              </td>
-                              <td className="border border-slate-200 px-2 py-1 text-left font-medium text-slate-700">
-                                {row.Size?.name ||
-                                  sizeList?.data?.find(
-                                    (s) => String(s.id) === String(row.sizeId),
-                                  )?.name ||
-                                  row.size ||
-                                  "All Items"}
-                              </td>
-                              <td className="border border-slate-200 px-2 py-1 text-right font-bold text-indigo-600">
-                                {row.qty}
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  )}
+                      ))}
+                  </tbody>
+                </table>
+              )}
 
-                  {/* --- SIZE TEMPLATE + BARCODE TYPE TABLE --- */}
-                  {selectedItem?.trackingType === "Size Template + Barcode" && (
-                    <table className="w-[600px] ml-0 text-[11px] border-collapse">
-                      <thead className="sticky top-0 z-20">
-                        <tr className="bg-slate-50 text-black uppercase text-[10px] font-bold">
-                          <th className="border border-slate-200 px-2 py-1.5 text-center w-11">
-                            S.NO
-                          </th>
-                          <th className="border border-slate-200 px-2 py-1.5 text-center w-24">
-                            SIZE
-                          </th>
-                          <th className="border border-slate-200 px-2 py-1.5 text-center w-24">
-                            FROM
-                          </th>
-                          <th className="border border-slate-200 px-2 py-1.5 text-center w-24">
-                            TO
-                          </th>
-                          <th className="border border-slate-200 px-2 py-1.5 text-center w-16">
-                            QTY
-                          </th>
+              {/* --- SIZE TEMPLATE + BARCODE TYPE TABLE --- */}
+              {selectedItem?.trackingType === "Size Template + Barcode" && (
+                <table className="w-full text-[11px] border-collapse">
+                  <thead className="sticky top-0 z-20">
+                    <tr className="bg-slate-50 text-black uppercase text-[10px] font-bold">
+                      <th className="border border-slate-200 px-2 py-1.5 text-center w-11">
+                        S.NO
+                      </th>
+                      <th className="border border-slate-200 px-2 py-1.5 text-center w-24">
+                        SIZE
+                      </th>
+                      <th className="border border-slate-200 px-2 py-1.5 text-center w-24">
+                        FROM
+                      </th>
+                      <th className="border border-slate-200 px-2 py-1.5 text-center w-24">
+                        TO
+                      </th>
+                      <th className="border border-slate-200 px-2 py-1.5 text-center w-16">
+                        QTY
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedItem?.sizeBreakup
+                      ?.filter((row) => (Number(row.qty) || 0) > 0)
+                      ?.map((row, idx) => (
+                        <tr
+                          key={idx}
+                          className="hover:bg-slate-50 transition-colors"
+                        >
+                          <td className="border border-slate-200 px-2 py-1 text-center text-slate-500">
+                            {idx + 1}
+                          </td>
+                          <td className="border border-slate-200 px-2 py-1 text-left font-medium text-slate-700">
+                            {row.Size?.name ||
+                              sizeList?.data?.find(
+                                (s) => String(s.id) === String(row.sizeId),
+                              )?.name ||
+                              row.size ||
+                              "All Items"}
+                          </td>
+                          <td className="border border-slate-200 px-2 py-1 text-left text-slate-600 font-mono">
+                            {row.barcodeFrom || "-"}
+                          </td>
+                          <td className="border border-slate-200 px-2 py-1 text-left text-slate-600 font-mono">
+                            {row.barcodeTo || "-"}
+                          </td>
+                          <td className="border border-slate-200 px-2 py-1 text-right font-bold text-indigo-600">
+                            {row.qty}
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {selectedItem?.sizeBreakup
-                          ?.filter((row) => (Number(row.qty) || 0) > 0)
-                          ?.map((row, idx) => (
-                            <tr
-                              key={idx}
-                              className="hover:bg-slate-50 transition-colors"
-                            >
-                              <td className="border border-slate-200 px-2 py-1 text-center text-slate-500">
-                                {idx + 1}
-                              </td>
-                              <td className="border border-slate-200 px-2 py-1 text-left font-medium text-slate-700">
-                                {row.Size?.name ||
-                                  sizeList?.data?.find(
-                                    (s) => String(s.id) === String(row.sizeId),
-                                  )?.name ||
-                                  row.size ||
-                                  "All Items"}
-                              </td>
-                              <td className="border border-slate-200 px-2 py-1 text-left text-slate-600 font-mono">
-                                {row.barcodeFrom || "-"}
-                              </td>
-                              <td className="border border-slate-200 px-2 py-1 text-left text-slate-600 font-mono">
-                                {row.barcodeTo || "-"}
-                              </td>
-                              <td className="border border-slate-200 px-2 py-1 text-right font-bold text-indigo-600">
-                                {row.qty}
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  )}
-                </>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full py-8 text-slate-400 gap-2">
-                  <FiEye className="text-2xl opacity-20" />
-                  <span className="text-[10px] italic">
-                    No size details available
-                  </span>
-                </div>
+                      ))}
+                  </tbody>
+                </table>
               )}
             </div>
-          </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full py-8 text-slate-400 gap-2">
+              <FiEye className="text-2xl opacity-20" />
+              <span className="text-[10px] italic">
+                No size details available
+              </span>
+            </div>
+          )}
         </div>
-      </div>
-    </SectionCard>
+      </SectionCard>
+    </div>
   );
 
   const gridItemsContent = (
@@ -1283,7 +1384,7 @@ const JobCardForm = ({
         <div className="min-h-full flex flex-col">{labelDetailsContent}</div>
       ) : (
         <div className="grid grid-cols-4 gap-3 items-stretch h-full">
-          {/* COLUMN 1: BOARD QUALITY & SPECIFICATIONS */}
+          {/* COLUMN 1: BOARD QUALITY & CUTTING DETAILS */}
           <div className="flex flex-col gap-3 h-full">
             <SectionCard title="Board Quality">
               <div className="grid grid-cols-2 gap-x-2 gap-y-3">
@@ -1299,7 +1400,7 @@ const JobCardForm = ({
               </div>
             </SectionCard>
 
-            <SectionCard title="Specifications" className="flex-1">
+            <SectionCard title="Cutting Details" className="flex-1">
               <div className="grid grid-cols-2 gap-x-3 gap-y-3">
                 <Field label="GSM">
                   <DropdownWithModal
@@ -1338,25 +1439,42 @@ const JobCardForm = ({
                   />
                 </Field>
                 <Field label="Full Board">
-                  <TextInput
+                  <DropdownWithModal
                     name=""
-                    value={fullBoard}
-                    setValue={setFullBoard}
+                    options={dropDownListObject(
+                      id
+                        ? sizeList?.data
+                        : sizeList?.data?.filter((i) => i?.active),
+                      "name",
+                      "id",
+                    )}
+                    value={fullBoardId}
+                    setValue={setFullBoardId}
                     readOnly={readOnly}
-                    type="number"
-                    className="text-right w-full"
+                    addNewLabel="+ Add Size"
+                    childComponent={Size}
+                    addNewModalWidth="w-[30%] h-[45%]"
                   />
                 </Field>
                 <Field label="Cutting Size">
-                  <TextInput
+                  <DropdownWithModal
                     name=""
-                    value={cuttingSize}
-                    setValue={setCuttingSize}
+                    options={dropDownListObject(
+                      id
+                        ? sizeList?.data
+                        : sizeList?.data?.filter((i) => i?.active),
+                      "name",
+                      "id",
+                    )}
+                    value={cuttingSizeId}
+                    setValue={setCuttingSizeId}
                     readOnly={readOnly}
-                    className="w-full"
+                    addNewLabel="+ Add Size"
+                    childComponent={Size}
+                    addNewModalWidth="w-[30%] h-[45%]"
                   />
                 </Field>
-                <Field label="No. of Pockets">
+                <Field label="No. of Sheets">
                   <TextInput
                     name=""
                     value={noOfPockets}
@@ -1376,34 +1494,108 @@ const JobCardForm = ({
                     className="w-full text-right"
                   />
                 </Field>
-                <CheckBox
-                  name="4 Color"
-                  value={isFourColor}
-                  setValue={setIsFourColor}
-                  readOnly={readOnly}
-                />
-                <CheckBox
-                  name="Cut Color"
-                  value={isCutColor}
-                  setValue={setIsCutColor}
-                  readOnly={readOnly}
-                />
-                <CheckBox
-                  name="Front"
-                  value={isFront}
-                  setValue={setIsFront}
-                  readOnly={readOnly}
-                />
-                <CheckBox
-                  name="Front & Back"
-                  value={isFrontAndBack}
-                  setValue={setIsFrontAndBack}
-                  readOnly={readOnly}
-                />
               </div>
             </SectionCard>
           </div>
+          {/* COLUMN 4: PRINTING, PLATE & DIE, SIZE DETAILS */}
 
+          <div className="flex flex-col gap-3 h-full">
+            <SectionCard title="Printing Details">
+              <div className="grid grid-cols-2 gap-x-2 gap-y-3">
+                {printingList?.map((item) => (
+                  <CheckBox
+                    key={item.id}
+                    name={item.name}
+                    value={selectedPrinting.includes(item.id)}
+                    setValue={() => toggleArr(setSelectedPrinting, item.id)}
+                    readOnly={readOnly}
+                  />
+                ))}
+              </div>
+            </SectionCard>
+            <SectionCard title="Plate & Die Details">
+              <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Plate Details">
+                    <DropdownWithModal
+                      name=""
+                      options={dropDownListObject(
+                        id
+                          ? plateList?.data
+                          : plateList?.data?.filter((i) => i?.active),
+                        "name",
+                        "id",
+                      )}
+                      value={plateId}
+                      setValue={setPlateId}
+                      readOnly={readOnly}
+                      addNewLabel="+ Add Plate"
+                      childComponent={PlateMaster}
+                    />
+                  </Field>
+                  <Field label="Die Details">
+                    <DropdownWithModal
+                      name=""
+                      options={dropDownListObject(
+                        id
+                          ? dieList?.data
+                          : dieList?.data?.filter((i) => i?.active),
+                        "name",
+                        "id",
+                      )}
+                      value={dieId}
+                      setValue={setDieId}
+                      readOnly={readOnly}
+                      addNewLabel="+ Add Die"
+                      childComponent={DieMaster}
+                    />
+                  </Field>
+                  <Field label="Total Plate Sets">
+                    <TextInput
+                      name=""
+                      value={totalPlateSet}
+                      setValue={setTotalPlateSet}
+                      readOnly={readOnly}
+                      type="number"
+                      className="w-full text-right"
+                    />
+                  </Field>
+                </div>
+              </div>
+            </SectionCard>
+
+            <div className="grid grid-cols-2 gap-3 flex-1">
+              <SectionCard title="Plate Set" className="h-full">
+                <div className="flex items-center justify-center p-2 h-full">
+                  <button
+                    onClick={() => setPlateDetailsModal(true)}
+                    className="bg-indigo-600 text-white px-3 py-1.5 rounded-md text-[11px] font-semibold hover:bg-indigo-700 transition-all shadow-sm w-full"
+                  >
+                    Plate Details
+                  </button>
+                </div>
+              </SectionCard>
+
+              <SectionCard title="Size / Barcode Details" className="h-full">
+                <div className="flex items-center justify-center h-full">
+                  <button
+                    onClick={() => setSizeModal(true)}
+                    disabled={
+                      !selectedItem || selectedItem.trackingType === "None"
+                    }
+                    className={`p-2 rounded-full transition-all ${
+                      !selectedItem || selectedItem.trackingType === "None"
+                        ? "text-slate-300 cursor-not-allowed"
+                        : "text-indigo-600 hover:bg-indigo-50 hover:scale-110 active:scale-95"
+                    }`}
+                    title="View Size Details"
+                  >
+                    <FiEye size={22} />
+                  </button>
+                </div>
+              </SectionCard>
+            </div>
+          </div>
           {/* COLUMN 2: PROCESS DETAILS & LAMINATION DETAILS */}
           <div className="flex flex-col gap-3 h-full">
             <SectionCard title="Process Details">
@@ -1477,117 +1669,17 @@ const JobCardForm = ({
 
             <SectionCard title="Machines" className="flex-1">
               <div className="grid grid-cols-2 gap-x-2 gap-y-4">
-                {machineList?.map((item) => (
-                  <CheckBox
-                    key={item.id}
-                    name={item.name}
-                    value={selectedMachines.includes(item.id)}
-                    setValue={() => toggleArr(setSelectedMachines, item.id)}
-                    readOnly={readOnly}
-                  />
-                ))}
-              </div>
-            </SectionCard>
-          </div>
-
-          {/* COLUMN 4: MACHINE SPECS, PLATE & DIE, SIZE DETAILS */}
-          <div className="flex flex-col gap-3 h-full">
-            <SectionCard title="Machine Specifications">
-              <div className="grid grid-cols-2 gap-x-2 gap-y-3">
-                <CheckBox
-                  name="CMYK"
-                  value={isCMYK}
-                  setValue={setIsCMYK}
-                  readOnly={readOnly}
-                />
-                <CheckBox
-                  name="Cut Col"
-                  value={isCutColMachine}
-                  setValue={setIsCutColMachine}
-                  readOnly={readOnly}
-                />
-                <CheckBox
-                  name="Front"
-                  value={isFrontMachine}
-                  setValue={setIsFrontMachine}
-                  readOnly={readOnly}
-                />
-                <CheckBox
-                  name="Front & Back"
-                  value={isFrontBackMachine}
-                  setValue={setIsFrontBackMachine}
-                  readOnly={readOnly}
-                />
-              </div>
-            </SectionCard>
-
-            <SectionCard title="Plate & Die Details">
-              <div className="flex flex-col gap-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Plate Details">
-                    <DropdownWithModal
-                      name=""
-                      options={dropDownListObject(
-                        id
-                          ? plateList?.data
-                          : plateList?.data?.filter((i) => i?.active),
-                        "name",
-                        "id",
-                      )}
-                      value={plateId}
-                      setValue={setPlateId}
+                {machineList?.data
+                  ?.filter((item) => (id ? true : item.active))
+                  .map((item) => (
+                    <CheckBox
+                      key={item.id}
+                      name={`${item.name}${item.Size?.name ? ` (${item.Size.name})` : ""}`}
+                      value={selectedMachines.includes(item.id)}
+                      setValue={() => toggleArr(setSelectedMachines, item.id)}
                       readOnly={readOnly}
-                      addNewLabel="+ Add Plate"
-                      childComponent={PlateMaster}
                     />
-                  </Field>
-                  <Field label="Die Details">
-                    <DropdownWithModal
-                      name=""
-                      options={dropDownListObject(
-                        id
-                          ? dieList?.data
-                          : dieList?.data?.filter((i) => i?.active),
-                        "name",
-                        "id",
-                      )}
-                      value={dieId}
-                      setValue={setDieId}
-                      readOnly={readOnly}
-                      addNewLabel="+ Add Die"
-                      childComponent={DieMaster}
-                    />
-                  </Field>
-                </div>
-                <Field label="Total Plate Sets">
-                  <TextInput
-                    name=""
-                    value={totalPlateSet}
-                    setValue={setTotalPlateSet}
-                    readOnly={readOnly}
-                    type="number"
-                    className="w-full text-right"
-                  />
-                </Field>
-              </div>
-            </SectionCard>
-
-            <SectionCard title="Size / Barcode Details" className="flex-1">
-              <div className="flex items-center justify-center h-full">
-                <button
-                  onClick={() => setSizeModal(true)}
-                  disabled={
-                    !selectedItem || selectedItem.trackingType === "None"
-                  }
-                  className={`p-2 rounded-full transition-all ${
-                    !selectedItem || selectedItem.trackingType === "None"
-                      ? "text-slate-300 cursor-not-allowed"
-                      : "text-indigo-600 hover:bg-indigo-50 hover:scale-110 active:scale-95"
-                  }`}
-                  title="View Size Details"
-                >
-                  <FiEye size={20} />
-                </button>
+                  ))}
               </div>
             </SectionCard>
           </div>
@@ -1687,20 +1779,29 @@ const JobCardForm = ({
   const footerContent = (
     <div className="flex flex-col gap-3 bg-[#f1f3f9] p-2 rounded-md border border-slate-200 shadow-sm">
       {/* PROCESS ROUTE & REMARKS */}
-      {!isLabel && (
-        <div className="grid grid-cols-[3.5fr_1fr] gap-3">
-          <ProcessRoutePanel
-            selectedProcesses={selectedProcesses}
-            laminations={laminations}
-            varnishes={varnishes}
-            defaultList={defaultList}
-            laminationList={laminationList}
-            varnishList={varnishList}
-            processRoute={processRoute}
-            setProcessRoute={setProcessRoute}
-            readOnly={readOnly}
-          />
+      <div
+        className={`grid ${isLabel ? "grid-cols-1" : "grid-cols-[3.5fr_1fr]"} gap-3`}
+      >
+        <ProcessRoutePanel
+          selectedProcesses={selectedProcesses}
+          laminations={laminations}
+          varnishes={varnishes}
+          boardItems={boardItems}
+          boardId={boardId}
+          defaultList={defaultList}
+          laminationList={laminationList}
+          varnishList={varnishList}
+          boardList={boardList}
+          selectedPrinting={selectedPrinting}
+          printingList={printingList}
+          selectedFinishing={selectedFinishing}
+          finishingList={finishingList}
+          processRoute={processRoute}
+          setProcessRoute={setProcessRoute}
+          readOnly={readOnly}
+        />
 
+        {!isLabel && (
           <SectionCard title="Remarks" className="h-full">
             <textarea
               className="w-full h-[30px] border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-blue-500 outline-none resize-none bg-white font-normal"
@@ -1710,10 +1811,8 @@ const JobCardForm = ({
               readOnly={readOnly}
             />
           </SectionCard>
-        </div>
-      )}
-
-      {/* Footer Actions */}
+        )}
+      </div>
       <TransactionActions
         leftActions={leftActions}
         rightActions={rightActions}
@@ -2081,6 +2180,132 @@ const JobCardForm = ({
         gridItems={gridItemsContent}
         footer={footerContent}
       />
+
+      {contextMenu && (
+        <div
+          style={{
+            position: "fixed",
+            top: `${contextMenu.mouseY}px`,
+            left: `${contextMenu.mouseX}px`,
+            boxShadow: "0px 0px 5px rgba(0,0,0,0.3)",
+            padding: "4px",
+            borderRadius: "4px",
+            zIndex: 10000,
+          }}
+          className="bg-white border border-gray-200 shadow-xl"
+          onMouseLeave={handleCloseContextMenu}
+        >
+          <div className="flex flex-col min-w-[100px]">
+            <button
+              className="text-[12px] text-left px-3 py-1.5 hover:bg-red-50 text-red-600 font-medium rounded transition-colors"
+              onClick={() => deletePlateRow(contextMenu.rowId)}
+            >
+              Delete
+            </button>
+            <button
+              className="text-[12px] text-left px-3 py-1.5 hover:bg-gray-100 text-gray-700 font-medium rounded transition-colors"
+              onClick={deleteAllPlateRows}
+            >
+              Delete All
+            </button>
+          </div>
+        </div>
+      )}
+
+      {plateDetailsModal && (
+        <Modal
+          isOpen={plateDetailsModal}
+          onClose={handleClosePlateModal}
+          widthClass="w-[600px]"
+        >
+          <div className="bg-slate-100 p-3 rounded-lg">
+            {/* Header section matching reference */}
+            <div className="bg-white p-3 rounded-lg flex justify-between items-center mb-3 shadow-sm">
+              <h3 className="text-[16px] font-bold text-slate-800">
+                Plate Details
+              </h3>
+              <div className="flex gap-2">
+                <button
+                  className="bg-white text-indigo-600 border border-indigo-600 px-4 py-0.5 rounded text-[12px] hover:bg-indigo-50 font-semibold transition-colors flex items-center gap-1 shadow-sm"
+                  onClick={handleClosePlateModal}
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+
+            {/* Main content area matching reference */}
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+              <div className="h-[250px] overflow-y-auto custom-scrollbar">
+                <table className="w-full border-separate border-spacing-0 border-t border-l border-slate-200">
+                  <thead>
+                    <tr>
+                      <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-12">
+                        S.No
+                      </th>
+                      <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase">
+                        Plate Name
+                      </th>
+                      <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-24">
+                        Qty
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {plateDetails.map((row, idx) => (
+                      <tr
+                        key={idx}
+                        onContextMenu={(e) =>
+                          handlePlateDetailsContextMenu(e, idx)
+                        }
+                        className="hover:bg-slate-50 transition-colors group"
+                      >
+                        <td className="border-b border-r border-slate-200 px-1 py-0.5 text-center text-[11px] text-slate-500 font-medium">
+                          {idx + 1}
+                        </td>
+                        <td className="border-b border-r border-slate-200 p-0">
+                          <input
+                            type="text"
+                            className="w-full h-7 border-none bg-transparent px-2 text-[11px] outline-none focus:bg-white"
+                            value={row.plateName}
+                            onChange={(e) =>
+                              handlePlateDetailsChange(
+                                idx,
+                                "plateName",
+                                e.target.value,
+                              )
+                            }
+                            placeholder="Enter Plate Name"
+                          />
+                        </td>
+                        <td className="border-b border-r border-slate-200 p-0">
+                          <input
+                            type="number"
+                            className="w-full h-7 border-none text-right pr-2 bg-transparent text-[11px] text-black outline-none focus:bg-white"
+                            value={row.qty}
+                            onChange={(e) =>
+                              handlePlateDetailsChange(
+                                idx,
+                                "qty",
+                                e.target.value,
+                              )
+                            }
+                            onKeyDown={(e) => handlePlateDetailsKeyDown(e, idx)}
+                            placeholder="0"
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-2 text-[10px] text-slate-400 italic">
+                * Right-click to delete row | Press Enter on last row for new
+              </div>
+            </div>
+          </div>
+        </Modal>
+      )}
     </>
   );
 };

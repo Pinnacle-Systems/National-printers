@@ -13,11 +13,12 @@ import {
   getApprovalStatus,
   getModuleApprovalSetup,
 } from "../utils/approvalHelper.js";
+
 const REFERENCE_PAGE = "JOB CARD";
 
-// ─────────────────────────────────────────────
+// -------------------------------------------------------------
 // Doc ID Generator
-// ─────────────────────────────────────────────
+// -------------------------------------------------------------
 async function getNextDocId(branchId, shortCode, startTime, endTime) {
   const lastObject = await prisma.jobCard.findFirst({
     where: {
@@ -38,9 +39,9 @@ async function getNextDocId(branchId, shortCode, startTime, endTime) {
   return newDocId;
 }
 
-// ─────────────────────────────────────────────
+// -------------------------------------------------------------
 // GET ALL
-// ─────────────────────────────────────────────
+// -------------------------------------------------------------
 async function get(req) {
   const {
     branchId,
@@ -87,6 +88,7 @@ async function get(req) {
     include: {
       customer: { select: { id: true, name: true } },
       gsm: { select: { id: true, name: true } },
+      OrderEntry: { select: { id: true, docId: true } },
     },
     orderBy: { id: "desc" },
   });
@@ -176,9 +178,9 @@ async function get(req) {
   return { statusCode: 0, data: resolvedData, nextDocId: newDocId, totalCount };
 }
 
-// ─────────────────────────────────────────────
+// -------------------------------------------------------------
 // GET ONE
-// ─────────────────────────────────────────────
+// -------------------------------------------------------------
 async function getOne(id) {
   const data = await prisma.jobCard.findUnique({
     where: { id: parseInt(id) },
@@ -211,11 +213,23 @@ async function getOne(id) {
         include: { Varnish: { select: { id: true, name: true } } },
       },
       machineDetails: {
-        include: { Machine: { select: { id: true, name: true } } },
+        include: { Mac: { select: { id: true, name: true } } },
       },
+      printingDetails: {
+        include: { Process: { select: { id: true, name: true } } },
+      },
+      finishingProcesses: {
+        include: { Process: { select: { id: true, name: true } } },
+      },
+      plateDetails: true,
       processRoute: {
         include: { Process: { select: { id: true, name: true } } },
       },
+      LabelSize: { select: { id: true, name: true } },
+      FullBoardSize: { select: { id: true, name: true } },
+      CuttingSizeDtl: { select: { id: true, name: true } },
+      Designer: { select: { id: true, name: true } },
+      FollowUp: { select: { id: true, name: true } },
       OrderEntryItem: {
         include: {
           StyleItem: { select: { name: true } },
@@ -287,27 +301,26 @@ async function getOne(id) {
   };
 }
 
-// ─────────────────────────────────────────────
-// SAFE ARRAY PARSER (NO JSON ERRORS)
-// ─────────────────────────────────────────────
+// -------------------------------------------------------------
+// SAFE ARRAY PARSER
+// -------------------------------------------------------------
 function safeArray(val) {
   if (Array.isArray(val)) return val;
-  if (!val) return [];
-  if (val === "undefined") return [];
+  if (!val || val === "undefined") return [];
   if (typeof val === "string") {
     try {
       return JSON.parse(val);
     } catch (err) {
-      console.warn("⚠️ JSON Parse Failed:", val);
+      console.warn("JSON Parse Failed:", val);
       return [];
     }
   }
   return [];
 }
 
-// ─────────────────────────────────────────────
+// -------------------------------------------------------------
 // CREATE
-// ─────────────────────────────────────────────
+// -------------------------------------------------------------
 async function create(body) {
   try {
     const {
@@ -316,15 +329,15 @@ async function create(body) {
       finYearId,
       docDate,
       orderEntryId,
-      proformaInvoiceId, // ✅ added back
+      proformaInvoiceId,
       orderType,
       orderQty,
       customerId,
       gsmId,
       boardId,
-      fullBoard,
+      fullBoardId,
       noOfPockets,
-      cuttingSize,
+      cuttingSizeId,
       runningQty,
       isFourColor,
       isCutColor,
@@ -355,6 +368,12 @@ async function create(body) {
       varnishes,
       selectedMachines,
       processRoute,
+      selectedPrinting,
+      selectedFinishing,
+      plateDetails,
+      labelSizeId,
+      totalMeter,
+      submitApproval,
     } = body;
 
     const safeBoardItems = safeArray(boardItems);
@@ -363,18 +382,11 @@ async function create(body) {
     const safeVarnishes = safeArray(varnishes);
     const safeMachines = safeArray(selectedMachines);
     const safeProcessRoute = safeArray(processRoute);
-
-    console.log("✅ SAFE ARRAYS:");
-    console.log({
-      safeBoardItems,
-      safeProcesses,
-      safeLaminations,
-      safeVarnishes,
-      safeMachines,
-    });
+    const safePrinting = safeArray(selectedPrinting);
+    const safeFinishing = safeArray(selectedFinishing);
+    const safePlateDetails = safeArray(plateDetails);
 
     let finYearDate = await getFinYearStartTimeEndTime(finYearId);
-
     const shortCode = finYearDate
       ? getYearShortCodeForFinYear(
           finYearDate.startDateStartTime,
@@ -389,8 +401,6 @@ async function create(body) {
       finYearDate?.endDateEndTime,
     );
 
-    console.log("📄 NEW DOC ID:", newDocId);
-
     const { module, hasApproval } = await getModuleApprovalSetup(
       REFERENCE_PAGE,
       branchId,
@@ -403,124 +413,102 @@ async function create(body) {
         data: {
           docId: newDocId,
           docDate: docDate ? new Date(docDate) : null,
-
           createdBy: userId ? { connect: { id: Number(userId) } } : undefined,
           Branch: branchId ? { connect: { id: Number(branchId) } } : undefined,
-
-          OrderEntry: orderEntryId
-            ? { connect: { id: Number(orderEntryId) } }
-            : undefined,
-          ProformaInvoice: proformaInvoiceId
-            ? { connect: { id: Number(proformaInvoiceId) } }
-            : undefined,
+          OrderEntry: orderEntryId ? { connect: { id: Number(orderEntryId) } } : undefined,
+          ProformaInvoice: proformaInvoiceId ? { connect: { id: Number(proformaInvoiceId) } } : undefined,
           orderType: orderType || null,
           orderQty: orderQty ? Number(orderQty) : null,
-          customer: customerId
-            ? { connect: { id: Number(customerId) } }
-            : undefined,
-
+          customer: customerId ? { connect: { id: Number(customerId) } } : undefined,
           gsm: gsmId ? { connect: { id: Number(gsmId) } } : undefined,
           Board: boardId ? { connect: { id: Number(boardId) } } : undefined,
-
-          fullBoard: fullBoard ? Number(fullBoard) : null,
+          FullBoardSize: fullBoardId ? { connect: { id: Number(fullBoardId) } } : undefined,
           noOfPockets: noOfPockets ? Number(noOfPockets) : null,
-          cuttingSize: cuttingSize || null,
+          CuttingSizeDtl: cuttingSizeId ? { connect: { id: Number(cuttingSizeId) } } : undefined,
+          LabelSize: labelSizeId ? { connect: { id: Number(labelSizeId) } } : undefined,
+          totalMeter: totalMeter ? Number(totalMeter) : null,
           runningQty: runningQty ? Number(runningQty) : null,
-
           isFourColor: !!isFourColor,
           isCutColor: !!isCutColor,
           isFront: !!isFront,
           isFrontAndBack: !!isFrontAndBack,
-
           isCMYK: !!isCMYK,
           isCutColMachine: !!isCutColMachine,
           isFrontMachine: !!isFrontMachine,
           isFrontBackMachine: !!isFrontBackMachine,
-
           Plate: plateId ? { connect: { id: Number(plateId) } } : undefined,
           Die: dieId ? { connect: { id: Number(dieId) } } : undefined,
           totalPlateSet: totalPlateSet ? Number(totalPlateSet) : null,
-
           remarks: remarks || null,
-          Designer: designerId
-            ? { connect: { id: Number(designerId) } }
-            : undefined,
-          FollowUp: followUpId
-            ? { connect: { id: Number(followUpId) } }
-            : undefined,
+          Designer: designerId ? { connect: { id: Number(designerId) } } : undefined,
+          FollowUp: followUpId ? { connect: { id: Number(followUpId) } } : undefined,
           tagCardUps: tagCardUps || null,
-          jobRunTime: jobRunTime || null,
+          jobRunTime: jobRunTime ? Number(jobRunTime) : null,
           department: department || null,
           itemGroup: itemGroup || null,
-          OrderEntryItem: orderEntryItemId
-            ? { connect: { id: Number(orderEntryItemId) } }
-            : undefined,
+          OrderEntryItem: orderEntryItemId ? { connect: { id: Number(orderEntryItemId) } } : undefined,
           labelQuality: labelQuality || null,
           labelBlock: labelBlock || null,
           labelRollQty: labelRollQty || null,
           labelCutAndSeal: labelCutAndSeal || null,
 
-          boardQualities: safeBoardItems.length
-            ? {
-                create: safeBoardItems.map((id) => ({
-                  boardId: Number(id),
-                })),
-              }
-            : undefined,
+          boardQualities: safeBoardItems.length ? {
+            create: safeBoardItems.map((id) => ({ boardId: Number(id) })),
+          } : undefined,
 
-          processDetails: safeProcesses.length
-            ? {
-                create: safeProcesses.map((id) => ({
-                  processId: Number(id),
-                })),
-              }
-            : undefined,
+          processDetails: safeProcesses.length ? {
+            create: safeProcesses.map((id) => ({ processId: Number(id) })),
+          } : undefined,
 
-          laminationDetails: safeLaminations.length
-            ? {
-                create: safeLaminations.map((l) => ({
-                  laminationId: Number(l.processId),
-                  isFront: !!l.isFront,
-                  isFrontAndBack: !!l.isFrontAndBack,
-                })),
-              }
-            : undefined,
+          laminationDetails: safeLaminations.length ? {
+            create: safeLaminations.map((l) => ({
+              laminationId: Number(l.processId),
+              isFront: !!l.isFront,
+              isFrontAndBack: !!l.isFrontAndBack,
+            })),
+          } : undefined,
 
-          varnishDetails: safeVarnishes.length
-            ? {
-                create: safeVarnishes.map((v) => ({
-                  varnishId: Number(v.processId),
-                  isFront: !!v.isFront,
-                  isFrontAndBack: !!v.isFrontAndBack,
-                })),
-              }
-            : undefined,
+          varnishDetails: safeVarnishes.length ? {
+            create: safeVarnishes.map((v) => ({
+              varnishId: Number(v.processId),
+              isFront: !!v.isFront,
+              isFrontAndBack: !!v.isFrontAndBack,
+            })),
+          } : undefined,
 
-          machineDetails: safeMachines.length
-            ? {
-                create: safeMachines.map((id) => ({
-                  machineId: Number(id),
-                })),
-              }
-            : undefined,
+          machineDetails: safeMachines.length ? {
+            create: safeMachines.map((id) => ({ macId: Number(id) })),
+          } : undefined,
 
-          processRoute: safeProcessRoute.length
-            ? {
-                create: safeProcessRoute.map((r, idx) => ({
-                  processId: Number(r.processId),
-                  type: r.type,
-                  sequence: idx + 1,
-                  isFront: !!r.isFront,
-                  isFrontAndBack: !!r.isFrontAndBack,
-                })),
-              }
-            : undefined,
+          processRoute: safeProcessRoute.length ? {
+            create: safeProcessRoute.map((r, idx) => ({
+              processId: Number(r.processId),
+              type: r.type,
+              sequence: idx + 1,
+              isFront: !!r.isFront,
+              isFrontAndBack: !!r.isFrontAndBack,
+            })),
+          } : undefined,
+
+          printingDetails: safePrinting.length ? {
+            create: safePrinting.map((id) => ({ processId: Number(id) })),
+          } : undefined,
+
+          finishingProcesses: safeFinishing.length ? {
+            create: safeFinishing.map((id) => ({ processId: Number(id) })),
+          } : undefined,
+
+          plateDetails: safePlateDetails.length ? {
+            create: safePlateDetails.map((p) => ({
+              plateName: p.plateName,
+              qty: Number(p.qty),
+            })),
+          } : undefined,
         },
       });
 
-      if (hasApproval && module) {
+      if (submitApproval && hasApproval && module) {
         const includeClause = await buildIncludeForModule(module.id);
-
         const fullRecord = await tx.jobCard.findUnique({
           where: { id: data.id },
           include: includeClause,
@@ -539,18 +527,13 @@ async function create(body) {
       }
     });
 
-    console.log("✅ CREATED SUCCESS:", data);
-
     return { statusCode: 0, data };
   } catch (err) {
-    console.error("❌ SERVICE ERROR:", err);
+    console.error("CREATE ERROR:", err);
     return { statusCode: 1, message: err.message };
   }
 }
 
-// ─────────────────────────────────────────────
-// UPDATE
-// ─────────────────────────────────────────────
 async function update(id, body) {
   try {
     const {
@@ -558,15 +541,15 @@ async function update(id, body) {
       branchId,
       docDate,
       orderEntryId,
-      proformaInvoiceId, // ✅ added back
+      proformaInvoiceId,
       orderType,
       orderQty,
       customerId,
       gsmId,
       boardId,
-      fullBoard,
+      fullBoardId,
       noOfPockets,
-      cuttingSize,
+      cuttingSizeId,
       runningQty,
       isFourColor,
       isCutColor,
@@ -579,6 +562,7 @@ async function update(id, body) {
       plateId,
       dieId,
       totalPlateSet,
+      remarks,
       designerId,
       followUpId,
       tagCardUps,
@@ -596,14 +580,23 @@ async function update(id, body) {
       varnishes,
       selectedMachines,
       processRoute,
+      selectedPrinting,
+      selectedFinishing,
+      plateDetails,
+      labelSizeId,
+      totalMeter,
       submitApproval,
-      remarks,
     } = body;
 
-    const dataFound = await prisma.jobCard.findUnique({
-      where: { id: parseInt(id) },
-    });
-    if (!dataFound) return NoRecordFound("Job Card");
+    const safeBoardItems = safeArray(boardItems);
+    const safeProcesses = safeArray(selectedProcesses);
+    const safeLaminations = safeArray(laminations);
+    const safeVarnishes = safeArray(varnishes);
+    const safeMachines = safeArray(selectedMachines);
+    const safeProcessRoute = safeArray(processRoute);
+    const safePrinting = safeArray(selectedPrinting);
+    const safeFinishing = safeArray(selectedFinishing);
+    const safePlateDetails = safeArray(plateDetails);
 
     const { module, hasApproval } = await getModuleApprovalSetup(
       REFERENCE_PAGE,
@@ -611,152 +604,131 @@ async function update(id, body) {
     );
 
     let data;
+
     await prisma.$transaction(async (tx) => {
-      await tx.boardQuality.deleteMany({ where: { jobCardId: parseInt(id) } });
-      await tx.processDetails.deleteMany({
-        where: { jobCardId: parseInt(id) },
-      });
-      await tx.laminationDetails.deleteMany({
-        where: { jobCardId: parseInt(id) },
-      });
-      await tx.varnishDetails.deleteMany({
-        where: { jobCardId: parseInt(id) },
-      });
-      await tx.machineDetails.deleteMany({
-        where: { jobCardId: parseInt(id) },
-      });
-      await tx.processRoute.deleteMany({ where: { jobCardId: parseInt(id) } });
+      const jcId = parseInt(id);
+
+      // Delete old relations
+      await tx.boardQuality.deleteMany({ where: { jobCardId: jcId } });
+      await tx.processDetails.deleteMany({ where: { jobCardId: jcId } });
+      await tx.laminationDetails.deleteMany({ where: { jobCardId: jcId } });
+      await tx.varnishDetails.deleteMany({ where: { jobCardId: jcId } });
+      await tx.machineDetails.deleteMany({ where: { jobCardId: jcId } });
+      await tx.processRoute.deleteMany({ where: { jobCardId: jcId } });
+      await tx.printingDetails.deleteMany({ where: { jobCardId: jcId } });
+      await tx.finishingProcess.deleteMany({ where: { jobCardId: jcId } });
+      await tx.plateDetails.deleteMany({ where: { jobCardId: jcId } });
 
       data = await tx.jobCard.update({
-        where: { id: parseInt(id) },
+        where: { id: jcId },
         data: {
           docDate: docDate ? new Date(docDate) : null,
-          updatedBy: userId ? { connect: { id: parseInt(userId) } } : undefined,
-          Branch: branchId
-            ? { connect: { id: parseInt(branchId) } }
-            : undefined,
-          OrderEntry: orderEntryId
-            ? { connect: { id: parseInt(orderEntryId) } }
-            : undefined,
-          ProformaInvoice: proformaInvoiceId
-            ? { connect: { id: parseInt(proformaInvoiceId) } }
-            : undefined,
+          updatedBy: userId ? { connect: { id: Number(userId) } } : undefined,
+          OrderEntry: orderEntryId ? { connect: { id: Number(orderEntryId) } } : { disconnect: true },
+          ProformaInvoice: proformaInvoiceId ? { connect: { id: Number(proformaInvoiceId) } } : { disconnect: true },
           orderType: orderType || null,
-          orderQty: orderQty ? parseInt(orderQty) : null,
-          customer: customerId
-            ? { connect: { id: parseInt(customerId) } }
-            : undefined,
-          gsm: gsmId ? { connect: { id: parseInt(gsmId) } } : undefined,
-          Board: boardId ? { connect: { id: parseInt(boardId) } } : undefined,
-          fullBoard: fullBoard ? parseInt(fullBoard) : null,
-          noOfPockets: noOfPockets ? parseInt(noOfPockets) : null,
-          cuttingSize: cuttingSize || null,
-          runningQty: runningQty ? parseInt(runningQty) : null,
-          isFourColor: Boolean(isFourColor),
-          isCutColor: Boolean(isCutColor),
-          isFront: Boolean(isFront),
-          isFrontAndBack: Boolean(isFrontAndBack),
-          isCMYK: Boolean(isCMYK),
-          isCutColMachine: Boolean(isCutColMachine),
-          isFrontMachine: Boolean(isFrontMachine),
-          isFrontBackMachine: Boolean(isFrontBackMachine),
-          Plate: plateId ? { connect: { id: parseInt(plateId) } } : undefined,
-          Die: dieId ? { connect: { id: parseInt(dieId) } } : undefined,
-          totalPlateSet: totalPlateSet ? parseInt(totalPlateSet) : null,
+          orderQty: orderQty ? Number(orderQty) : null,
+          customer: customerId ? { connect: { id: Number(customerId) } } : { disconnect: true },
+          gsm: gsmId ? { connect: { id: Number(gsmId) } } : { disconnect: true },
+          Board: boardId ? { connect: { id: Number(boardId) } } : { disconnect: true },
+          FullBoardSize: fullBoardId ? { connect: { id: Number(fullBoardId) } } : { disconnect: true },
+          noOfPockets: noOfPockets ? Number(noOfPockets) : null,
+          CuttingSizeDtl: cuttingSizeId ? { connect: { id: Number(cuttingSizeId) } } : { disconnect: true },
+          LabelSize: labelSizeId ? { connect: { id: Number(labelSizeId) } } : { disconnect: true },
+          totalMeter: totalMeter ? Number(totalMeter) : null,
+          runningQty: runningQty ? Number(runningQty) : null,
+          isFourColor: !!isFourColor,
+          isCutColor: !!isCutColor,
+          isFront: !!isFront,
+          isFrontAndBack: !!isFrontAndBack,
+          isCMYK: !!isCMYK,
+          isCutColMachine: !!isCutColMachine,
+          isFrontMachine: !!isFrontMachine,
+          isFrontBackMachine: !!isFrontBackMachine,
+          Plate: plateId ? { connect: { id: Number(plateId) } } : { disconnect: true },
+          Die: dieId ? { connect: { id: Number(dieId) } } : { disconnect: true },
+          totalPlateSet: totalPlateSet ? Number(totalPlateSet) : null,
           remarks: remarks || null,
-          Designer: designerId
-            ? { connect: { id: parseInt(designerId) } }
-            : undefined,
-          FollowUp: followUpId
-            ? { connect: { id: parseInt(followUpId) } }
-            : undefined,
+          Designer: designerId ? { connect: { id: Number(designerId) } } : { disconnect: true },
+          FollowUp: followUpId ? { connect: { id: Number(followUpId) } } : { disconnect: true },
           tagCardUps: tagCardUps || null,
-          jobRunTime: jobRunTime || null,
+          jobRunTime: jobRunTime ? Number(jobRunTime) : null,
           department: department || null,
           itemGroup: itemGroup || null,
-          OrderEntryItem: orderEntryItemId
-            ? { connect: { id: parseInt(orderEntryItemId) } }
-            : undefined,
+          OrderEntryItem: orderEntryItemId ? { connect: { id: Number(orderEntryItemId) } } : { disconnect: true },
           labelQuality: labelQuality || null,
           labelBlock: labelBlock || null,
           labelRollQty: labelRollQty || null,
           labelCutAndSeal: labelCutAndSeal || null,
 
-          boardQualities:
-            boardItems.length > 0
-              ? {
-                  create: boardItems.map((bId) => ({
-                    boardId: parseInt(bId),
-                  })),
-                }
-              : undefined,
+          boardQualities: safeBoardItems.length ? {
+            create: safeBoardItems.map((id) => ({ boardId: Number(id) })),
+          } : undefined,
 
-          processDetails:
-            selectedProcesses.length > 0
-              ? {
-                  create: selectedProcesses.map((pId) => ({
-                    processId: parseInt(pId),
-                  })),
-                }
-              : undefined,
+          processDetails: safeProcesses.length ? {
+            create: safeProcesses.map((id) => ({ processId: Number(id) })),
+          } : undefined,
 
-          laminationDetails:
-            laminations.length > 0
-              ? {
-                  create: laminations.map((l) => ({
-                    laminationId: parseInt(l.processId),
-                    isFront: Boolean(l.isFront),
-                    isFrontAndBack: Boolean(l.isFrontAndBack),
-                  })),
-                }
-              : undefined,
+          laminationDetails: safeLaminations.length ? {
+            create: safeLaminations.map((l) => ({
+              laminationId: Number(l.processId),
+              isFront: !!l.isFront,
+              isFrontAndBack: !!l.isFrontAndBack,
+            })),
+          } : undefined,
 
-          varnishDetails:
-            varnishes.length > 0
-              ? {
-                  create: varnishes.map((v) => ({
-                    varnishId: parseInt(v.processId),
-                    isFront: Boolean(v.isFront),
-                    isFrontAndBack: Boolean(v.isFrontAndBack),
-                  })),
-                }
-              : undefined,
+          varnishDetails: safeVarnishes.length ? {
+            create: safeVarnishes.map((v) => ({
+              varnishId: Number(v.processId),
+              isFront: !!v.isFront,
+              isFrontAndBack: !!v.isFrontAndBack,
+            })),
+          } : undefined,
 
-          machineDetails:
-            selectedMachines.length > 0
-              ? {
-                  create: selectedMachines.map((mId) => ({
-                    machineId: parseInt(mId),
-                  })),
-                }
-              : undefined,
+          machineDetails: safeMachines.length ? {
+            create: safeMachines.map((id) => ({ macId: Number(id) })),
+          } : undefined,
 
-          processRoute: processRoute.length
-            ? {
-                create: processRoute.map((r, idx) => ({
-                  processId: parseInt(r.processId),
-                  type: r.type,
-                  sequence: idx + 1,
-                  isFront: Boolean(r.isFront),
-                  isFrontAndBack: Boolean(r.isFrontAndBack),
-                })),
-              }
-            : undefined,
+          processRoute: safeProcessRoute.length ? {
+            create: safeProcessRoute.map((r, idx) => ({
+              processId: Number(r.processId),
+              type: r.type,
+              sequence: idx + 1,
+              isFront: !!r.isFront,
+              isFrontAndBack: !!r.isFrontAndBack,
+            })),
+          } : undefined,
+
+          printingDetails: safePrinting.length ? {
+            create: safePrinting.map((id) => ({ processId: Number(id) })),
+          } : undefined,
+
+          finishingProcesses: safeFinishing.length ? {
+            create: safeFinishing.map((id) => ({ processId: Number(id) })),
+          } : undefined,
+
+          plateDetails: safePlateDetails.length ? {
+            create: safePlateDetails.map((p) => ({
+              plateName: p.plateName,
+              qty: Number(p.qty),
+            })),
+          } : undefined,
         },
       });
 
       if (submitApproval && hasApproval && module) {
         await tx.approvalLog.deleteMany({
           where: {
-            referenceId: parseInt(id),
+            referenceId: jcId,
             referencePage: REFERENCE_PAGE,
             status: { in: ["REJECTED", "NOTAPPROVED"] },
           },
         });
 
+        const includeClause = await buildIncludeForModule(module.id);
         const fullRecord = await tx.jobCard.findUnique({
-          where: { id: parseInt(id) },
-          include: await buildIncludeForModule(module.id),
+          where: { id: jcId },
+          include: includeClause,
         });
 
         await createApprovalLog(
@@ -774,13 +746,11 @@ async function update(id, body) {
 
     return { statusCode: 0, data };
   } catch (err) {
-    return { statusCode: 400, message: err.message };
+    console.error("UPDATE ERROR:", err);
+    return { statusCode: 1, message: err.message };
   }
 }
 
-// ─────────────────────────────────────────────
-// DELETE
-// ─────────────────────────────────────────────
 async function remove(id) {
   try {
     const jobCardId = parseInt(id);
@@ -799,12 +769,12 @@ async function remove(id) {
 
     return { statusCode: 0, data };
   } catch (err) {
-    return { statusCode: 400, message: err.message };
+    return { statusCode: 1, message: err.message };
   }
 }
 
 async function getJobCardList(req) {
-  const { branchId, companyId } = req.query;
+  const { branchId } = req.query;
 
   let result = await prisma.jobCard.findMany({
     where: {
@@ -843,17 +813,12 @@ async function getJobCardList(req) {
     docId: item.docId,
     orderQty: item.orderQty,
     styleItemId: item.styleItemId || item.OrderEntryItem?.styleItemId || null,
-
     customerName: item.customer?.name || "",
-
     orderEntryDocId: item.OrderEntry?.docId || "",
-
     processRoute: item.processRoute || [],
   }));
 
   return { statusCode: 0, data };
 }
-// ─────────────────────────────────────────────
-// Export
-// ─────────────────────────────────────────────
+
 export { get, getOne, create, update, remove, getJobCardList };

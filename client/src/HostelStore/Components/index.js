@@ -54,3 +54,4 @@ export { default as DieMaster } from "./DieMaster";
 export { default as BoardMaster } from "./BoardMaster";
 export { default as ProformaInvoice } from "./ProformaInvoice/ProformaInvoice";
 export { default as ProductionAllocation } from "./ProductionAllocation/index";
+export { default as MachineMaster } from "./MachineMaster";

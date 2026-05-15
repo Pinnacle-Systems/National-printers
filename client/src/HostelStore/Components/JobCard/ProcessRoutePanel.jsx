@@ -17,15 +17,42 @@ const buildDesiredKeys = (
     selectedProcesses,
     laminations,
     varnishes,
+    boardItems,
+    boardId,
+    selectedPrinting,
+    selectedFinishing,
     defaultList,
     laminationList,
-    varnishList
+    varnishList,
+    boardList,
+    printingList,
+    finishingList
 ) => {
     const keys = [];
+
+    // Boards
+    const uniqueBoardIds = Array.from(new Set([
+        ...boardItems.map(Number),
+        ...(boardId ? [Number(boardId)] : [])
+    ]));
+
+    uniqueBoardIds.forEach(id => {
+        if (id) keys.push(makeKey("board", id));
+    });
 
     defaultList.forEach((p) => {
         if (selectedProcesses.includes(p.id))
             keys.push(makeKey("process", p.id));
+    });
+
+    printingList.forEach((p) => {
+        if (selectedPrinting.includes(p.id))
+            keys.push(makeKey("printing", p.id));
+    });
+
+    finishingList.forEach((p) => {
+        if (selectedFinishing.includes(p.id))
+            keys.push(makeKey("finishing", p.id));
     });
 
     laminationList.forEach((p) => {
@@ -48,14 +75,20 @@ const buildDesiredKeys = (
 // ─────────────────────────────────────────────────────────────
 // Resolve display label
 // ─────────────────────────────────────────────────────────────
-const resolveLabel = (key, defaultList, laminationList, varnishList) => {
+const resolveLabel = (key, defaultList, laminationList, varnishList, boardList, printingList, finishingList) => {
     const { type, id, sub } = parseKey(key);
-    const find = (list) => list.find((p) => p.id === id)?.name || `#${id}`;
+    const find = (list) => {
+        const found = list.find((p) => p.id === id);
+        return found?.name || found?.label || `#${id}`;
+    };
 
     let name = "";
     if (type === "process") name = find(defaultList);
     else if (type === "lamination") name = find(laminationList);
     else if (type === "varnish") name = find(varnishList);
+    else if (type === "board") name = find(boardList);
+    else if (type === "printing") name = find(printingList);
+    else if (type === "finishing") name = find(finishingList);
 
     if (sub === "front") return `${name} (Front)`;
     if (sub === "frontback") return `${name} (F & B)`;
@@ -69,6 +102,9 @@ const typeTag = (key) => {
     const { type } = parseKey(key);
     if (type === "lamination") return { label: "LAM", cls: "text-emerald-600 bg-emerald-50 border-emerald-200" };
     if (type === "varnish") return { label: "VAR", cls: "text-amber-600  bg-amber-50  border-amber-200" };
+    if (type === "board") return { label: "BRD", cls: "text-orange-600 bg-orange-50 border-orange-200" };
+    if (type === "printing") return { label: "PRT", cls: "text-blue-600 bg-blue-50 border-blue-200" };
+    if (type === "finishing") return { label: "FIN", cls: "text-purple-600 bg-purple-50 border-purple-200" };
     return { label: "PRC", cls: "text-indigo-600 bg-indigo-50 border-indigo-200" };
 };
 
@@ -79,9 +115,16 @@ export const ProcessRoutePanel = ({
     selectedProcesses = [],
     laminations = [],
     varnishes = [],
+    boardItems = [],
+    boardId = "",
+    selectedPrinting = [],
+    selectedFinishing = [],
     defaultList = [],
     laminationList = [],
     varnishList = [],
+    boardList = [],
+    printingList = [],
+    finishingList = [],
     processRoute = [],
     setProcessRoute,
     readOnly = false,
@@ -90,8 +133,9 @@ export const ProcessRoutePanel = ({
     // ── Auto-sync: mirror form state into route ──────────────────
     useEffect(() => {
         const desired = buildDesiredKeys(
-            selectedProcesses, laminations, varnishes,
-            defaultList, laminationList, varnishList
+            selectedProcesses, laminations, varnishes, boardItems, boardId,
+            selectedPrinting, selectedFinishing,
+            defaultList, laminationList, varnishList, boardList, printingList, finishingList
         );
         setProcessRoute((prev) => {
             const kept = prev.filter((k) => desired.includes(k));
@@ -99,7 +143,7 @@ export const ProcessRoutePanel = ({
             return [...kept, ...added];
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedProcesses, laminations, varnishes]);
+    }, [selectedProcesses, laminations, varnishes, boardItems, boardId, selectedPrinting, selectedFinishing]);
 
     const removeFromRoute = (idx) => {
         if (readOnly) return;
@@ -132,7 +176,7 @@ export const ProcessRoutePanel = ({
                         <div className="flex items-center min-w-max py-0.5 gap-0">
                             {processRoute.map((key, idx) => {
                                 const tag = typeTag(key);
-                                const label = resolveLabel(key, defaultList, laminationList, varnishList);
+                                const label = resolveLabel(key, defaultList, laminationList, varnishList, boardList, printingList, finishingList);
                                 const isLast = idx === processRoute.length - 1;
 
                                 return (
