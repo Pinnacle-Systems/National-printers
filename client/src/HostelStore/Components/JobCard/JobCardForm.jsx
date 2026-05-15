@@ -619,6 +619,9 @@ const JobCardForm = ({
     totalMeter,
     selectedPrinting,
     selectedFinishing,
+    labelQuality,
+    labelBlock,
+    labelRollQty,
   };
 
   const handleSubmitCustom = async (callback, data, text, nextProcess) => {
@@ -1007,6 +1010,7 @@ const JobCardForm = ({
                   setOrderQty(item.orderQty || orderQty);
                   setItemGroup(item.ItemGroup?.name || "");
                   setStyleItemId(item.styleItemId || "");
+                  setLabelQuality(item.StyleItem?.name || "");
                 }
               }}
               otherField={"itemDescription"}
@@ -1121,7 +1125,7 @@ const JobCardForm = ({
       {/* COLUMN 1: LABEL DETAILS & TECHNICAL FIELDS & REMARKS */}
       <div className="flex flex-col gap-3 h-full">
         <SectionCard title="Label Details">
-          <div className="grid grid-cols-1 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <Field label="Label Quality">
               <TextInput
                 value={findFromList(styleItemId, styleItemList?.data, "name")}
@@ -1159,9 +1163,9 @@ const JobCardForm = ({
           </div>
         </SectionCard>
 
-        <SectionCard title="TECHNICAL FIELDS & REMARKS" className="flex-1">
+        <SectionCard title="TECHNICAL FIELDS" className="flex-1">
           <div className="flex flex-col gap-3 h-full">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <Field label="Block">
                 <TextInput
                   value={labelBlock}
@@ -1178,7 +1182,7 @@ const JobCardForm = ({
                   className="w-full text-right"
                 />
               </Field>
-              <Field label="Label Qty" className="col-span-2">
+              <Field label="Label Qty">
                 <TextInput
                   value={orderQty}
                   readOnly
@@ -1187,33 +1191,38 @@ const JobCardForm = ({
                 />
               </Field>
             </div>
-            <Field label="Remarks" className="flex-1">
-              <textarea
-                className="w-full p-2 border border-slate-300 rounded-md text-[11px] focus:ring-1 focus:ring-indigo-500 outline-none flex-1 min-h-[100px] bg-white transition-all shadow-inner resize-none"
-                value={remarks}
-                onChange={(e) => setRemarks(e.target.value)}
-                readOnly={readOnly}
-                placeholder="Enter special label instructions..."
-              />
-            </Field>
           </div>
         </SectionCard>
       </div>
 
-      {/* COLUMN 2: Finishing Processes */}
-      <SectionCard title="Finishing Processes" className="h-full">
-        <div className="grid grid-cols-2 gap-x-2 gap-y-3">
-          {finishingList?.map((item) => (
-            <CheckBox
-              key={item.id}
-              name={item.name}
-              value={selectedFinishing.includes(item.id)}
-              setValue={() => toggleArr(setSelectedFinishing, item.id)}
+      {/* COLUMN 2: Finishing Processes & Remarks */}
+      <div className="flex flex-col gap-3 h-full">
+        <SectionCard title="Finishing Processes">
+          <div className="grid grid-cols-2 gap-x-2 gap-y-3">
+            {finishingList?.map((item) => (
+              <CheckBox
+                key={item.id}
+                name={item.name}
+                value={selectedFinishing.includes(item.id)}
+                setValue={() => toggleArr(setSelectedFinishing, item.id)}
+                readOnly={readOnly}
+              />
+            ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard title="REMARKS" className="flex-1">
+          <Field label="" className="h-full">
+            <textarea
+              className="w-full p-2 border border-slate-300 rounded-md text-[11px] focus:ring-1 focus:ring-indigo-500 outline-none flex-1 min-h-[100px] bg-white transition-all shadow-inner resize-none h-full"
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
               readOnly={readOnly}
+              placeholder="Enter special label instructions..."
             />
-          ))}
-        </div>
-      </SectionCard>
+          </Field>
+        </SectionCard>
+      </div>
 
       {/* COLUMN 3: SIZE BREAKUP */}
       <SectionCard title="SIZE BREAKUP" className="h-full">
