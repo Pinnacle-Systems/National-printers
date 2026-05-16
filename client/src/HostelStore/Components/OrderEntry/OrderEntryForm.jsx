@@ -78,6 +78,7 @@ const OrderEntryForm = ({
     data: singleData,
     isFetching: isSingleFetching,
     isLoading: isSingleLoading,
+    refetch: singleRefetch,
   } = useGetOrderEntryByIdQuery(id, { skip: !id });
 
   // ── Smart readOnly: combines parent prop + childRecord ref (File 2 pattern) ──
@@ -533,6 +534,7 @@ const OrderEntryForm = ({
           timer: 2000,
           showConfirmButton: false,
         });
+        singleRefetch();
         setApprovalModal(false);
         onClose();
       } else {

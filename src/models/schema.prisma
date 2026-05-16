@@ -1859,6 +1859,7 @@ model OrderSizeBreakup {
   qty         Int?
   barcodeFrom String?
   barcodeTo   String?
+  description String?
 }
 
 model ProformaInvoice {

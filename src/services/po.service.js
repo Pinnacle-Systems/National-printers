@@ -1250,7 +1250,6 @@ async function getPoItemById(id) {
     },
   };
 }
-console.log("chek");
 
 async function getPoItems(req) {
   const {

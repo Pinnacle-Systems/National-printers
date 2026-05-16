@@ -346,7 +346,7 @@ const OrderEntryPrintFormat = ({
                   :{" "}
                   {data?.deliveryDate
                     ? moment(data.deliveryDate).format("DD-MM-YYYY")
-                    : "N/A"}
+                    : ""}
                 </Text>
               </View>
             </View>
@@ -438,6 +438,21 @@ const OrderEntryPrintFormat = ({
                         </Text>
                       </View>
                     )}
+                    {item.sizeBreakup?.find((sb) => sb.description) && (
+                      <View style={{ marginTop: 2 }}>
+                        <Text
+                          style={{
+                            fontSize: 9,
+                            fontStyle: "italic",
+                          }}
+                        >
+                          {
+                            item.sizeBreakup.find((sb) => sb.description)
+                              .description
+                          }
+                        </Text>
+                      </View>
+                    )}
                   </View>
                   <View style={styles.colItemGroup}>
                     <Text>{getName(item.itemGroupId, itemGroupList)}</Text>
@@ -498,7 +513,7 @@ const OrderEntryPrintFormat = ({
             <Text style={styles.sectionHeader}>REMARKS</Text>
             <View style={styles.sectionBody}>
               <Text style={{ fontSize: 7, color: "#444", lineHeight: 1.4 }}>
-                {data?.remarks || "N/A"}
+                {data?.remarks || ""}
               </Text>
             </View>
           </View>

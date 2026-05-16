@@ -262,6 +262,19 @@ const OrderItems = ({
     setOrderItems(newRows);
   };
 
+  const handleGlobalDescriptionChange = (value) => {
+    const newRows = [...orderItems];
+    const currentRow = { ...newRows[activeRowIndex] };
+    const newBreakup = (currentRow.sizeBreakup || []).map((item) => ({
+      ...item,
+      description: value,
+    }));
+
+    currentRow.sizeBreakup = newBreakup;
+    newRows[activeRowIndex] = currentRow;
+    setOrderItems(newRows);
+  };
+
   const addRow = () => {
     setOrderItems([...orderItems, EMPTY_ROW]);
   };
@@ -1145,13 +1158,32 @@ const OrderItems = ({
                     </tbody>
                   </table>
                 )}
-
                 {(!orderItems[activeRowIndex]?.sizeBreakup ||
                   orderItems[activeRowIndex].sizeBreakup.length === 0) && (
                   <div className="text-center p-8 text-slate-400 text-sm font-medium italic">
                     No items found for this tracking mode.
                   </div>
                 )}
+              </div>
+
+              {/* Description field below the table */}
+              <div className="mt-4">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+                  Description
+                </label>
+                <textarea
+                  className="w-full h-20 p-2 border border-slate-200 rounded-md text-[12px] outline-none focus:border-indigo-400 transition-colors bg-white"
+                  placeholder="Enter additional description for this breakup..."
+                  value={
+                    orderItems[activeRowIndex]?.sizeBreakup?.[0]?.description ||
+                    ""
+                  }
+                  onChange={(e) =>
+                    handleGlobalDescriptionChange(e.target.value)
+                  }
+                  readOnly={readOnly}
+                  disabled={readOnly}
+                />
               </div>
             </div>
           </div>

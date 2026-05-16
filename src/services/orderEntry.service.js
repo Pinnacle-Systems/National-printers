@@ -337,12 +337,59 @@ async function getOne(id) {
       },
     },
   });
-  if (!data) return NoRecordFound("Purchase Inward");
+  if (!data) return NoRecordFound("Order Entry");
+
+  // ── Approval Logic ──────────────────────────────────────────────────────────
+  const { module, hasApproval } = await getModuleApprovalSetup(
+    REFERENCE_PAGE,
+    data.branchId,
+  );
+
+  const approvalLog = await prisma.approvalLog.findFirst({
+    where: {
+      referenceId: parseInt(id),
+      referencePage: REFERENCE_PAGE,
+    },
+    orderBy: { createdAt: "desc" },
+    include: {
+      LevelLogs: {
+        include: { User: { select: { id: true, username: true } } },
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
+
+  let isApprovalTriggered = false;
+  if (!approvalLog && hasApproval && module) {
+    const activeConfigs = await prisma.approvalConfig.findMany({
+      where: {
+        moduleId: module.id,
+        branchId: data.branchId,
+        active: true,
+      },
+      include: {
+        ConfigConditions: {
+          include: { Field: true, Operator: true, CompareField: true },
+        },
+        approvalLevels: {
+          include: { LevelUsers: true },
+          orderBy: { levelNo: "asc" },
+        },
+      },
+    });
+
+    isApprovalTriggered = evaluateConfigs(activeConfigs, data);
+  }
+
   return {
     statusCode: 0,
     data: {
       ...data,
       childRecord: data._count.JobCard + data._count.ProformaInvoices,
+      approvalStatus: getApprovalStatus(
+        approvalLog,
+        !!approvalLog || isApprovalTriggered,
+      ),
     },
   };
 }
@@ -359,7 +406,6 @@ async function create(body) {
     remarks,
     requirements,
     finYearId,
-    orderQty,
     attachments,
     draftSave,
     termsAndCondition,
@@ -435,6 +481,7 @@ async function create(body) {
                     qty: s.qty ? parseInt(s.qty) : 0,
                     barcodeFrom: s.barcodeFrom,
                     barcodeTo: s.barcodeTo,
+                    description: s.description,
                   })),
                 }
               : undefined,
@@ -520,6 +567,7 @@ async function update(id, body, files) {
     termsId,
     termsAndCondition,
     orderItems,
+    submitApproval,
   } = await body;
 
   const safeorderQty =
@@ -535,6 +583,13 @@ async function update(id, body, files) {
     ?.filter((i) => i.id)
     .map((i) => parseInt(i.id));
   let data;
+
+  // ── Approval Check ────────────────────────────────────────────────────────
+  const { module, hasApproval } = await getModuleApprovalSetup(
+    REFERENCE_PAGE,
+    branchId,
+  );
+
   const dataFound = await prisma.orderEntry.findUnique({
     where: {
       id: parseInt(id),
@@ -546,6 +601,20 @@ async function update(id, body, files) {
     },
   });
   if (!dataFound) return NoRecordFound("Order Entry");
+
+  const latestLog = await prisma.approvalLog.findFirst({
+    where: { referenceId: parseInt(id), referencePage: REFERENCE_PAGE },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, status: true },
+  });
+
+  if (latestLog?.status === "PENDING") {
+    return {
+      statusCode: 1,
+      message: "This record is pending approval and cannot be edited.",
+    };
+  }
+
   if (dataFound._count.ProformaInvoices > 0) {
     return {
       statusCode: 1,
@@ -655,6 +724,7 @@ async function update(id, body, files) {
                           qty: s.qty ? parseInt(s.qty) : 0,
                           barcodeFrom: s.barcodeFrom,
                           barcodeTo: s.barcodeTo,
+                          description: s.description,
                         }))
                       : [],
                 },
@@ -703,6 +773,7 @@ async function update(id, body, files) {
                         qty: s.qty ? parseInt(s.qty) : 0,
                         barcodeFrom: s.barcodeFrom,
                         barcodeTo: s.barcodeTo,
+                        description: s.description,
                       })),
                     }
                   : undefined,
@@ -748,6 +819,26 @@ async function update(id, body, files) {
         },
       },
     });
+
+    // ── Re-trigger Approval if needed ─────────────────────────────────────────
+    if (hasApproval && module && (submitApproval || latestLog?.status === "REJECTED")) {
+      const includeClause = await buildIncludeForModule(module.id);
+      const fullRecord = await tx.orderEntry.findUnique({
+        where: { id: data.id },
+        include: includeClause,
+      });
+
+      await createApprovalLog(
+        tx,
+        branchId,
+        module.id,
+        data.id,
+        REFERENCE_PAGE,
+        fullRecord,
+        data.docId,
+        userId,
+      );
+    }
   });
   return { statusCode: 0, data };
 }

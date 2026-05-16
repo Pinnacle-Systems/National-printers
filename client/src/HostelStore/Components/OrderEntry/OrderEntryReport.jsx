@@ -65,6 +65,7 @@ const OrderEntryReport = ({
     data: allData,
     isFetching,
     isLoading,
+    refetch: refetchOrderList,
   } = useGetOrderEntryQuery({
     params: {
       branchId,
@@ -215,6 +216,7 @@ const OrderEntryReport = ({
           timer: 2000,
           showConfirmButton: false,
         });
+        refetchOrderList();
         setApprovalModal(false);
       } else {
         Swal.fire({

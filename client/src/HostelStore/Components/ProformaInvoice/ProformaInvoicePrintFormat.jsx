@@ -531,7 +531,7 @@ const ProformaInvoicePrintFormat = ({ data }) => {
                     </View>
 
                     <View style={styles.colQty}>
-                      <Text>{Number(item.qty || 0).toFixed(3)}</Text>
+                      <Text>{Number(item.qty || 0)}</Text>
                     </View>
                     <View style={styles.colPrice}>
                       <Text>{parseFloat(item.price || 0).toFixed(2)}</Text>
@@ -559,9 +559,10 @@ const ProformaInvoicePrintFormat = ({ data }) => {
               </View>
               <View style={[styles.colQty, { borderRight: "none" }]}>
                 <Text>
-                  {items
-                    .reduce((sum, item) => sum + (Number(item.qty) || 0), 0)
-                    .toFixed(3)}
+                  {items.reduce(
+                    (sum, item) => sum + (Number(item.qty) || 0),
+                    0,
+                  )}
                 </Text>
               </View>
               <View style={[styles.colPrice, { borderRight: "none" }]}>
