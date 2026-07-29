@@ -63,7 +63,11 @@ const Home = () => {
               <div className="shrink-0 h-[42px]" />
 
               <div className="p-1 flex-1 min-h-0 overflow-hidden">
-                <ActiveTabList />
+                {openTabs.tabs.length === 0 ? (
+                  <Dashboard setProfile={setProfile} />
+                ) : (
+                  <ActiveTabList />
+                )}
               </div>
 
               <Sidebar
@@ -72,9 +76,6 @@ const Home = () => {
                 isMainDropdownOpen={isMainDropdownOpen}
                 setIsMainDropdownOpen={setIsMainDropdownOpen}
               />
-              {openTabs.tabs.length === 0 && (
-                <Dashboard setProfile={setProfile} />
-              )}
             </>
           )}
         </div>
