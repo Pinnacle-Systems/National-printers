@@ -189,7 +189,7 @@ export default function Form() {
     <>
       {userId ? (
         <>
-          <div className="m-5 mt-2 overflow-auto ">
+          <div className="p-5 pt-2 h-full overflow-auto ">
             <header className="mb-6">
               <h4 className="text-2xl font-bold   text-gray-800">
                 Organization Dashboard
