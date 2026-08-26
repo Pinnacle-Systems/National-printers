@@ -1236,6 +1236,7 @@ async function getPoItemById(id) {
     });
     returnQty = returnAgg._sum.returnQty ?? 0;
   }
+  console.log(data.qty, inwardQty, cancelQty, returnQty, "testinfcheck");
 
   return {
     statusCode: 0,
@@ -1245,12 +1246,12 @@ async function getPoItemById(id) {
       alreadyCancelQty: cancelQty,
       alreadyInwardQty: inwardQty,
       alreadyReturnQty: returnQty,
-      balQty: data.qty - (inwardQty + cancelQty),
+      // balQty: data.qty - (inwardQty + cancelQty),
+      balQty: data.qty + returnQty - (inwardQty + cancelQty),
       balQtyCancel: data.qty - (inwardQty - returnQty),
     },
   };
 }
-console.log("chek");
 
 async function getPoItems(req) {
   const {

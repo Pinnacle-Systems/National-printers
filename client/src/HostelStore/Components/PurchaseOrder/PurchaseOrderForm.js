@@ -928,7 +928,7 @@ const PurchaseOrderForm = ({
   const supplierCompactGridClass =
     "grid grid-cols-1 gap-1 items-end md:grid-cols-2 xl:grid-cols-[172px_minmax(0,1.15fr)_minmax(0,0.8fr)]";
   const deliveryCompactGridClass =
-    "grid grid-cols-1 gap-1 items-end md:grid-cols-[76px_minmax(0,1fr)_104px] xl:grid-cols-[76px_minmax(0,1fr)_104px]";
+    "grid grid-cols-1 gap-1 items-end md:grid-cols-[100px_minmax(0,1fr)_110px] xl:grid-cols-[100px_minmax(0,1fr)_110px]";
   const sidebarSectionGridClass = "grid grid-cols-1 gap-1";
   const sidebarTwoColumnGridClass = "grid grid-cols-2 gap-1";
 
@@ -1132,7 +1132,7 @@ const PurchaseOrderForm = ({
   const basicDetailsCompactSection = (
     <div className={compactCardClass}>
       <h2 className={compactSectionTitleClass}>Basic Details</h2>
-      <div className="grid grid-cols-2 gap-1 items-end md:grid-cols-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_100px_104px_minmax(0,1fr)]">
+      <div className="grid grid-cols-2 gap-1 items-end md:grid-cols-3 xl:grid-cols-[minmax(0,1fr)_100px_100px_104px_minmax(0,1fr)]">
         {basicDetailsFields}
       </div>
     </div>
@@ -1765,13 +1765,10 @@ const PurchaseOrderForm = ({
         header={headerContent}
         detailsContent={headerContent}
         detailsTitle="Transaction Details"
-        detailsLayout="compact"
-        detailsLayouts={["compact", "sidebar"]}
         detailsSummary={transactionDetailsSummary}
         sidebarDetailsSections={sidebarDetailsSections}
         sidebarWidthClass="w-[300px]"
         sidebarFooter={sidebarFooterContent}
-        defaultDetailsCollapsed={true}
         gridItems={
           <PoItems
             id={id}

@@ -395,7 +395,32 @@ const InwardItems = ({
                     {row?.inwardQty ? Number(row.inwardQty).toFixed(2) : ""}
                   </td>
                   <td className="border-blue-gray-200 text-[11px] border border-gray-300  text-right pr-1">
-                    {row?.price ? Number(row.price).toFixed(2) : ""}
+                    <input
+                      onKeyDown={(e) => {
+                        if (e.code === "Minus" || e.code === "NumpadSubtract")
+                          e.preventDefault();
+                        if (e.key === "Delete") {
+                          handleInputChange("", index, "price");
+                        }
+                      }}
+                      min={"0"}
+                      type="number"
+                      className="text-right rounded px-1 w-full table-data-input"
+                      value={row?.price !== undefined && row?.price !== null ? row.price : ""}
+                      onChange={(e) =>
+                        handleInputChange(e.target.value, index, "price")
+                      }
+                      onBlur={(e) => {
+                        const val = e.target.value;
+                        handleInputChange(
+                          val ? Number(val).toFixed(2) : "",
+                          index,
+                          "price",
+                        );
+                        // setFocusedField(null);
+                      }}
+                      disabled={readOnly}
+                    />
                   </td>
                   <td className=" border border-gray-300 text-[11px]">
                     <input

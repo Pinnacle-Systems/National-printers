@@ -218,6 +218,7 @@ const InwardItems = ({
 
     setInwardItems(padded);
   }, [fromPoId, poItemsData]);
+  console.log(inwardItems, "inwardItems");
 
   const showFillButton = inwardType !== "Direct Inward" && !id && !fromPoId;
 
@@ -881,9 +882,8 @@ const InwardItems = ({
                           setFocusedField(null);
                         }}
                         disabled={
-                          readOnly ||
-                          (row.stockQty ?? 0) > 0 ||
-                          inwardType !== "Direct Inward"
+                          readOnly || (row.stockQty ?? 0) > 0
+                          //  || inwardType !== "Direct Inward"
                         }
                       />
                     </td>
