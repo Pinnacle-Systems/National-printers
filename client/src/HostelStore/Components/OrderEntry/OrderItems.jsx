@@ -44,6 +44,7 @@ const OrderItems = ({
     hsnId: "",
     orderQty: "",
     remarks: "",
+    description: "",
     sizeBreakup: [],
   };
 
@@ -315,6 +316,7 @@ const OrderItems = ({
           orderQty: "",
           barcodeFrom: "",
           barcodeTo: "",
+          description: "",
         };
       }
     }
@@ -754,7 +756,7 @@ const OrderItems = ({
               </tr>
             ))}
           </tbody>
-          <tfoot>
+          <tfoot className="sticky bottom-0 z-10">
             <tr className="bg-gray-100 h-7 font-bold text-gray-800 text-[12px]">
               <td
                 className="text-right px-2 border border-gray-300"
@@ -1145,13 +1147,31 @@ const OrderItems = ({
                     </tbody>
                   </table>
                 )}
-
                 {(!orderItems[activeRowIndex]?.sizeBreakup ||
                   orderItems[activeRowIndex].sizeBreakup.length === 0) && (
                   <div className="text-center p-8 text-slate-400 text-sm font-medium italic">
                     No items found for this tracking mode.
                   </div>
                 )}
+              </div>
+              <div className="mt-3 bg-white p-3 rounded-lg shadow-sm">
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  className="w-full border border-slate-200 rounded p-2 text-[11px] outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 resize-none"
+                  rows="2"
+                  value={orderItems[activeRowIndex]?.description || ""}
+                  onChange={(e) =>
+                    handleInputChange(
+                      e.target.value,
+                      activeRowIndex,
+                      "description",
+                    )
+                  }
+                  disabled={readOnly}
+                  placeholder="Enter description here..."
+                />
               </div>
             </div>
           </div>

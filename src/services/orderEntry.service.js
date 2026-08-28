@@ -322,6 +322,7 @@ async function getOne(id) {
           branchName: true,
         },
       },
+      orderBranch: true,
       customer: {
         select: {
           name: true,
@@ -365,6 +366,7 @@ async function create(body) {
     termsAndCondition,
     termsId,
     orderItems,
+    orderBranchId,
   } = await body;
   let finYearDate = await getFinYearStartTimeEndTime(finYearId);
   const shortCode = finYearDate
@@ -402,6 +404,7 @@ async function create(body) {
           trackingType: item?.trackingType,
           itemOrder: index,
           remarks: item?.remarks,
+          description: item.description,
           orderQty:
             item?.orderQty && !isNaN(Number(item.orderQty))
               ? parseInt(item.orderQty)
@@ -435,6 +438,7 @@ async function create(body) {
                     qty: s.qty ? parseInt(s.qty) : 0,
                     barcodeFrom: s.barcodeFrom,
                     barcodeTo: s.barcodeTo,
+                    description: s.description || "",
                   })),
                 }
               : undefined,
@@ -458,6 +462,9 @@ async function create(body) {
         // orderQty: safeorderQty,
         Terms: termsId ? { connect: { id: parseInt(termsId) } } : undefined,
         termsAndCondition,
+        orderBranch: orderBranchId
+          ? { connect: { id: parseInt(orderBranchId) } }
+          : undefined,
         orderItems:
           safeOrderItems.length > 0
             ? {
@@ -519,6 +526,7 @@ async function update(id, body, files) {
     attachments,
     termsId,
     termsAndCondition,
+    orderBranchId,
     orderItems,
   } = await body;
 
@@ -606,6 +614,9 @@ async function update(id, body, files) {
         orderQty: safeorderQty,
         termsAndCondition,
         Terms: termsId ? { connect: { id: parseInt(termsId) } } : undefined,
+        orderBranch: orderBranchId
+          ? { connect: { id: parseInt(orderBranchId) } }
+          : undefined,
         orderItems: {
           deleteMany: incomingItemIds.length
             ? { id: { notIn: incomingItemIds } }
@@ -624,6 +635,7 @@ async function update(id, body, files) {
                 trackingType: item.trackingType,
                 itemOrder: item.itemOrder,
                 remarks: item.remarks,
+                description: item.description,
                 orderQty: item.orderQty ? parseInt(item.orderQty) : null,
                 price:
                   item?.price && !isNaN(Number(item.price))
@@ -655,6 +667,7 @@ async function update(id, body, files) {
                           qty: s.qty ? parseInt(s.qty) : 0,
                           barcodeFrom: s.barcodeFrom,
                           barcodeTo: s.barcodeTo,
+                          description: s.description || "",
                         }))
                       : [],
                 },
@@ -673,6 +686,7 @@ async function update(id, body, files) {
               trackingType: item.trackingType,
               itemOrder: item.itemOrder,
               remarks: item.remarks,
+              description: item.description,
               orderQty: item.orderQty ? parseInt(item.orderQty) : null,
               price:
                 item?.price && !isNaN(Number(item.price))
@@ -703,6 +717,7 @@ async function update(id, body, files) {
                         qty: s.qty ? parseInt(s.qty) : 0,
                         barcodeFrom: s.barcodeFrom,
                         barcodeTo: s.barcodeTo,
+                        description: s.description || "",
                       })),
                     }
                   : undefined,
