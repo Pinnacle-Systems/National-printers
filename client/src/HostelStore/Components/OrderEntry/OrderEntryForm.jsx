@@ -102,7 +102,7 @@ const OrderEntryForm = ({
   const [productionType, setProductionType] = useState("SAMPLE");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [docId, setDocId] = useState("");
-
+  const [orderBranchId, setOrderBranchId] = useState("");
   const [attachmentModal, setAttachmentModal] = useState(false);
   const [selectedAttachmentIndex, setSelectedAttachmentIndex] = useState(null);
   const [attachments, setAttachments] = useState([]);
@@ -160,6 +160,7 @@ const OrderEntryForm = ({
       setOrderType(data?.orderType || "ORDER");
       setProductionType(data?.productionType || "SAMPLE");
       setCustomerId(data?.customerId || "");
+      setOrderBranchId(data?.orderBranchId || "");
       setRemarks(data?.remarks || "");
       setAttachments(data?.attachments ? data?.attachments : []);
       setOrderQty(data?.orderQty || "");
@@ -195,6 +196,7 @@ const OrderEntryForm = ({
         orderQty: "",
         price: "",
         remarks: "",
+        description: "",
         sizeBreakup: [],
       }));
 
@@ -219,6 +221,7 @@ const OrderEntryForm = ({
     orderType,
     productionType,
     customerId,
+    orderBranchId,
     remarks,
     finYearId,
     attachments: attachments?.filter((i) => i.filePath),
@@ -362,7 +365,14 @@ const OrderEntryForm = ({
         title: "Production Type is required!",
       },
       { condition: !data.deliveryDate, title: "Delivery Date is required!" },
-      { condition: !data.customerId, title: "Customer is required!" },
+      {
+        condition: data.orderType === "ORDER" && !data.customerId,
+        title: "Customer is required!",
+      },
+      {
+        condition: data.orderType === "GENERAL" && !data.orderBranchId,
+        title: "Branch Name is required!",
+      },
       { condition: items.length === 0, title: "Order Items are required!" },
     ];
 
@@ -631,53 +641,74 @@ const OrderEntryForm = ({
 
       <div className="flex-1 border border-slate-200 p-2 bg-white rounded-md shadow-sm">
         <h2 className="text-[10px] font-bold text-gray-500 mb-1 uppercase border-b pb-0.5">
-          Customer Details
+          {orderType == "ORDER" ? "Customer Details" : "Branch Details"}
         </h2>
         <div className="grid grid-cols-12 gap-2">
-          <div className="col-span-6">
-            <DropdownWithModal
-              name="Customer"
-              options={dropDownListObject(
-                id
-                  ? customerList?.data?.filter((item) => item?.isCustomer)
-                  : customerList?.data?.filter(
-                      (item) => item?.active && item?.isCustomer,
-                    ),
-                "name",
-                "id",
-              )}
-              value={customerId}
-              setValue={setCustomerId}
-              required={true}
-              readOnly={isReadOnly}
-              addNewLabel="+ Add New Customer"
-              childComponent={PartyMaster}
-              addNewModalWidth="w-[90%] h-[95%]"
-              disabled={childRecord.current > 0 || isReadOnly}
-            />
-          </div>
-          <div className="col-span-3">
-            <TextInput
-              name="Contact Person"
-              value={findFromList(
-                customerId,
-                customerList?.data,
-                "contactPersonName",
-              )}
-              disabled={true}
-            />
-          </div>
-          <div className="col-span-3">
-            <TextInput
-              name="Phone"
-              value={findFromList(
-                customerId,
-                customerList?.data,
-                "contactNumber",
-              )}
-              disabled={true}
-            />
-          </div>
+          {orderType == "ORDER" ? (
+            <>
+              <div className="col-span-6">
+                <DropdownWithModal
+                  name="Customer"
+                  options={dropDownListObject(
+                    id
+                      ? customerList?.data?.filter((item) => item?.isCustomer)
+                      : customerList?.data?.filter(
+                          (item) => item?.active && item?.isCustomer,
+                        ),
+                    "name",
+                    "id",
+                  )}
+                  value={customerId}
+                  setValue={setCustomerId}
+                  required={true}
+                  readOnly={isReadOnly}
+                  addNewLabel="+ Add New Customer"
+                  childComponent={PartyMaster}
+                  addNewModalWidth="w-[90%] h-[95%]"
+                  disabled={childRecord.current > 0 || isReadOnly}
+                />
+              </div>
+              <div className="col-span-3">
+                <TextInput
+                  name="Contact Person"
+                  value={findFromList(
+                    customerId,
+                    customerList?.data,
+                    "contactPersonName",
+                  )}
+                  disabled={true}
+                />
+              </div>
+              <div className="col-span-3">
+                <TextInput
+                  name="Phone"
+                  value={findFromList(
+                    customerId,
+                    customerList?.data,
+                    "contactNumber",
+                  )}
+                  disabled={true}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="col-span-6">
+                <DropdownInput
+                  name="Branch Name"
+                  options={dropDownListObject(
+                    branchList ? branchList.data : [],
+                    "branchName",
+                    "id",
+                  )}
+                  value={orderBranchId}
+                  setValue={setOrderBranchId}
+                  required={true}
+                  readOnly={isReadOnly}
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

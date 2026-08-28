@@ -122,7 +122,8 @@ model Branch {
   purchaseCancels                PurchaseCancel[]
   purchaseBillEntries            PurchaseBillEntry[]
   approvalConfigs                ApprovalConfig[]
-  orderEntries                   OrderEntry[]
+  orderRaised                    OrderEntry[]           @relation("orderRaisedBranch")
+  orderBranch                    OrderEntry[]           @relation("orderBranch")
   jobCards                       JobCard[]
   proformaInvoices               ProformaInvoice[]
 }
@@ -281,6 +282,7 @@ model FinYear {
   openingBalances     OpeningBalance[]
   purchaseBillEntries PurchaseBillEntry[]
   proformaInvoices    ProformaInvoice[]
+  orderEntries        OrderEntry[]
 }
 
 model EmployeeCategory {
@@ -1807,11 +1809,15 @@ model OrderEntry {
   createdById       Int?
   updatedBy         User?               @relation("updatedBy", fields: [updatedById], references: [id])
   updatedById       Int?
-  Branch            Branch?             @relation(fields: [branchId], references: [id])
+  Branch            Branch?             @relation("orderRaisedBranch", fields: [branchId], references: [id])
   branchId          Int?
   customer          Party?              @relation(fields: [customerId], references: [id])
   customerId        Int?
+  finYearId         Int?
+  FinYear           FinYear?            @relation(fields: [finYearId], references: [id])
   orderType         String?
+  orderBranch       Branch?             @relation("orderBranch", fields: [orderBranchId], references: [id])
+  orderBranchId     Int?
   productionType    String?
   orderQty          Int?
   requirements      String?
@@ -1836,6 +1842,7 @@ model OrderItems {
   trackingType   String?
   itemOrder      Int                @default(0)
   remarks        String?
+  description    String?
   orderQty       Int?
   sizeTemplateId Int?
   SizeTemplate   SizeTemplate?      @relation(fields: [sizeTemplateId], references: [id])
@@ -1859,6 +1866,7 @@ model OrderSizeBreakup {
   qty         Int?
   barcodeFrom String?
   barcodeTo   String?
+  description String?
 }
 
 model ProformaInvoice {
@@ -1926,12 +1934,14 @@ model ProformaInvoiceItem {
   productId         Int?
   quoteVersion      Int             @default(1)
 
-  itemOrder      Int                   @default(0)
+  itemOrder      Int           @default(0)
   trackingType   String?
   sizeTemplateId Int?
-  SizeTemplate   SizeTemplate?         @relation(fields: [sizeTemplateId], references: [id])
+  SizeTemplate   SizeTemplate? @relation(fields: [sizeTemplateId], references: [id])
   remarks        String?
-  sizeBreakup    ProformaSizeBreakup[]
+  description    String?
+
+  sizeBreakup ProformaSizeBreakup[]
 }
 
 model ProformaSizeBreakup {
@@ -1943,6 +1953,7 @@ model ProformaSizeBreakup {
   qty         Float?
   barcodeFrom String?
   barcodeTo   String?
+  description String?
 }
 
 model ProformaAttachments {
