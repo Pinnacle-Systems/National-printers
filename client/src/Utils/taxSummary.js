@@ -5,6 +5,7 @@ export function calculateTaxWithHSNBreakupAndInsertIntoPoItems(
   isSupplierOutside = false,
   discountType,
   discountValue,
+  isDozen = false,
 ) {
   let roundTo = 2;
 
@@ -33,7 +34,7 @@ export function calculateTaxWithHSNBreakupAndInsertIntoPoItems(
     const dType = item?.discountType || "Flat";
     const hsn = item?.hsn || "NA";
 
-    const gross = qty * price;
+    const gross = isDozen ? dozen * price : qty * price;
 
     const itemDiscount =
       dType === "Flat" ? discountVal : (gross * discountVal) / 100;
@@ -147,5 +148,5 @@ export function calculateTaxWithHSNBreakupAndInsertIntoPoItems(
     result[k] = +result[k].toFixed(roundTo);
   });
 
- return { ...result, items };  
+  return { ...result, items };
 }

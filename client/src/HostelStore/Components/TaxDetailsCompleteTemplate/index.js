@@ -15,6 +15,7 @@ const TaxDetailsFullTemplate = ({
   isNewVersion,
   id,
   onCloseFocus,
+  isSupplierOutside,
 }) => {
   const row = poItems[index];
   const discountTypeRef = useRef(null);
@@ -176,7 +177,7 @@ const TaxDetailsFullTemplate = ({
               <input
                 ref={taxPercentRef}
                 type="text"
-                disabled={readOnly}
+                disabled={true}
                 className="h-7 w-full text-right"
                 value={taxPercent}
                 onChange={(e) => {
@@ -188,20 +189,36 @@ const TaxDetailsFullTemplate = ({
             </td>
           </tr>
 
-          <tr className="h-7">
-            <td className="border border-gray-500">CGST</td>
-            <td className="border border-gray-500 tes  text-right" colSpan={2}>
-              {row?.totals?.cgst?.toFixed(2)}
-            </td>
-          </tr>
+          {isSupplierOutside ? (
+            <tr className="h-7">
+              <td className="border border-gray-500">
+                IGST {taxPercent > 0 ? `(${taxPercent}%)` : ""}
+              </td>
+              <td className="border border-gray-500 text-right" colSpan={2}>
+                {row?.totals?.igst?.toFixed(2)}
+              </td>
+            </tr>
+          ) : (
+            <>
+              <tr className="h-7">
+                <td className="border border-gray-500">
+                  CGST {taxPercent > 0 ? `(${taxPercent / 2}%)` : ""}
+                </td>
+                <td className="border border-gray-500 text-right" colSpan={2}>
+                  {row?.totals?.cgst?.toFixed(2)}
+                </td>
+              </tr>
 
-          <tr className="h-7">
-            <td className="border border-gray-500">SGST</td>
-            <td className="border border-gray-500  text-right" colSpan={2}>
-              {row?.totals?.sgst?.toFixed(2)}
-            </td>
-          </tr>
-
+              <tr className="h-7">
+                <td className="border border-gray-500">
+                  SGST {taxPercent > 0 ? `(${taxPercent / 2}%)` : ""}
+                </td>
+                <td className="border border-gray-500 text-right" colSpan={2}>
+                  {row?.totals?.sgst?.toFixed(2)}
+                </td>
+              </tr>
+            </>
+          )}
           <tr className="h-7">
             <td className="border border-gray-500">Net Amount</td>
             <td className="border border-gray-500  text-right" colSpan={2}>

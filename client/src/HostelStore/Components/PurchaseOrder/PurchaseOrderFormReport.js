@@ -521,23 +521,23 @@ const PurchaseOrderFormReport = ({
                     <div>Supplier</div>
                   </th>
                   <th
-                    className=" px-3 w-56  font-medium text-[13px]  text-gray-900  text-center "
+                    className=" px-3 w-32  font-medium text-[13px]  text-gray-900  text-center "
                     rowSpan={2}
                   >
                     <div>Po Status</div>
                   </th>
                   <th
-                    className=" px-3 w-36  font-medium text-[13px]  text-gray-900  text-center "
+                    className=" px-3 w-32  font-medium text-[13px]  text-gray-900  text-center "
                     rowSpan={2}
                   >
                     <div>Approval Status</div>
                   </th>
 
                   <th
-                    className=" px-3 w-32  font-medium text-[13px]  text-gray-900  text-center "
+                    className=" px-3 w-40  font-medium text-[13px]  text-gray-900  text-center "
                     rowSpan={2}
                   >
-                    <div> Remarks</div>
+                    <div>Approval Remarks</div>
                   </th>
 
                   <th
@@ -661,9 +661,7 @@ const PurchaseOrderFormReport = ({
                         >
                           <td className="text-center ">{index + 1}</td>
 
-                          <td className="py-1.5 text-center">
-                            {dataObj.docId}{" "}
-                          </td>
+                          <td className="py-1.5 text-left">{dataObj.docId} </td>
 
                           <td className="py-1.5 text-left">
                             {getDateFromDateTimeToDisplay(dataObj.docDate)}
@@ -689,7 +687,7 @@ const PurchaseOrderFormReport = ({
                           </td>
 
                           <td className="px-2 py-1">
-                            <div className="flex items-center justify-center gap-1.5 text-orange-700">
+                            <div className="text-left flex items-center justify-center gap-1.5 text-orange-700">
                               {dataObj?.approvalStatus?.remarks || "-"}
                             </div>
                           </td>
