@@ -116,13 +116,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
   };
 
   const validateData = (data) => {
-    if (
-      data.name &&
-      data.itemGroupId &&
-      data?.uomId &&
-      data?.sizeTemplateId &&
-      data?.hsnId
-    ) {
+    if (data.name && data.itemGroupId && data?.uomId && data?.hsnId) {
       return true;
     }
     return false;
@@ -418,7 +412,6 @@ export default function Form({ onSuccess, defaultName = "" }) {
                     value={sizeTemplateId}
                     setValue={setSizeTemplateId}
                     readOnly={readOnly}
-                    required={true}
                     className={`w-[150px]`}
                     disabled={childRecord.current > 0}
                     addNewLabel="+ Add New Size Template"

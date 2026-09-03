@@ -217,14 +217,27 @@ const PurchaseOrderForm = ({
       setQuoteVersion(resolvedQuoteVersion);
 
       // ✅ Pass quoteVersion directly to filter correctly
-      setPoItems(
-        data?.poItems
-          ? data.poItems // ← use raw DB items, isVisibleRow will filter by quoteVersion
-          : createPurchaseOrderRows(
-              DEFAULT_PURCHASE_ORDER_ROWS,
-              resolvedQuoteVersion,
-            ),
-      );
+      let finalPoItems = [];
+      if (data?.poItems) {
+        finalPoItems = [...data.poItems];
+        const visibleItems = finalPoItems.filter((i) => {
+          if (!resolvedQuoteVersion) return i.quoteVersion !== "New";
+          return parseInt(i.quoteVersion) === parseInt(resolvedQuoteVersion);
+        });
+        const missing = DEFAULT_PURCHASE_ORDER_ROWS - visibleItems.length;
+        if (missing > 0) {
+          finalPoItems = [
+            ...finalPoItems,
+            ...createPurchaseOrderRows(missing, resolvedQuoteVersion),
+          ];
+        }
+      } else {
+        finalPoItems = createPurchaseOrderRows(
+          DEFAULT_PURCHASE_ORDER_ROWS,
+          resolvedQuoteVersion,
+        );
+      }
+      setPoItems(finalPoItems);
       setPayTermId(data?.payTermId ? data?.payTermId : "");
     },
     [id],
@@ -390,14 +403,7 @@ const PurchaseOrderForm = ({
       taxTemplateId,
       termsAndCondtion,
       termsId,
-      // isNewVersion:
-      //   (status === "APPROVED" && !isAdmin) ||
-      //   (status === "REJECTED" && !isAdmin)
-      //     ? true
-      //     : isNewVersion || (status === "PENDING" && isAdmin)
-      //       ? true
-      //       : isNewVersion,
-      isNewVersion: id ? true : isNewVersion,
+      isNewVersion,
       quoteVersion,
       payTermId,
       pageId: currentPageId,
@@ -552,9 +558,18 @@ const PurchaseOrderForm = ({
       ])
       .filter(([_, arr]) => arr.length > 0),
   );
-
-  const taxBreakdownSummary =
-    totals?.slabBreakup?.filter((row) => (row?.amount || 0) > 0) || [];
+  const taxBreakdownSummaryRaw = totals?.slabBreakup || [];
+  const aggregatedTaxBreakdown = taxBreakdownSummaryRaw?.reduce((acc, row) => {
+    const taxType = row?.tax?.split(" ")[0];
+    if (!acc[taxType]) {
+      acc[taxType] = { tax: taxType, amount: 0 };
+    }
+    acc[taxType].amount += parseFloat(row?.amount || 0);
+    return acc;
+  }, {});
+  // const taxBreakdownSummary =
+  //   totals?.slabBreakup?.filter((row) => (row?.amount || 0) > 0) || [];
+  const taxBreakdownSummary = Object.values(aggregatedTaxBreakdown);
 
   const taxBreakdownContent =
     taxBreakdownSummary.length > 0 ? (
@@ -734,8 +749,12 @@ const PurchaseOrderForm = ({
                 e.stopPropagation();
               }
             },
-            disabled: readOnly,
-            className: `bg-indigo-500 hover:bg-indigo-600 ${actionButtonClass}`,
+            disabled: readOnly || status === "APPROVED",
+            className: `bg-indigo-500 hover:bg-indigo-600 ${actionButtonClass} ${
+              readOnly || status === "APPROVED"
+                ? "opacity-50 cursor-not-allowed"
+                : ""
+            }`,
           },
           ...(status === "APPROVED"
             ? []
@@ -890,24 +909,21 @@ const PurchaseOrderForm = ({
 
   const approvalStatusBanner = (() => {
     if (!isPostApprovalLock) return null;
+    console.log(isPostApprovalLock, "isPostApprovalLock");
+
     return (
       <div
-        className={`text-[11px] px-3 py-1.5 rounded border flex items-center gap-2 mb-2 ${
+        className={`text-[11px] px-3 py-1 rounded border flex items-center gap-2 ${
           isDeliveryThresholdPassed
             ? "bg-red-50 border-red-200 text-red-700"
-            : "bg-amber-50 border-amber-200 text-amber-700"
+            : ""
         }`}
       >
-        <div className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-        {isDeliveryThresholdPassed ? (
+        {/* <div className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" /> */}
+        {isDeliveryThresholdPassed && (
           <span>
             <strong>PO FULLY LOCKED:</strong> Approved & within 2-day delivery
             window. No edits allowed.
-          </span>
-        ) : (
-          <span>
-            <strong>LIMITED EDIT MODE:</strong> Approved PO. Only{" "}
-            <strong>Remarks</strong> can be updated.
           </span>
         )}
       </div>
@@ -1358,11 +1374,6 @@ const PurchaseOrderForm = ({
 
   const headerContent = (
     <div className="grid grid-cols-1 gap-1 xl:grid-cols-[minmax(0,5fr)_minmax(0,3.6fr)_minmax(0,3.4fr)]">
-      {/* ✅ Add lock warning banner */}
-      {approvalStatusBanner && (
-        <div className="xl:col-span-3">{approvalStatusBanner}</div>
-      )}
-
       {basicDetailsCompactSection}
       {supplierDetailsCompactSection}
       {deliveryDetailsCompactSection}
@@ -1376,11 +1387,13 @@ const PurchaseOrderForm = ({
         setRemarks={setRemarks}
         terms={termsAndCondtion}
         setTerms={setTermsAndCondtion}
-        readOnly={isCoreLocked}
+        readOnly={isCoreLocked || childRecordCount > 0}
         remarksReadOnly={isFullyLocked}
         showTermSelect={true}
         termValue={termsId}
         onTermChange={(value) => setTermsId(value)}
+        twoColumnRightSummary={true}
+        rightSummaryTitle="Summary"
         termOptions={
           (id
             ? termsData?.data
@@ -1393,10 +1406,33 @@ const PurchaseOrderForm = ({
         }
         totalsRows={[
           {
+            key: "totalDiscount",
+            label: "Total Discount",
+            value: `Rs.${parseFloat((totals?.itemDiscount || 0) + (totals?.overallDiscount || 0)).toFixed(2)}`,
+            summaryColumn: "right",
+          },
+          {
             key: "taxableAmount",
             label: "Taxable Amount",
             value: `Rs.${parseFloat(totals?.taxable || 0).toFixed(2)}`,
             summaryColumn: "right",
+          },
+          ...taxBreakdownSummary.map((row, index) => ({
+            key: `${row.tax}-${row.amount}`,
+            label: row.tax,
+            value: `Rs.${parseFloat(row.amount || 0).toFixed(2)}`,
+            summaryColumn: "right",
+            labelClassName: "!text-slate-500 font-normal",
+            valueClassName: "text-slate-700",
+            className: index === 0 ? "border-t border-slate-100 pt-1" : "",
+          })),
+          {
+            key: "roundOff",
+            label: "Round Off",
+            value: `Rs.${parseFloat(totals?.roundOff || 0).toFixed(2)}`,
+            summaryColumn: "right",
+            labelClassName: "!text-slate-500 font-normal",
+            valueClassName: "text-slate-700",
           },
           {
             key: "netAmount",
@@ -1406,8 +1442,8 @@ const PurchaseOrderForm = ({
             emphasized: true,
           },
         ]}
-        extraTotalsContent={taxBreakdownContent}
-        extraTotalsContentColumn="right"
+        // extraTotalsContent={taxBreakdownContent}
+        // extraTotalsContentColumn="right"
       />
       <TransactionActions
         leftActions={leftActions}
@@ -1780,8 +1816,7 @@ const PurchaseOrderForm = ({
             readOnly={
               isCoreLocked ||
               (quoteVersionOptions.length > 0 &&
-                Number(quoteVersion) !==
-                  quoteVersionOptions[quoteVersionOptions.length - 1]) ||
+                Number(quoteVersion) !== quoteVersionOptions[0]) ||
               childRecordCount > 0
             }
             styleItemList={styleItemList}
@@ -1793,10 +1828,16 @@ const PurchaseOrderForm = ({
             colorList={colorList}
             termsRef={termsRef}
             gsmList={gsmList}
+            isSupplierOutside={isSupplierOutside}
           />
         }
         footer={footerContent}
-        versionDropdown={id ? versionDropdown : null}
+        versionDropdown={
+          <div className="flex items-center gap-4">
+            {id ? versionDropdown : null}
+            {approvalStatusBanner}
+          </div>
+        }
       />
     </>
   );

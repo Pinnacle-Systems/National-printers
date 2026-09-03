@@ -39,6 +39,15 @@ const PO_GRID_COLUMNS = [
     className: "w-80 px-2 py-2 text-center font-medium text-[11px]",
   },
   {
+    key: "hsnId",
+    label: (
+      <>
+        HSN<span className="text-red-500">*</span>
+      </>
+    ),
+    className: "w-20 px-4 py-2 text-center font-medium text-[11px]",
+  },
+  {
     key: "sizeId",
     label: "Size",
     className: "w-20 px-4 py-2 text-center font-medium text-[11px]",
@@ -108,6 +117,8 @@ const PoItems = ({
   colorList,
   termsRef,
   gsmList,
+  hsnList,
+  isSupplierOutside,
 }) => {
   console.log(poItems, "poItemscheck");
 
@@ -154,7 +165,14 @@ const PoItems = ({
   };
 
   const handleStyleItemChange = (value, index) => {
-    syncRowPatch(index, { styleItemId: value });
+    const patch = { styleItemId: value };
+    const selectedStyle = (styleItemList?.data || []).find(
+      (item) => item.id === value,
+    );
+    if (selectedStyle?.hsnId) {
+      patch.hsnId = selectedStyle.hsnId;
+    }
+    syncRowPatch(index, patch);
   };
 
   const handleStyleItemResolved = (patch, index) => {
@@ -299,7 +317,7 @@ const PoItems = ({
     <tr className="bg-gray-50 h-6 font-medium text-gray-800 text-[12px]">
       <td
         className="text-right px-4 border border-gray-300 font-medium"
-        colSpan={6}
+        colSpan={7}
       >
         Total
       </td>
@@ -344,6 +362,7 @@ const PoItems = ({
           id={id}
           isNewVersion={isNewVersion}
           onCloseFocus={focusNextRowFromTaxModal}
+          isSupplierOutside={isSupplierOutside}
         />
       </Modal>
 
@@ -359,6 +378,11 @@ const PoItems = ({
           getRowClassName={(_, index) =>
             `${index % 2 === 0 ? "bg-white" : "bg-gray-100"} border border-blue-gray-200 cursor-pointer h-6`
           }
+          onRowContextMenu={(event, item, index) => {
+            if (!readOnly) {
+              handleRightClick(event, item.originalIndex);
+            }
+          }}
           renderRow={(item, index) => {
             const row = item.row;
             const rowIndex = item.originalIndex;
@@ -369,11 +393,6 @@ const PoItems = ({
                   data-grid-row={index}
                   data-grid-col={0}
                   className="w-12 border border-gray-300 text-[11px] text-center"
-                  onContextMenu={(event) => {
-                    if (!readOnly) {
-                      handleRightClick(event, rowIndex);
-                    }
-                  }}
                 >
                   {index + 1}
                 </td>
@@ -427,6 +446,40 @@ const PoItems = ({
                     childComponent={StyleItemMaster}
                     addNewModalWidth="w-[50%] h-[57%]"
                     nextRef={termsRef}
+                    advanceOnEnter
+                    advanceOnSelect
+                  />
+                </td>
+                <td
+                  data-grid-row={index}
+                  data-grid-col={1}
+                  data-grid-editable="true"
+                  className="grid-editable-cell border border-gray-300 text-[11px]"
+                >
+                  <FxSelectWithAdd
+                    value={row.hsnId}
+                    onChange={(value) =>
+                      handleInputChange(value, rowIndex, "hsnId")
+                    }
+                    options={(hsnList?.data || [])
+                      .filter((item) => (id ? true : item.active))
+                      .map((item) => ({
+                        label: item.name,
+                        value: item.id,
+                      }))}
+                    readOnly={true}
+                    placeholder=""
+                    onBlur={() =>
+                      handleInputChange(row.hsnId, rowIndex, "hsnId")
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Delete") {
+                        handleInputChange("", rowIndex, "hsnId");
+                      }
+                    }}
+                    addNew={true}
+                    childComponent={Size}
+                    addNewModalWidth="w-[30%] h-[45%]"
                     advanceOnEnter
                     advanceOnSelect
                   />

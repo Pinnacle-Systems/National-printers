@@ -61,7 +61,7 @@ const CommonFormFooter = ({
   readOnly = false,
   showTermSelect = false,
   termValue = "",
-  onTermChange = () => { },
+  onTermChange = () => {},
   termOptions = [],
   totalsRows,
   extraTotalsContent = null,
@@ -74,6 +74,10 @@ const CommonFormFooter = ({
   hasSummaryTitle = false,
   remarksReadOnly = null,
   hideTerms = false,
+  termsRef = null,
+  twoColumnRightSummary = false,
+  rightSummaryTitle = "",
+  termsTitle = "Terms & Conditions",
 }) => {
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -299,10 +303,7 @@ const CommonFormFooter = ({
       </Modal>
 
       <div
-        className={[
-          "grid grid-cols-1 gap-2",
-          stacked ? "" : "md:grid-cols-12",
-        ]
+        className={["grid grid-cols-1 gap-2", stacked ? "" : "md:grid-cols-12"]
           .filter(Boolean)
           .join(" ")}
       >
@@ -353,7 +354,7 @@ const CommonFormFooter = ({
         >
           <h2 className="mb-1 text-[12px] font-bold text-slate-700">Remarks</h2>
           <textarea
-            readOnly={remarksReadOnly !== null ? remarksReadOnly : readOnly}
+            disabled={readOnly}
             value={remarks || ""}
             onChange={(e) => setRemarks(e.target.value)}
             className="min-h-[2.5rem] focus:outline-none flex-1 w-full overflow-auto rounded-md border border-slate-300 px-2 py-1.5 text-[11px] focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200"
@@ -361,7 +362,7 @@ const CommonFormFooter = ({
           />
         </div>
 
-        <div
+        {/* <div
           className={[
             "grid grid-cols-1 gap-2",
             stacked ? "" : hideTerms ? "md:col-span-6" : "md:col-span-4",
@@ -376,7 +377,11 @@ const CommonFormFooter = ({
         >
           {hasLeftSummaryContent ? (
             <div className="rounded-md border border-slate-200 bg-white px-3 py-2 shadow-sm">
-              {hasSummaryTitle && <h2 className="mb-1 text-[12px] font-bold text-slate-700">{hasSummaryTitle}</h2>}
+              {hasSummaryTitle && (
+                <h2 className="mb-1 text-[12px] font-bold text-slate-700">
+                  {hasSummaryTitle}
+                </h2>
+              )}
               {renderSummaryRows(leftSummaryRows)}
               {extraTotalsContent && extraTotalsContentColumn === "left" ? (
                 <div className="pt-0.5">{extraTotalsContent}</div>
@@ -391,6 +396,55 @@ const CommonFormFooter = ({
                 </h2>
               )}
               {renderSummaryRows(rightSummaryRows)}
+              {extraTotalsContent && extraTotalsContentColumn === "right" ? (
+                <div className="pt-0.5">{extraTotalsContent}</div>
+              ) : null}
+            </div>
+          ) : null}
+        </div> */}
+        <div
+          className={[
+            "grid grid-cols-1 gap-2",
+            stacked ? "" : "md:col-span-4",
+            stacked
+              ? ""
+              : hasLeftSummaryContent && hasRightSummaryContent
+                ? "md:grid-cols-2"
+                : "md:grid-cols-1",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          {hasLeftSummaryContent ? (
+            <div className="rounded-md border border-slate-200 bg-white px-3 py-2 shadow-sm">
+              {hasSummaryTitle && (
+                <h2 className="mb-1 text-[12px] font-bold text-slate-700">
+                  {hasSummaryTitle}
+                </h2>
+              )}
+              {renderSummaryRows(leftSummaryRows)}
+              {extraTotalsContent && extraTotalsContentColumn === "left" ? (
+                <div className="pt-0.5">{extraTotalsContent}</div>
+              ) : null}
+            </div>
+          ) : null}
+          {hasRightSummaryContent ? (
+            <div className="rounded-md border border-slate-200 bg-white px-3 py-2 shadow-sm">
+              {rightSummaryTitle && (
+                <h2 className="mb-1 text-[12px] font-bold text-slate-700">
+                  {rightSummaryTitle}
+                </h2>
+              )}
+              {twoColumnRightSummary ? (
+                <div
+                  className="grid grid-flow-col gap-x-6 gap-y-1"
+                  style={{ gridTemplateRows: `repeat(2, auto)` }}
+                >
+                  {renderSummaryRows(rightSummaryRows)}
+                </div>
+              ) : (
+                renderSummaryRows(rightSummaryRows)
+              )}
               {extraTotalsContent && extraTotalsContentColumn === "right" ? (
                 <div className="pt-0.5">{extraTotalsContent}</div>
               ) : null}

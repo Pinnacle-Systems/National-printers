@@ -47,8 +47,9 @@ function pick(arr) {
 function rand(min, max) {
   return Math.round((Math.random() * (max - min) + min) * 100) / 100;
 }
+let currentBaseDate = new Date("2026-08-25");
 function dateStr(daysOffset) {
-  const d = new Date("2026-04-10");
+  const d = new Date(currentBaseDate);
   d.setDate(d.getDate() + daysOffset);
   return d.toISOString();
 }
@@ -144,6 +145,11 @@ export const dummyData = Array.from({ length: 320 }, (_, idx) => {
   const poType = pick(PO_TYPES);
   const inwardType = pick(INWARD_TYPES);
   const receiptType = Math.random() > 0.7 ? "Against Invoice" : "Delivery";
+
+  const startRange = new Date("2026-08-25").getTime();
+  const endRange = new Date("2026-10-31").getTime();
+  currentBaseDate = new Date(startRange + Math.random() * (endRange - startRange));
+
   const dueDaysOffset = rand(-5, 30);
   const hasInward = Math.random() > 0.2;
   const hasCancel = Math.random() > 0.6;

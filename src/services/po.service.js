@@ -281,7 +281,7 @@ async function get(req) {
       inwardItems: { select: { inwardQty: true } },
       purchaseCancelItems: { select: { cancelQty: true } },
     },
-    orderBy: { docId: "desc" },
+    orderBy: { id: "desc" },
   });
 
   data = manualFilterSearchData(searchDate, searchDueDate, searchPoType, data);
@@ -717,16 +717,10 @@ async function createPoItems(tx, poItems, po) {
   );
 }
 
-function findRemovedItems(dataFound, poItems) {
-  return dataFound.poItems.filter(
-    (oldItem) =>
-      !poItems.find((newItem) => parseInt(newItem.id) === parseInt(oldItem.id)),
-  );
-}
 
 // ── UPDATE ────────────────────────────────────────────────────────────────────
 async function update(id, body) {
-  const {
+  let {
     userId,
     branchId,
     docDate,
@@ -773,10 +767,15 @@ async function update(id, body) {
   const currentQuoteVersion = Math.max(
     ...new Set(
       dataFound?.poItems
-        .filter((i) => i?.quoteVersion)
-        .map((i) => parseInt(i.quoteVersion)),
+        .filter((i) => i.quoteVersion && i.quoteVersion !== "New")
+        .map((i) => Number(i.quoteVersion)),
     ),
   );
+
+  // Discard older historical versions accidentally sent by the frontend payload
+  poItems = poItems.filter((item) => {
+    return !item.quoteVersion || item.quoteVersion === "New" || parseInt(item.quoteVersion) === currentQuoteVersion;
+  });
 
   // ── Get latest approval log ───────────────────────────────────────────────
   const latestLog = await prisma.approvalLog.findFirst({
@@ -789,7 +788,7 @@ async function update(id, body) {
   if (latestLog?.status === "PENDING") {
     return {
       statusCode: 1,
-      message: "This PO is pending approval and cannot be edited.",
+      message: "This PO approval is pending it cannot be updated.",
     };
   }
 
@@ -809,82 +808,220 @@ async function update(id, body) {
     }
   }
 
-  // ✅ NEW: Approved PO Locking (Core Fields vs Remarks)
+  // ✅ NEW: Approved PO Locking (No Edits Allowed)
   const isApproved = latestLog?.status === "APPROVED";
   let isRemarksOnlyUpdate = false;
 
   if (isApproved) {
-    // Check if any field OTHER than remarks changed
-    // Core fields: supplierId, docDate, dueDate, poType, taxTemplateId, deliveryType, deliveryToId, discountType, discountValue, taxPercent, termsId, payTermId, and poItems
-    const coreFieldsChanged =
-      parseInt(dataFound.supplierId || 0) !== parseInt(supplierId || 0) ||
-      moment(dataFound.docDate).format("YYYY-MM-DD") !==
-        moment(docDate).format("YYYY-MM-DD") ||
-      moment(dataFound.dueDate).format("YYYY-MM-DD") !==
-        moment(dueDate).format("YYYY-MM-DD") ||
-      dataFound.poType !== poType ||
-      parseInt(dataFound.taxTemplateId || 0) !== parseInt(taxTemplateId || 0) ||
-      dataFound.deliveryType !== deliveryType ||
-      (deliveryType === "ToParty" &&
-        parseInt(dataFound.deliveryToId || 0) !==
-          parseInt(deliveryToId || 0)) ||
-      (deliveryType === "ToSelf" &&
-        parseInt(dataFound.deliveryBranchId || 0) !==
-          parseInt(deliveryToId || 0)) ||
-      dataFound.discountType !== discountType ||
-      parseFloat(dataFound.discountValue || 0) !==
-        parseFloat(discountValue || 0) ||
-      parseFloat(dataFound.taxPercent || 0) !== parseFloat(taxPercent || 0) ||
-      parseInt(dataFound.termsId || 0) !== parseInt(termsId || 0) ||
-      parseInt(dataFound.payTermId || 0) !== parseInt(payTermId || 0);
-
-    // Deep check poItems
-    const oldItems = dataFound.poItems;
-    const itemsChanged =
-      poItems.length !== oldItems.length ||
-      poItems.some((newItem) => {
-        const oldItem = oldItems.find(
-          (o) => parseInt(o.id) === parseInt(newItem.id),
-        );
-        if (!oldItem) return true; // new item
-        return (
-          parseInt(newItem.styleItemId || 0) !==
-            parseInt(oldItem.styleItemId || 0) ||
-          parseFloat(newItem.qty || 0) !== parseFloat(oldItem.qty || 0) ||
-          parseFloat(newItem.price || 0) !== parseFloat(oldItem.price || 0)
-        );
-      });
-
-    if (coreFieldsChanged || itemsChanged) {
-      return {
-        statusCode: 1,
-        message: "This PO is Approved. Only the remarks field can be modified.",
-      };
-    }
-
-    if (dataFound.remarks !== remarks) {
-      isRemarksOnlyUpdate = true;
-    }
+    return {
+      statusCode: 1,
+      message: "This PO is Approved. Edits are not allowed.",
+    };
   }
 
   // ── (Module setup moved up) ──────────────────────────────────────────────
 
+  // ── Deep Equality Check for Automatic Versioning ─────────────────────────
+  const latestItems = dataFound.poItems
+    .filter(
+      (i) => i.quoteVersion && parseInt(i.quoteVersion) === currentQuoteVersion,
+    )
+    .sort((a, b) => (a.id || 0) - (b.id || 0));
+
+  let isTableChanged = false;
+  if (poItems.length !== latestItems.length) {
+    isTableChanged = true;
+    console.log(
+      "Table changed: length mismatch",
+      poItems.length,
+      latestItems.length,
+    );
+  } else {
+    isTableChanged = poItems.some((newItem, index) => {
+      const oldItem = latestItems[index];
+      if (!oldItem) return true;
+
+      const styleChanged =
+        parseInt(newItem.styleItemId || 0) !==
+        parseInt(oldItem.styleItemId || 0);
+      const qtyChanged =
+        parseFloat(newItem.qty || 0) !== parseFloat(oldItem.qty || 0);
+      const priceChanged =
+        parseFloat(newItem.price || 0) !== parseFloat(oldItem.price || 0);
+      const taxChanged =
+        parseFloat(newItem.taxPercent || 0) !==
+        parseFloat(oldItem.taxPercent || 0);
+      const discTypeChanged =
+        (newItem.discountType || null) !== (oldItem.discountType || null);
+      const discValChanged =
+        parseFloat(newItem.discountValue || 0) !==
+        parseFloat(oldItem.discountValue || 0);
+      const uomChanged =
+        parseInt(newItem.uomId || 0) !== parseInt(oldItem.uomId || 0);
+      const hsnChanged =
+        parseInt(newItem.hsnId || 0) !== parseInt(oldItem.hsnId || 0);
+      const igChanged =
+        parseInt(newItem.itemGroupId || 0) !==
+        parseInt(oldItem.itemGroupId || 0);
+      const sizeChanged =
+        parseInt(newItem.sizeId || 0) !== parseInt(oldItem.sizeId || 0);
+      const colorChanged =
+        parseInt(newItem.colorId || 0) !== parseInt(oldItem.colorId || 0);
+      const gsmChanged =
+        parseInt(newItem.gsmId || 0) !== parseInt(oldItem.gsmId || 0);
+
+      if (
+        styleChanged ||
+        qtyChanged ||
+        priceChanged ||
+        taxChanged ||
+        discTypeChanged ||
+        discValChanged ||
+        uomChanged ||
+        hsnChanged ||
+        igChanged ||
+        sizeChanged ||
+        colorChanged ||
+        gsmChanged
+      ) {
+        console.log("Table changed on item", index, {
+          styleChanged,
+          qtyChanged,
+          priceChanged,
+          taxChanged,
+          discTypeChanged,
+          discValChanged,
+          uomChanged,
+          hsnChanged,
+          igChanged,
+          sizeChanged,
+          colorChanged,
+          gsmChanged,
+        });
+        return true;
+      }
+      return false;
+    });
+  }
+
+  // Check non-grid fields (excluding docDate per user request)
+  const dueDateChanged =
+    (dueDate ? new Date(dueDate).getTime() : null) !==
+    (dataFound.dueDate ? new Date(dataFound.dueDate).getTime() : null);
+  const branchChanged =
+    parseInt(branchId || 0) !== parseInt(dataFound.branchId || 0);
+  const poTypeChanged = (poType || "") !== (dataFound.poType || "");
+  const taxTempChanged =
+    parseInt(taxTemplateId || 0) !== parseInt(dataFound.taxTemplateId || 0);
+  const delTypeChanged =
+    (deliveryType || "") !== (dataFound.deliveryType || "");
+  const delToChanged =
+    deliveryType === "ToParty"
+      ? parseInt(deliveryToId || 0) !== parseInt(dataFound.deliveryToId || 0)
+      : false;
+  const delToSelfChanged =
+    deliveryType === "ToSelf"
+      ? parseInt(deliveryToId || 0) !==
+        parseInt(dataFound.deliveryBranchId || 0)
+      : false;
+  const termsChanged =
+    (termsAndCondtion || "") !== (dataFound.termsAndCondtion || "");
+  const remarksChanged = (remarks || "") !== (dataFound.remarks || "");
+  const supplierChanged =
+    parseInt(supplierId || 0) !== parseInt(dataFound.supplierId || 0);
+  const discTypeChanged =
+    (discountType || "") !== (dataFound.discountType || "");
+  const discValChanged =
+    parseFloat(discountValue || 0) !== parseFloat(dataFound.discountValue || 0);
+  const taxPercentChanged =
+    parseFloat(taxPercent || 0) !== parseFloat(dataFound.taxPercent || 0);
+  const termsIdChanged =
+    parseInt(termsId || 0) !== parseInt(dataFound.termsId || 0);
+  const payTermChanged =
+    parseInt(payTermId || 0) !== parseInt(dataFound.payTermId || 0);
+
+  const isNonGridChanged =
+    dueDateChanged ||
+    branchChanged ||
+    poTypeChanged ||
+    taxTempChanged ||
+    delTypeChanged ||
+    delToChanged ||
+    delToSelfChanged ||
+    termsChanged ||
+    remarksChanged ||
+    supplierChanged ||
+    discTypeChanged ||
+    discValChanged ||
+    taxPercentChanged ||
+    termsIdChanged ||
+    payTermChanged;
+
+  if (isNonGridChanged) {
+    console.log("Non-grid changed:", {
+      dueDateChanged,
+      branchChanged,
+      poTypeChanged,
+      taxTempChanged,
+      delTypeChanged,
+      delToChanged,
+      delToSelfChanged,
+      termsChanged,
+      remarksChanged,
+      supplierChanged,
+      discTypeChanged,
+      discValChanged,
+      taxPercentChanged,
+      termsIdChanged,
+      payTermChanged,
+    });
+  }
+
+  if (isNonGridChanged) {
+    const changedFields = [];
+    if (dueDateChanged) changedFields.push("Due Date");
+    if (branchChanged) changedFields.push("Branch");
+    if (poTypeChanged) changedFields.push("PO Type");
+    if (taxTempChanged) changedFields.push("Tax Template");
+    if (delTypeChanged) changedFields.push("Delivery Type");
+    if (delToChanged || delToSelfChanged) changedFields.push("Delivery To");
+    if (termsChanged) changedFields.push("Terms & Conditions");
+    if (supplierChanged) changedFields.push("Supplier");
+    if (discTypeChanged) changedFields.push("Discount Type");
+    if (discValChanged) changedFields.push("Discount Value");
+    if (taxPercentChanged) changedFields.push("Tax Percent");
+    if (termsIdChanged) changedFields.push("Terms");
+    if (payTermChanged) changedFields.push("Pay Term");
+
+    if (changedFields.length > 0) {
+      const changeMsg = `[System: Updated ${changedFields.join(", ")}]`;
+      if (!remarks || !remarks.includes(changeMsg)) {
+        remarks = remarks ? `${remarks}\n${changeMsg}` : changeMsg;
+      }
+    }
+  }
+
+  // Auto-detect version change
+  isNewVersion = isTableChanged || isNonGridChanged;
+  console.log(isNewVersion, "isNewVersion", {
+    isTableChanged,
+    isNonGridChanged,
+  });
+
+  const nextQuoteVersion = isNewVersion
+    ? currentQuoteVersion + 1
+    : parseInt(quoteVersion || currentQuoteVersion);
+
   // ── Determine what approval action to take ────────────────────────────────
   let needsFirstApproval = false; // Add this back
 
-  let removedItems = findRemovedItems(dataFound, poItems);
-  let removeItemsIds = removedItems.map((item) => parseInt(item.id));
-
   let data;
   await prisma.$transaction(async (tx) => {
-    if (removeItemsIds.length > 0) {
-      await tx.poItems.deleteMany({ where: { id: { in: removeItemsIds } } });
-    }
 
     data = await tx.po.update({
       where: { id: parseInt(id) },
       data: {
-        docDate: docDate ? new Date(docDate) : null,
+        // docDate: docDate ? new Date(docDate) : null,
         dueDate: dueDate ? new Date(dueDate) : null,
         branchId: parseInt(branchId),
         poType,
@@ -913,35 +1050,23 @@ async function update(id, body) {
             : Number(discountValue),
         taxPercent:
           taxPercent === "" || taxPercent == null ? null : Number(taxPercent),
-        quoteVersion:
-          isNewVersion && !isRemarksOnlyUpdate
-            ? currentQuoteVersion + 1
-            : parseInt(quoteVersion),
+        quoteVersion: nextQuoteVersion,
         quoteVersions:
           isNewVersion && !isRemarksOnlyUpdate
-            ? { create: { quoteVersion: currentQuoteVersion + 1 } }
+            ? { create: { quoteVersion: nextQuoteVersion } }
             : undefined,
         termsId: termsId ? parseInt(termsId) : null,
         payTermId: payTermId ? parseInt(payTermId) : null,
       },
     });
 
-    if (isNewVersion) {
+    if (isNewVersion && !isRemarksOnlyUpdate) {
       await createNewVersionItems(
         tx,
         poItems,
         data.id,
-        currentQuoteVersion + 1,
+        nextQuoteVersion,
         currentQuoteVersion,
-      );
-    } else {
-      await updatePoItems(
-        tx,
-        poItems,
-        data,
-        quoteVersion,
-        currentQuoteVersion,
-        isNewVersion,
       );
     }
 
@@ -1021,86 +1146,6 @@ async function update(id, body) {
   return { statusCode: 0, data, message };
 }
 
-async function updatePoItems(
-  tx,
-  poItems,
-  po,
-  quoteVersion,
-  currentQuoteVersion,
-  isNewVersion,
-) {
-  return Promise.all(
-    poItems.map(async (itemDetails) => {
-      const qty = itemDetails?.qty
-        ? Math.round(parseFloat(itemDetails.qty))
-        : null;
-      if (itemDetails.id) {
-        return await tx.poItems.update({
-          where: { id: parseInt(itemDetails.id) },
-          data: {
-            poId: parseInt(po.id),
-            styleItemId: itemDetails?.styleItemId
-              ? parseInt(itemDetails.styleItemId)
-              : null,
-            uomId: itemDetails?.uomId ? parseInt(itemDetails.uomId) : null,
-            hsnId: itemDetails?.hsnId ? parseInt(itemDetails.hsnId) : null,
-            qty,
-            price: itemDetails?.price ? parseInt(itemDetails.price) : null,
-            discountType: itemDetails?.discountType ?? undefined,
-            discountValue: itemDetails?.discountValue
-              ? parseInt(itemDetails.discountValue)
-              : null,
-            taxPercent: itemDetails?.taxPercent
-              ? parseInt(itemDetails.taxPercent)
-              : null,
-            itemGroupId: itemDetails?.itemGroupId
-              ? parseInt(itemDetails.itemGroupId)
-              : null,
-            sizeId: itemDetails?.sizeId ? parseInt(itemDetails.sizeId) : null,
-            colorId: itemDetails?.colorId
-              ? parseInt(itemDetails.colorId)
-              : null,
-            gsmId: itemDetails?.gsmId ? parseInt(itemDetails.gsmId) : null,
-            quoteVersion: isNewVersion
-              ? currentQuoteVersion + 1
-              : parseInt(quoteVersion),
-          },
-        });
-      } else {
-        return await tx.poItems.create({
-          data: {
-            poId: parseInt(po.id),
-            styleItemId: itemDetails?.styleItemId
-              ? parseInt(itemDetails.styleItemId)
-              : null,
-            uomId: itemDetails?.uomId ? parseInt(itemDetails.uomId) : null,
-            hsnId: itemDetails?.hsnId ? parseInt(itemDetails.hsnId) : null,
-            qty,
-            price: itemDetails?.price ? parseInt(itemDetails.price) : null,
-            discountType: itemDetails?.discountType ?? undefined,
-            discountValue: itemDetails?.discountValue
-              ? parseInt(itemDetails.discountValue)
-              : null,
-            taxPercent: itemDetails?.taxPercent
-              ? parseInt(itemDetails.taxPercent)
-              : null,
-            quoteVersion: isNewVersion
-              ? currentQuoteVersion + 1
-              : parseInt(quoteVersion),
-            itemGroupId: itemDetails?.itemGroupId
-              ? parseInt(itemDetails.itemGroupId)
-              : null,
-            sizeId: itemDetails?.sizeId ? parseInt(itemDetails.sizeId) : null,
-            colorId: itemDetails?.colorId
-              ? parseInt(itemDetails.colorId)
-              : null,
-            gsmId: itemDetails?.gsmId ? parseInt(itemDetails.gsmId) : null,
-          },
-        });
-      }
-    }),
-  );
-}
 
 async function createNewVersionItems(
   tx,
@@ -1111,23 +1156,23 @@ async function createNewVersionItems(
 ) {
   return await tx.poItems.createMany({
     data: poItems
-      .filter((i) => i["quoteVersion"] === currentQuoteVersion)
+      .filter((i) => parseInt(i["quoteVersion"]) === currentQuoteVersion)
       .map((temp) => ({
-        poId,
-        styleItemId: temp.styleItemId ? parseInt(temp.styleItemId) : null,
-        uomId: temp.uomId ? parseInt(temp.uomId) : null,
-        hsnId: temp.hsnId ? parseInt(temp.hsnId) : null,
-        qty: parseFloat(temp.qty),
-        price: parseFloat(temp.price),
-        discountType: temp.discountType,
-        discountValue: parseFloat(temp.discountValue || 0),
-        taxPercent: parseFloat(temp.taxPercent || 0),
-        quoteVersion: version,
-        itemGroupId: temp.itemGroupId ? parseInt(temp.itemGroupId) : null,
-        sizeId: temp.sizeId ? parseInt(temp.sizeId) : null,
-        colorId: temp.colorId ? parseInt(temp.colorId) : null,
-        gsmId: temp.gsmId ? parseInt(temp.gsmId) : null,
-      })),
+      poId,
+      styleItemId: temp.styleItemId ? parseInt(temp.styleItemId) : null,
+      uomId: temp.uomId ? parseInt(temp.uomId) : null,
+      hsnId: temp.hsnId ? parseInt(temp.hsnId) : null,
+      qty: parseFloat(temp.qty),
+      price: parseFloat(temp.price),
+      discountType: temp.discountType,
+      discountValue: parseFloat(temp.discountValue || 0),
+      taxPercent: parseFloat(temp.taxPercent || 0),
+      quoteVersion: version,
+      itemGroupId: temp.itemGroupId ? parseInt(temp.itemGroupId) : null,
+      sizeId: temp.sizeId ? parseInt(temp.sizeId) : null,
+      colorId: temp.colorId ? parseInt(temp.colorId) : null,
+      gsmId: temp.gsmId ? parseInt(temp.gsmId) : null,
+    })),
   });
 }
 
