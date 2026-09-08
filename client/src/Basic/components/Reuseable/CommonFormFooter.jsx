@@ -405,7 +405,7 @@ const CommonFormFooter = ({
         <div
           className={[
             "grid grid-cols-1 gap-2",
-            stacked ? "" : "md:col-span-4",
+            stacked ? "" : hideTerms ? "md:col-span-6" : "md:col-span-4",
             stacked
               ? ""
               : hasLeftSummaryContent && hasRightSummaryContent

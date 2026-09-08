@@ -169,6 +169,11 @@ export const validatePurchaseOrderData = ({
     },
     {
       severity: "block",
+      condition: data.poType === "ORDER" && !data.orderEntryId,
+      message: "Order No is required for ORDER type!",
+    },
+    {
+      severity: "block",
       condition: !data.taxTemplateId,
       message: "Tax Template is required!",
     },
@@ -323,6 +328,7 @@ export const getPurchaseOrderPayload = ({
   pageId,
   totalNetAmount,
   submitApproval,
+  orderEntryId,
 }) => ({
   supplierId,
   dueDate,
@@ -348,4 +354,5 @@ export const getPurchaseOrderPayload = ({
   pageId,
   totalNetAmount,
   submitApproval,
+  orderEntryId,
 });

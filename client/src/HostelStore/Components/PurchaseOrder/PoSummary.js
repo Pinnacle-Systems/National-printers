@@ -155,8 +155,13 @@ const PoSummary = ({
             </td>
           </tr>
           <tr className="h-7">
-            <td className="border border-gray-500 py-1 px-1">Amount in Words</td>
-            <td className="border border-gray-500 text-right px-1 py-1" colSpan={2}>
+            <td className="border border-gray-500 py-1 px-1">
+              Amount in Words
+            </td>
+            <td
+              className="border border-gray-500 text-right px-1 py-1"
+              colSpan={2}
+            >
               <div className="w-full text-[11px] break-words whitespace-normal leading-tight">
                 {amount === 0
                   ? "Rupees Zero Only"

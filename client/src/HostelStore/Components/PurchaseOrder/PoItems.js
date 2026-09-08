@@ -129,7 +129,6 @@ const PoItems = ({
   const [triggerGetStyleItem] = useLazyGetStyleItemMasterByIdQuery();
   const effectiveQuoteVersion =
     quoteVersion ||
-    // ✅ If quoteVersion is empty, derive from the items themselves (use max version)
     Math.max(
       ...poItems
         .map((i) => parseInt(i.quoteVersion))
@@ -137,11 +136,11 @@ const PoItems = ({
       0,
     ) ||
     "";
+
   const isVisibleRow = (row) => {
     if (!id) return true;
     if (isNewVersion) return row.quoteVersion === "New";
 
-    // ✅ Use effectiveQuoteVersion instead of quoteVersion
     if (!effectiveQuoteVersion) return row.quoteVersion !== "New";
 
     return parseInt(row.quoteVersion) === parseInt(effectiveQuoteVersion);
