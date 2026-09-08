@@ -400,6 +400,12 @@ async function getOne(id) {
       DeliveryBranch: {
         select: { branchName: true, contactName: true, address: true },
       },
+      OrderEntry: {
+        select: {
+          docId: true,
+          id: true,
+        },
+      },
     },
   });
   if (!po) return NoRecordFound("po");
@@ -588,6 +594,7 @@ async function create(body) {
       taxPercent,
       termsId,
       payTermId,
+      orderEntryId,
     } = await body;
 
     let finYearDate = await getFinYearStartTimeEndTime(finYearId);
@@ -621,6 +628,7 @@ async function create(body) {
           branchId: parseInt(branchId),
           createdById: parseInt(userId),
           taxTemplateId: parseInt(taxTemplateId),
+          orderEntryId: orderEntryId ? parseInt(orderEntryId) : null,
           deliveryType,
           deliveryBranchId:
             deliveryType === "ToSelf"
@@ -717,7 +725,6 @@ async function createPoItems(tx, poItems, po) {
   );
 }
 
-
 // ── UPDATE ────────────────────────────────────────────────────────────────────
 async function update(id, body) {
   let {
@@ -741,6 +748,7 @@ async function update(id, body) {
     isNewVersion,
     quoteVersion,
     submitApproval,
+    orderEntryId,
   } = await body;
 
   // ── Always get module setup first to know what fields to include ─────────────
@@ -774,7 +782,11 @@ async function update(id, body) {
 
   // Discard older historical versions accidentally sent by the frontend payload
   poItems = poItems.filter((item) => {
-    return !item.quoteVersion || item.quoteVersion === "New" || parseInt(item.quoteVersion) === currentQuoteVersion;
+    return (
+      !item.quoteVersion ||
+      item.quoteVersion === "New" ||
+      parseInt(item.quoteVersion) === currentQuoteVersion
+    );
   });
 
   // ── Get latest approval log ───────────────────────────────────────────────
@@ -904,108 +916,10 @@ async function update(id, body) {
     });
   }
 
-  // Check non-grid fields (excluding docDate per user request)
-  const dueDateChanged =
-    (dueDate ? new Date(dueDate).getTime() : null) !==
-    (dataFound.dueDate ? new Date(dataFound.dueDate).getTime() : null);
-  const branchChanged =
-    parseInt(branchId || 0) !== parseInt(dataFound.branchId || 0);
-  const poTypeChanged = (poType || "") !== (dataFound.poType || "");
-  const taxTempChanged =
-    parseInt(taxTemplateId || 0) !== parseInt(dataFound.taxTemplateId || 0);
-  const delTypeChanged =
-    (deliveryType || "") !== (dataFound.deliveryType || "");
-  const delToChanged =
-    deliveryType === "ToParty"
-      ? parseInt(deliveryToId || 0) !== parseInt(dataFound.deliveryToId || 0)
-      : false;
-  const delToSelfChanged =
-    deliveryType === "ToSelf"
-      ? parseInt(deliveryToId || 0) !==
-        parseInt(dataFound.deliveryBranchId || 0)
-      : false;
-  const termsChanged =
-    (termsAndCondtion || "") !== (dataFound.termsAndCondtion || "");
-  const remarksChanged = (remarks || "") !== (dataFound.remarks || "");
-  const supplierChanged =
-    parseInt(supplierId || 0) !== parseInt(dataFound.supplierId || 0);
-  const discTypeChanged =
-    (discountType || "") !== (dataFound.discountType || "");
-  const discValChanged =
-    parseFloat(discountValue || 0) !== parseFloat(dataFound.discountValue || 0);
-  const taxPercentChanged =
-    parseFloat(taxPercent || 0) !== parseFloat(dataFound.taxPercent || 0);
-  const termsIdChanged =
-    parseInt(termsId || 0) !== parseInt(dataFound.termsId || 0);
-  const payTermChanged =
-    parseInt(payTermId || 0) !== parseInt(dataFound.payTermId || 0);
-
-  const isNonGridChanged =
-    dueDateChanged ||
-    branchChanged ||
-    poTypeChanged ||
-    taxTempChanged ||
-    delTypeChanged ||
-    delToChanged ||
-    delToSelfChanged ||
-    termsChanged ||
-    remarksChanged ||
-    supplierChanged ||
-    discTypeChanged ||
-    discValChanged ||
-    taxPercentChanged ||
-    termsIdChanged ||
-    payTermChanged;
-
-  if (isNonGridChanged) {
-    console.log("Non-grid changed:", {
-      dueDateChanged,
-      branchChanged,
-      poTypeChanged,
-      taxTempChanged,
-      delTypeChanged,
-      delToChanged,
-      delToSelfChanged,
-      termsChanged,
-      remarksChanged,
-      supplierChanged,
-      discTypeChanged,
-      discValChanged,
-      taxPercentChanged,
-      termsIdChanged,
-      payTermChanged,
-    });
-  }
-
-  if (isNonGridChanged) {
-    const changedFields = [];
-    if (dueDateChanged) changedFields.push("Due Date");
-    if (branchChanged) changedFields.push("Branch");
-    if (poTypeChanged) changedFields.push("PO Type");
-    if (taxTempChanged) changedFields.push("Tax Template");
-    if (delTypeChanged) changedFields.push("Delivery Type");
-    if (delToChanged || delToSelfChanged) changedFields.push("Delivery To");
-    if (termsChanged) changedFields.push("Terms & Conditions");
-    if (supplierChanged) changedFields.push("Supplier");
-    if (discTypeChanged) changedFields.push("Discount Type");
-    if (discValChanged) changedFields.push("Discount Value");
-    if (taxPercentChanged) changedFields.push("Tax Percent");
-    if (termsIdChanged) changedFields.push("Terms");
-    if (payTermChanged) changedFields.push("Pay Term");
-
-    if (changedFields.length > 0) {
-      const changeMsg = `[System: Updated ${changedFields.join(", ")}]`;
-      if (!remarks || !remarks.includes(changeMsg)) {
-        remarks = remarks ? `${remarks}\n${changeMsg}` : changeMsg;
-      }
-    }
-  }
-
   // Auto-detect version change
-  isNewVersion = isTableChanged || isNonGridChanged;
+  isNewVersion = isTableChanged;
   console.log(isNewVersion, "isNewVersion", {
     isTableChanged,
-    isNonGridChanged,
   });
 
   const nextQuoteVersion = isNewVersion
@@ -1017,7 +931,6 @@ async function update(id, body) {
 
   let data;
   await prisma.$transaction(async (tx) => {
-
     data = await tx.po.update({
       where: { id: parseInt(id) },
       data: {
@@ -1040,6 +953,8 @@ async function update(id, body) {
               : null
             : null,
         termsAndCondtion,
+        orderEntryId: orderEntryId ? parseInt(orderEntryId) : null,
+
         remarks,
         supplierId: parseInt(supplierId),
         updatedById: parseInt(userId),
@@ -1146,7 +1061,6 @@ async function update(id, body) {
   return { statusCode: 0, data, message };
 }
 
-
 async function createNewVersionItems(
   tx,
   poItems,
@@ -1158,21 +1072,21 @@ async function createNewVersionItems(
     data: poItems
       .filter((i) => parseInt(i["quoteVersion"]) === currentQuoteVersion)
       .map((temp) => ({
-      poId,
-      styleItemId: temp.styleItemId ? parseInt(temp.styleItemId) : null,
-      uomId: temp.uomId ? parseInt(temp.uomId) : null,
-      hsnId: temp.hsnId ? parseInt(temp.hsnId) : null,
-      qty: parseFloat(temp.qty),
-      price: parseFloat(temp.price),
-      discountType: temp.discountType,
-      discountValue: parseFloat(temp.discountValue || 0),
-      taxPercent: parseFloat(temp.taxPercent || 0),
-      quoteVersion: version,
-      itemGroupId: temp.itemGroupId ? parseInt(temp.itemGroupId) : null,
-      sizeId: temp.sizeId ? parseInt(temp.sizeId) : null,
-      colorId: temp.colorId ? parseInt(temp.colorId) : null,
-      gsmId: temp.gsmId ? parseInt(temp.gsmId) : null,
-    })),
+        poId,
+        styleItemId: temp.styleItemId ? parseInt(temp.styleItemId) : null,
+        uomId: temp.uomId ? parseInt(temp.uomId) : null,
+        hsnId: temp.hsnId ? parseInt(temp.hsnId) : null,
+        qty: parseFloat(temp.qty),
+        price: parseFloat(temp.price),
+        discountType: temp.discountType,
+        discountValue: parseFloat(temp.discountValue || 0),
+        taxPercent: parseFloat(temp.taxPercent || 0),
+        quoteVersion: version,
+        itemGroupId: temp.itemGroupId ? parseInt(temp.itemGroupId) : null,
+        sizeId: temp.sizeId ? parseInt(temp.sizeId) : null,
+        colorId: temp.colorId ? parseInt(temp.colorId) : null,
+        gsmId: temp.gsmId ? parseInt(temp.gsmId) : null,
+      })),
   });
 }
 

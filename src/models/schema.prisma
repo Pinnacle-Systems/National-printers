@@ -283,6 +283,7 @@ model FinYear {
   purchaseBillEntries PurchaseBillEntry[]
   proformaInvoices    ProformaInvoice[]
   orderEntries        OrderEntry[]
+  pos                 Po[]
 }
 
 model EmployeeCategory {
@@ -1214,8 +1215,12 @@ model Po {
   createdById            Int?
   updatedBy              User?                    @relation("updatedBy", fields: [updatedById], references: [id])
   updatedById            Int?
+  finYearId              Int?
+  FinYear                FinYear?                 @relation(fields: [finYearId], references: [id])
+  orderEntryId           Int?
+  OrderEntry             OrderEntry?              @relation(fields: [orderEntryId], references: [id])
   poType                 String?
-  TaxTemplate            TaxTemplate?             @relation(fields: [taxTemplateId], references: [id], onDelete: Cascade)
+  TaxTemplate            TaxTemplate?             @relation(fields: [taxTemplateId], references: [id])
   taxTemplateId          Int?
   active                 Boolean?                 @default(true)
   deliveryType           String?
@@ -1247,7 +1252,7 @@ model Po {
 
 model QuoteVersion {
   id           Int  @id @default(autoincrement())
-  Po           Po?  @relation(fields: [poId], references: [id])
+  Po           Po?  @relation(fields: [poId], references: [id], onDelete: Cascade)
   poId         Int?
   quoteVersion Int?
 }
@@ -1829,6 +1834,7 @@ model OrderEntry {
   JobCard           JobCard[]
   ProformaInvoices  ProformaInvoice[]
   orderItems        OrderItems[]
+  pos               Po[]
 }
 
 model OrderItems {

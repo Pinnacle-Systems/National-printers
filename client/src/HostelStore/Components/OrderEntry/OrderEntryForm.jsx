@@ -592,7 +592,7 @@ const OrderEntryForm = ({
               setValue={setUserDate}
               type={"date"}
               required={true}
-              readOnly={isReadOnly}
+              disabled={childRecord.current > 0 || isReadOnly}
             />
           </div>
         </div>
@@ -632,7 +632,7 @@ const OrderEntryForm = ({
               value={deliveryDate}
               setValue={setDeliveryDate}
               required={true}
-              readOnly={isReadOnly}
+              disabled={childRecord.current > 0 || isReadOnly}
               type={"date"}
             />
           </div>
@@ -729,8 +729,12 @@ const OrderEntryForm = ({
       hoverLabel: "Save & Close",
       iconOnly: true,
       onClick: () => saveData("close"),
-      className: `bg-indigo-500 hover:bg-indigo-600 ${actionButtonClass}`,
-      disabled: isReadOnly || isDisabled,
+      className: `bg-indigo-500 hover:bg-indigo-600 ${actionButtonClass} ${
+        isReadOnly || isDisabled || childRecord?.current > 0
+          ? "cursor-not-allowed"
+          : "cursor-pointer"
+      }`,
+      disabled: isReadOnly || isDisabled || childRecord?.current > 0,
     },
     {
       key: "saveAndNew",
@@ -743,8 +747,12 @@ const OrderEntryForm = ({
       hoverLabel: "Save & New",
       iconOnly: true,
       onClick: () => saveData("new"),
-      className: `bg-indigo-600 hover:bg-indigo-700 ${actionButtonClass}`,
-      disabled: isReadOnly || isDisabled,
+      className: `bg-indigo-500 hover:bg-indigo-600 ${actionButtonClass} ${
+        isReadOnly || isDisabled || childRecord?.current > 0
+          ? "cursor-not-allowed"
+          : "cursor-pointer"
+      }`,
+      disabled: isReadOnly || isDisabled || childRecord?.current > 0,
     },
     ...(status === "REJECTED"
       ? [
@@ -835,12 +843,10 @@ const OrderEntryForm = ({
           {
             key: "totalQty",
             label: "Total Qty",
-            value: orderItems
-              ?.reduce((acc, item) => {
-                const qty = parseFloat(item.orderQty) || 0;
-                return acc + qty;
-              }, 0)
-              .toFixed(3),
+            value: orderItems?.reduce((acc, item) => {
+              const qty = parseFloat(item.orderQty) || 0;
+              return acc + qty;
+            }, 0),
             summaryColumn: "right",
             emphasized: true,
           },

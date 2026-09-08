@@ -60,6 +60,7 @@ import {
   validatePurchaseOrderData,
 } from "./purchaseOrder.module";
 import { MdKeyboardDoubleArrowLeft } from "react-icons/md";
+import { useGetOrderEntryQuery } from "../../../redux/uniformService/OrderEntryService";
 
 const PurchaseOrderForm = ({
   onClose,
@@ -118,7 +119,7 @@ const PurchaseOrderForm = ({
   const [isPostApprovalLock, setIsPostApprovalLock] = useState(false);
   const [isDeliveryThresholdPassed, setIsDeliveryThresholdPassed] =
     useState(false);
-
+  const [orderEntryId, setOrderEntryId] = useState("");
   const supplierRef = useRef(null);
   const termsRef = useRef(null);
   const [dispatchInvalidate] = useInvalidateTags();
@@ -145,6 +146,9 @@ const PurchaseOrderForm = ({
 
   const childRecordCount =
     singleData?.data?.childRecordInward + singleData?.data?.childRecordCancel;
+
+  const { data: orderData } = useGetOrderEntryQuery({ params });
+  console.log(orderData, "orderData");
 
   const [addApprovalStatus] = useAddApprovalStausMutation();
   const [addData] = useAddPoMutation();
@@ -173,9 +177,9 @@ const PurchaseOrderForm = ({
           ? moment.utc(data.docDate).format("YYYY-MM-DD")
           : moment.utc(new Date()).format("YYYY-MM-DD"),
       );
-
+      setOrderEntryId(data?.orderEntryId || "");
       setDocId(data?.docId ? data?.docId : "New");
-      setDiscountType(data?.discountType || "Percentage");
+      setDiscountType(data?.discountType || "");
       setTaxPercent(data?.taxPercent ? data?.taxPercent : "");
       setDiscountValue(data?.discountValue || "0");
       setSupplierId(data?.supplierId || "");
@@ -409,7 +413,9 @@ const PurchaseOrderForm = ({
       pageId: currentPageId,
       totalNetAmount: totals?.net,
       submitApproval: submitApprovalFlag,
+      orderEntryId,
     });
+    console.log(orderEntryId, "orderEntryId");
 
     if (!validateData(payload)) {
       return;
@@ -598,6 +604,14 @@ const PurchaseOrderForm = ({
         .filter((n) => n > 0),
     ),
   ].sort((a, b) => a - b);
+
+  const maxQuoteVersion = quoteVersionOptions.length > 0 
+    ? quoteVersionOptions[quoteVersionOptions.length - 1] 
+    : 0;
+
+  const isOldVersion = !isNewVersion && maxQuoteVersion > 0 && Number(quoteVersion) < maxQuoteVersion;
+  const effectiveReadOnly = readOnly || isOldVersion;
+
   const versionDropdown = (
     <div className="flex items-center gap-2 ml-2">
       <span className="text-xs text-gray-500 mt-1">Version</span>
@@ -719,7 +733,7 @@ const PurchaseOrderForm = ({
     return null;
   };
   const isFullyLocked =
-    readOnly || (isPostApprovalLock && isDeliveryThresholdPassed);
+    effectiveReadOnly || (isPostApprovalLock && isDeliveryThresholdPassed);
   const isCoreLocked = isFullyLocked || isPostApprovalLock;
   const chip = getModeChip();
 
@@ -854,6 +868,7 @@ const PurchaseOrderForm = ({
             iconOnly: true,
             onClick: () => setReadOnly(false),
             className: `bg-yellow-600 hover:bg-yellow-700 ${actionButtonClass}`,
+            hidden: !readOnly || !id || isOldVersion,
           },
         ]),
     {
@@ -952,7 +967,7 @@ const PurchaseOrderForm = ({
     <>
       <div className={narrowFieldWrap}>
         <ReusableInput
-          label="Order No"
+          label="Po No"
           readOnly
           value={docId}
           className={`${compactFieldClass} ${fieldWidthMedium}`}
@@ -960,7 +975,7 @@ const PurchaseOrderForm = ({
       </div>
       <div className={narrowFieldWrap}>
         <ReusableInput
-          label="Order Date"
+          label=" Date"
           value={docDate}
           type={"date"}
           required={true}
@@ -976,6 +991,9 @@ const PurchaseOrderForm = ({
           value={poType}
           setValue={(value) => {
             setPoType(value);
+            if (value !== "ORDER") {
+              setOrderEntryId("");
+            }
           }}
           required={true}
           readOnly={isCoreLocked}
@@ -985,6 +1003,21 @@ const PurchaseOrderForm = ({
           autoFocus={true}
         />
       </div>
+      <div className={narrowFieldWrap}>
+        <DropdownInput
+          name="Order No"
+          options={dropDownListObject(
+            orderData ? orderData?.data : [],
+            "docId",
+            "id",
+          )}
+          value={orderEntryId}
+          setValue={setOrderEntryId}
+          readOnly={isCoreLocked || poType !== "ORDER"}
+          className={`${compactFieldClass} w-full max-w-none`}
+        />
+      </div>
+      {console.log(orderEntryId, "orderEntryId")}
       <div className={narrowFieldWrap}>
         <DropdownInput
           name="Tax Type"
@@ -1148,7 +1181,7 @@ const PurchaseOrderForm = ({
   const basicDetailsCompactSection = (
     <div className={compactCardClass}>
       <h2 className={compactSectionTitleClass}>Basic Details</h2>
-      <div className="grid grid-cols-2 gap-1 items-end md:grid-cols-3 xl:grid-cols-[minmax(0,1fr)_100px_100px_104px_minmax(0,1fr)]">
+      <div className="grid grid-cols-2 gap-1 items-end md:grid-cols-3 xl:grid-cols-[minmax(0,1fr)_95px_100px_130px_100px]">
         {basicDetailsFields}
       </div>
     </div>
@@ -1794,7 +1827,7 @@ const PurchaseOrderForm = ({
       </Modal>
       <TransactionLayout
         title="Purchase Order"
-        badge={<ModeChip id={id} readOnly={readOnly} />}
+        badge={<ModeChip id={id} readOnly={effectiveReadOnly} />}
         closeIcon={<IoArrowBackCircleSharp className="w-7 h-7" />}
         onClose={onClose}
         onKeyDown={handleKeyDown}
@@ -1813,12 +1846,7 @@ const PurchaseOrderForm = ({
             setPoItems={setPoItems}
             uomList={uomList}
             hsnList={hsnList}
-            readOnly={
-              isCoreLocked ||
-              (quoteVersionOptions.length > 0 &&
-                Number(quoteVersion) !== quoteVersionOptions[0]) ||
-              childRecordCount > 0
-            }
+            readOnly={effectiveReadOnly}
             styleItemList={styleItemList}
             taxTemplateId={taxTemplateId}
             isNewVersion={isNewVersion}

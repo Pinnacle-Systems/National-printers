@@ -21,6 +21,7 @@ const TaxDetailsFullTemplate = ({
   const discountTypeRef = useRef(null);
   const discountValueRef = useRef(null);
   const taxPercentRef = useRef(null);
+  console.log(readOnly, "readOnlyintaxtem");
 
   if (!row) return null;
 

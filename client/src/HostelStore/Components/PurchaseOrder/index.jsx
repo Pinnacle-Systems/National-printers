@@ -28,7 +28,6 @@ import useInvalidateTags from "../../../CustomHooks/useInvalidateTags.js";
 import { useGetGsmMasterQuery } from "../../../redux/services/GsmMasterService.js";
 import { useGetUserByIdQuery } from "../../../redux/services/UsersMasterService.js";
 import { push } from "../../../redux/features/opentabs";
-
 export default function Form() {
   const [showForm, setShowForm] = useState(false);
   const [id, setId] = useState("");
@@ -38,7 +37,10 @@ export default function Form() {
   const [selectedPoId, setSelectedPoId] = useState("");
 
   const openTabs = useSelector((state) => state.openTabs);
-  const previewPOId = useMemo(() => openTabs.tabs.find(i => i.name === "PURCHASE ORDER")?.previewId, [openTabs]);
+  const previewPOId = useMemo(
+    () => openTabs.tabs.find((i) => i.name === "PURCHASE ORDER")?.previewId,
+    [openTabs],
+  );
 
   const dispatch = useDispatch();
   const { branchId, companyId, finYearId, userId } = getCommonParams();
@@ -55,7 +57,7 @@ export default function Form() {
   const { data: branchData } = useGetBranchByIdQuery(branchId, {
     skip: !branchId,
   });
-  const { data: userData } = useGetUserByIdQuery(userId)
+  const { data: userData } = useGetUserByIdQuery(userId);
   const [
     trigger,
     {
@@ -161,11 +163,11 @@ export default function Form() {
   const { data: gsmList } = useGetGsmMasterQuery({ params });
 
   useEffect(() => {
-    if (!previewPOId) return
+    if (!previewPOId) return;
     setId(previewPOId);
     setShowForm(true);
     // dispatch(push({ name: "PURCHASE ORDER", previewId: null }))
-  }, [previewPOId, dispatch])
+  }, [previewPOId, dispatch]);
 
   return (
     <>

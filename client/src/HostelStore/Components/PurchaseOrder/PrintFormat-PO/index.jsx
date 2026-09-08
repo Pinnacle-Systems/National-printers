@@ -41,60 +41,63 @@ const styles = StyleSheet.create({
   topBar: {
     height: 4,
     backgroundColor: "#1a1a2e",
+    marginBottom: 10,
   },
 
   // ── HEADER ──
   header: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 10,
+    paddingBottom: 15,
     borderBottom: "1.5 solid #1a1a2e",
+    marginBottom: 10,
+  },
+  logoContainer: {
+    width: 130,
+    alignItems: "flex-start",
   },
   logo: {
-    height: 52,
-    width: 52,
+    height: 60,
+    width: 130,
   },
   companyCenter: {
+    flex: 2,
     alignItems: "center",
+    paddingHorizontal: 10,
   },
   companyName: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "bold",
     color: "#1a1a2e",
-    letterSpacing: 0.5,
+    marginBottom: 4,
   },
-  companySub: {
+  companyAddr: {
     fontSize: 7.5,
-    color: "#666",
-    marginTop: 2,
+    color: "#444",
+    textAlign: "center",
+    lineHeight: 1.3,
+    maxWidth: 250,
   },
   companyRight: {
-    width: 140,
-    alignItems: "flex-start",
+    width: 130,
+    alignItems: "flex-end",
   },
   companyRightRow: {
     flexDirection: "row",
-    marginBottom: 2,
-    width: "100%",
+    justifyContent: "flex-end",
+    marginBottom: 3,
   },
   companyLabel: {
-    fontSize: 7.5,
+    fontSize: 7,
     color: "#888",
-    width: 38,
-  },
-  companyColon: {
-    fontSize: 7.5,
-    color: "#888",
-    width: 8,
+    marginRight: 4,
   },
   companyValue: {
-    fontSize: 7.5,
+    fontSize: 7,
     color: "#1a1a2e",
     fontWeight: "bold",
-    flex: 1,
   },
 
   // ── TITLE BAND ──
@@ -111,11 +114,12 @@ const styles = StyleSheet.create({
   // ── PO META PILLS ──
   metaRow: {
     flexDirection: "row",
-    justifyContent: "flex-end",
+    justifyContent: "flex-start",
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 4,
     gap: 8,
+    flexWrap: "wrap",
   },
   metaPill: {
     flexDirection: "row",
@@ -409,7 +413,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 4,
-    marginTop: 8,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
   footerLeft: {
     fontSize: 7,
@@ -434,7 +441,7 @@ const COLUMNS = [
   { label: "Amount", flex: 1.2, align: "right" },
 ];
 
-const MIN_ROWS = 14;
+const MIN_ROWS = 10;
 
 const PurchaseOrderPrintFormat = ({
   singleData,
@@ -458,6 +465,8 @@ const PurchaseOrderPrintFormat = ({
   const remarks = singleData?.remarks || "";
   const term = singleData?.termsAndCondtion || "";
   const poItems = singleData?.poItems || [];
+  const poType = singleData?.poType || "";
+  const orderNo = singleData?.OrderEntry?.docId || "";
 
   const filledPoItems = poItems.filter(
     (i) => i.styleItemId && i.quoteVersion === quoteVersion,
@@ -513,30 +522,23 @@ const PurchaseOrderPrintFormat = ({
           <Page key={pageIndex} size="A4" style={styles.borderBox}>
             <View style={styles.page}>
               {/* ── TOP ACCENT BAR ── */}
-              <View style={styles.topBar} />
 
               {/* ── HEADER ── */}
               <View style={styles.header}>
-                <Image src={Logo} style={styles.logo} />
+                <View style={styles.logoContainer}>
+                  <Image src={Logo} style={styles.logo} />
+                </View>
 
                 <View style={styles.companyCenter}>
                   <Text style={styles.companyName}>
                     {branchData?.branchName || ""}
                   </Text>
-                  {/* <Text style={styles.companySub}>Garment Manufacturing &amp; Exports</Text> */}
+                  {branchData?.address ? (
+                    <Text style={styles.companyAddr}>{branchData.address}</Text>
+                  ) : null}
                 </View>
 
                 <View style={styles.companyRight}>
-                  <Text
-                    style={{
-                      fontSize: 7.5,
-                      color: "#555",
-                      marginBottom: 2,
-                      textAlign: "right",
-                    }}
-                  >
-                    {branchData?.address || ""}
-                  </Text>
                   {[
                     { label: "Mobile", value: branchData?.contactMobile },
                     { label: "GST No", value: branchData?.company?.gstNo },
@@ -544,8 +546,7 @@ const PurchaseOrderPrintFormat = ({
                   ].map(({ label, value }) =>
                     value ? (
                       <View key={label} style={styles.companyRightRow}>
-                        <Text style={styles.companyLabel}>{label}</Text>
-                        <Text style={styles.companyColon}> : </Text>
+                        <Text style={styles.companyLabel}>{label} :</Text>
                         <Text style={styles.companyValue}>{value}</Text>
                       </View>
                     ) : null,
@@ -574,6 +575,18 @@ const PurchaseOrderPrintFormat = ({
                     <Text style={styles.metaValue}>{value}</Text>
                   </View>
                 ))}
+                {poType ? (
+                  <View style={styles.metaPill}>
+                    <Text style={styles.metaLabel}>PO Type:</Text>
+                    <Text style={styles.metaValue}>{poType}</Text>
+                  </View>
+                ) : null}
+                {poType === "ORDER" && orderNo ? (
+                  <View style={styles.metaPill}>
+                    <Text style={styles.metaLabel}>Order No:</Text>
+                    <Text style={styles.metaValue}>{orderNo}</Text>
+                  </View>
+                ) : null}
                 {quoteVersion > 1 && (
                   <View style={styles.metaPillRevised}>
                     <Text style={styles.metaLabel}>Revised PO:</Text>
@@ -890,16 +903,45 @@ const PurchaseOrderPrintFormat = ({
                         {parseFloat(taxDetails?.taxable || 0).toFixed(2)}
                       </Text>
                     </View>
-                    {taxDetails?.slabBreakup
-                      ?.filter((item) => item.amount > 0)
-                      ?.map((i) => (
-                        <View key={i.tax} style={styles.taxRow}>
-                          <Text style={styles.taxLabel}>{i.tax}</Text>
-                          <Text style={styles.taxValue}>
-                            {parseFloat(i.amount || 0).toFixed(2)}
-                          </Text>
-                        </View>
-                      ))}
+                    {(() => {
+                      const aggregatedTax = {};
+                      taxDetails?.slabBreakup
+                        ?.filter((item) => item.amount > 0)
+                        ?.forEach((item) => {
+                          let name = item.tax;
+                          let amount = parseFloat(item.amount || 0);
+
+                          if (
+                            name.toUpperCase().startsWith("CGST") ||
+                            name.toUpperCase().startsWith("SGST") ||
+                            name.toUpperCase().startsWith("IGST")
+                          ) {
+                            const percentMatch = name.match(/[\d.]+/);
+                            if (percentMatch) {
+                              const percent = name
+                                .toUpperCase()
+                                .startsWith("IGST")
+                                ? parseFloat(percentMatch[0])
+                                : parseFloat(percentMatch[0]) * 2;
+                              name = `GST @${percent}%`;
+                            }
+                          }
+
+                          aggregatedTax[name] =
+                            (aggregatedTax[name] || 0) + amount;
+                        });
+
+                      return Object.entries(aggregatedTax).map(
+                        ([taxName, amt]) => (
+                          <View key={taxName} style={styles.taxRow}>
+                            <Text style={styles.taxLabel}>{taxName}</Text>
+                            <Text style={styles.taxValue}>
+                              {amt.toFixed(2)}
+                            </Text>
+                          </View>
+                        ),
+                      );
+                    })()}
                     <View style={styles.taxRowNet}>
                       <Text style={styles.taxLabelNet}>Net Amount</Text>
                       <Text style={styles.taxValueNet}>
@@ -949,18 +991,17 @@ const PurchaseOrderPrintFormat = ({
                 </>
               )}
 
-              {/* ── FOOTER BAR ── */}
-              <View
-                style={[styles.footerBar, !isLastPage && { marginTop: 20 }]}
-              >
-                <Text style={styles.footerLeft}></Text>
-                <Text
-                  style={styles.footerRight}
-                  render={({ pageNumber, totalPages }) =>
-                    `Page ${pageNumber} / ${totalPages}`
-                  }
-                />
-              </View>
+            </View>
+
+            {/* ── FOOTER BAR ── */}
+            <View style={styles.footerBar} fixed>
+              <Text style={styles.footerLeft}></Text>
+              <Text
+                style={styles.footerRight}
+                render={({ pageNumber, totalPages }) =>
+                  `Page ${pageNumber} / ${totalPages}`
+                }
+              />
             </View>
           </Page>
         );

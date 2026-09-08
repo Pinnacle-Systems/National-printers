@@ -498,7 +498,7 @@ const OrderEntryPrintFormat = ({
             <Text style={styles.sectionHeader}>REMARKS</Text>
             <View style={styles.sectionBody}>
               <Text style={{ fontSize: 7, color: "#444", lineHeight: 1.4 }}>
-                {data?.remarks || "N/A"}
+                {data?.remarks || ""}
               </Text>
             </View>
           </View>
