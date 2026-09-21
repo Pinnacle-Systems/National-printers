@@ -1281,6 +1281,10 @@ model PoItems {
   colorId       Int?
   Gsm           Gsm?       @relation(fields: [gsmId], references: [id])
   gsmId         Int?
+  sheetsPerPacket Int?
+  weightPerPacket Float?
+  totalPackets    Int?
+  pricePerKg      Int?
 }
 
 model TermsAndConditions {

@@ -72,6 +72,11 @@ const PO_GRID_COLUMNS = [
     className: "w-20 px-4 py-2 text-center font-medium text-[11px]",
   },
   {
+    key: "weight",
+    label: "Weight",
+    className: "w-20 px-1 py-2 text-center font-medium text-[11px]",
+  },
+  {
     key: "qty",
     label: (
       <>
@@ -125,6 +130,8 @@ const PoItems = ({
   const gridWrapperRef = useRef(null);
   const [contextMenu, setContextMenu] = useState(null);
   const [currentSelectedIndex, setCurrentSelectedIndex] = useState(null);
+    const [currentUOMModalIndex, setCurrentUOMModalIndex] = useState(null);
+
   const [focusedField, setFocusedField] = useState(null);
   const [triggerGetStyleItem] = useLazyGetStyleItemMasterByIdQuery();
   const effectiveQuoteVersion =
@@ -316,7 +323,7 @@ const PoItems = ({
     <tr className="bg-gray-50 h-6 font-medium text-gray-800 text-[12px]">
       <td
         className="text-right px-4 border border-gray-300 font-medium"
-        colSpan={7}
+        colSpan={8}
       >
         Total
       </td>
@@ -365,6 +372,178 @@ const PoItems = ({
         />
       </Modal>
 
+      <Modal
+        isOpen={currentUOMModalIndex !== null}
+        onClose={() => setCurrentUOMModalIndex(null)}
+        widthClass="max-w-xl"
+        title="UOM Details Calculation"
+      >
+        {currentUOMModalIndex !== null &&
+          (() => {
+            const rowData =
+              visibleRows.find(
+                (item) => item.originalIndex === currentUOMModalIndex,
+              )?.row || {};
+            const calcTotalKgs =
+              rowData.totalKgs ||
+              (rowData.weightPerPacket && rowData.totalPackets
+                ? (
+                    parseFloat(rowData.weightPerPacket) *
+                    parseFloat(rowData.totalPackets)
+                  ).toFixed(3)
+                : "");
+            const calcTotalPrice =
+              rowData.totalPrice ||
+              (rowData.pricePerKg && calcTotalKgs
+                ? (
+                    parseFloat(calcTotalKgs) * parseFloat(rowData.pricePerKg)
+                  ).toFixed(2)
+                : "");
+            return (
+              <div className="p-4 flex flex-col gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      No of sheets per packet
+                    </label>
+                    <input
+                      type="number"
+                      className="w-full border rounded px-2 py-1 text-sm bg-white"
+                      value={rowData.sheetsPerPacket || ""}
+                      onChange={(e) =>
+                        handleInputChange(
+                          e.target.value,
+                          currentUOMModalIndex,
+                          "sheetsPerPacket",
+                        )
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Weight of Per packet - kgs
+                    </label>
+                    <input
+                      type="number"
+                      className="w-full border rounded px-2 py-1 text-sm bg-white"
+                      value={rowData.weightPerPacket || ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const w = parseFloat(val) || 0;
+                        const p = parseFloat(rowData.totalPackets || 0);
+                        const tk = (w * p).toFixed(3);
+                        const pK = parseFloat(rowData.pricePerKg || 0);
+                        const tp = (tk * pK).toFixed(2);
+                        syncRowPatch(currentUOMModalIndex, {
+                          weightPerPacket: val,
+                          totalKgs: tk,
+                          weight: tk,
+                          qty: tk,
+                          totalPrice: tp,
+                          price: rowData.pricePerKg || "",
+                        });
+                      }}
+                      onBlur={(e) => {
+                        if (e.target.value) {
+                          const val = parseFloat(e.target.value).toFixed(3);
+                          syncRowPatch(currentUOMModalIndex, {
+                            weightPerPacket: val,
+                          });
+                        }
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Total packets
+                    </label>
+                    <input
+                      type="number"
+                      className="w-full border rounded px-2 py-1 text-sm bg-white"
+                      value={rowData.totalPackets || ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const p = parseFloat(val) || 0;
+                        const w = parseFloat(rowData.weightPerPacket || 0);
+                        const tk = (w * p).toFixed(3);
+                        const pK = parseFloat(rowData.pricePerKg || 0);
+                        const tp = (tk * pK).toFixed(2);
+                        syncRowPatch(currentUOMModalIndex, {
+                          totalPackets: val,
+                          totalKgs: tk,
+                          weight: tk,
+                          qty: tk,
+                          totalPrice: tp,
+                          price: rowData.pricePerKg || "",
+                        });
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Total kgs
+                    </label>
+                    <input
+                      type="text"
+                      readOnly
+                      className="w-full border rounded px-2 py-1 text-sm bg-gray-100"
+                      value={calcTotalKgs}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Price Per kg
+                    </label>
+                    <input
+                      type="number"
+                      className="w-full border rounded px-2 py-1 text-sm bg-white"
+                      value={rowData.pricePerKg || ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const pK = parseFloat(val) || 0;
+                        const tk = parseFloat(calcTotalKgs || 0);
+                        const tp = (tk * pK).toFixed(2);
+                        syncRowPatch(currentUOMModalIndex, {
+                          pricePerKg: val,
+                          totalPrice: tp,
+                          price: val,
+                        });
+                      }}
+                      onBlur={(e) => {
+                        if (e.target.value) {
+                          const val = parseFloat(e.target.value).toFixed(2);
+                          syncRowPatch(currentUOMModalIndex, {
+                            pricePerKg: val,
+                            price: val,
+                          });
+                        }
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Total Price
+                    </label>
+                    <input
+                      type="text"
+                      readOnly
+                      className="w-full border rounded px-2 py-1 text-sm bg-gray-100"
+                      value={calcTotalPrice}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end mt-4">
+                  <button
+                    className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700"
+                    onClick={() => setCurrentUOMModalIndex(null)}
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+      </Modal>
       <div ref={gridWrapperRef} className="h-full">
         <TransactionGrid
           title=""
@@ -591,6 +770,29 @@ const PoItems = ({
                   <span className="block truncate">
                     {findFromList(row.uomId, uomList?.data, "name") || ""}
                   </span>
+                </td>
+                 <td
+                  data-grid-row={index}
+                  data-grid-col={6}
+                  data-grid-editable="true"
+                  className="grid-editable-cell border border-gray-300 text-[11px]"
+                >
+                  {" "}
+                  <div className="flex items-center justify-between gap-1">
+                    {/* <span className="block truncate">{row.weight || ""}</span> */}
+                    <button
+                      type="button"
+                      disabled={!row?.styleItemId}
+                      className="text-center rounded w-full table-data-input"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setCurrentUOMModalIndex(rowIndex);
+                      }}
+                    >
+                      {VIEW}
+                    </button>
+                  </div>
                 </td>
                 <td
                   data-grid-row={index}

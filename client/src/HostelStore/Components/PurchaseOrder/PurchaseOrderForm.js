@@ -98,7 +98,7 @@ const PurchaseOrderForm = ({
   const [termsAndCondtion, setTermsAndCondtion] = useState("");
   const [termsId, setTermsId] = useState("");
   const [poItems, setPoItems] = useState([]);
-  const [discountType, setDiscountType] = useState("Percentage");
+  const [discountType, setDiscountType] = useState("");
   const [discountValue, setDiscountValue] = useState();
   const [taxPercent, setTaxPercent] = useState();
   const [orderId, setOrderId] = useState("");
@@ -1825,6 +1825,7 @@ const PurchaseOrderForm = ({
           />
         </PDFViewer>
       </Modal>
+     { console.log(approvalStatusBanner,"approvalStatusBanner")}
       <TransactionLayout
         title="Purchase Order"
         badge={<ModeChip id={id} readOnly={effectiveReadOnly} />}
