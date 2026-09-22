@@ -35,7 +35,10 @@ const InwardItems = ({
   fromPoId,
   receiptType,
   gsmList,
+  isSupplierOutside,
 }) => {
+  console.log(inwardItems, "inwardItems");
+
   const EMPTY_ROW = {
     styleItemId: "",
     hsnId: "",
@@ -43,6 +46,7 @@ const InwardItems = ({
     inwardQty: "",
     poQty: "",
     poId: "",
+    orderEntryId: "",
     alreadyInwardQty: "",
     alreadyReturnQty: "",
     alreadyCancelQty: "",
@@ -218,7 +222,6 @@ const InwardItems = ({
 
     setInwardItems(padded);
   }, [fromPoId, poItemsData]);
-  console.log(inwardItems, "inwardItems");
 
   const showFillButton = inwardType !== "Direct Inward" && !id && !fromPoId;
 
@@ -243,6 +246,7 @@ const InwardItems = ({
           handleInputChange={handleInputChange}
           id={id}
           onCloseFocus={focusActionCell}
+          isSupplierOutside={isSupplierOutside}
         />
       </Modal>
       <Modal
@@ -324,6 +328,11 @@ const InwardItems = ({
                     PO No
                   </th>
                 )}
+                {inwardType === "Order Purchase Inward" && (
+                  <th className={`w-24 px-4 py-2 text-center font-medium`}>
+                    Order No
+                  </th>
+                )}
                 <th className={`w-56 px-2 py-2 text-center font-medium`}>
                   Description of Goods<span className="text-red-500">*</span>
                 </th>
@@ -369,17 +378,17 @@ const InwardItems = ({
                   Inward Qty<span className="text-red-500">*</span>
                 </th>
                 {(inwardType === "Direct Inward" ||
-                  receiptType === "Against Invoice") && (
+                  receiptType === "AGAINST_INVOICE") && (
                   <th className={`w-16 px-4 py-2 text-center font-medium `}>
                     Price<span className="text-red-500">*</span>
                   </th>
                 )}
-                {receiptType === "Against Invoice" && (
+                {receiptType === "AGAINST_INVOICE" && (
                   <th className={`w-16 px-1 py-2 text-center font-medium `}>
                     Gross
                   </th>
                 )}
-                {receiptType === "Against Invoice" && (
+                {receiptType === "AGAINST_INVOICE" && (
                   <th className={`w-10 px-1 py-2 text-center font-medium `}>
                     Tax
                   </th>
@@ -406,6 +415,11 @@ const InwardItems = ({
                   {inwardType !== "Direct Inward" && (
                     <td className="w-16 border border-gray-300 text-[11px] text-left px-1">
                       {row.Po?.docId}
+                    </td>
+                  )}
+                  {inwardType === "Order Purchase Inward" && (
+                    <td className="w-16 border border-gray-300 text-[11px] text-left px-1">
+                      {row.Po?.OrderEntry?.docId || ""}
                     </td>
                   )}
                   <td className=" text-[11px] border border-gray-300 text-left">
@@ -733,7 +747,7 @@ const InwardItems = ({
                         }
                         if (
                           inwardType !== "Direct Inward" ||
-                          receiptType !== "Against Invoice"
+                          receiptType !== "AGAINST_INVOICE"
                         ) {
                           // if (e.key === "Enter") {
                           //   e.preventDefault();
@@ -845,7 +859,7 @@ const InwardItems = ({
                     />
                   </td>
                   {(inwardType === "Direct Inward" ||
-                    receiptType === "Against Invoice") && (
+                    receiptType === "AGAINST_INVOICE") && (
                     <td className="border-blue-gray-200 text-[11px] border border-gray-300 text-right">
                       <input
                         onKeyDown={(e) => {
@@ -882,13 +896,14 @@ const InwardItems = ({
                           setFocusedField(null);
                         }}
                         disabled={
-                          readOnly || (row.stockQty ?? 0) > 0
-                          //  || inwardType !== "Direct Inward"
+                          readOnly ||
+                          (row.stockQty ?? 0) > 0 ||
+                          inwardType !== "Direct Inward"
                         }
                       />
                     </td>
                   )}
-                  {receiptType === "Against Invoice" && (
+                  {receiptType === "AGAINST_INVOICE" && (
                     <td className=" border border-gray-300 text-[11px]">
                       <input
                         type="number"
@@ -906,7 +921,7 @@ const InwardItems = ({
                       />
                     </td>
                   )}
-                  {receiptType === "Against Invoice" && (
+                  {receiptType === "AGAINST_INVOICE" && (
                     <td className="  border border-gray-300 text-[11px] text-right ">
                       <button
                         disabled={!row?.styleItemId}
@@ -951,8 +966,8 @@ const InwardItems = ({
                               addRow();
                             }
                           } else if (
-                            receiptType === "Against Invoice" ||
-                            receiptType === "Without Invoice"
+                            receiptType === "AGAINST_INVOICE" ||
+                            receiptType === "WITHOUT_INVOICE"
                           ) {
                             if (index === inwardItems.length - 1) {
                               addRow();
@@ -976,7 +991,13 @@ const InwardItems = ({
               <tr className="bg-gray-50 h-6 font-medium text-gray-800 text-[12px]">
                 <td
                   className="text-right px-4 border border-gray-300 font-medium "
-                  colSpan={inwardType !== "Direct Inward" ? 7 : 6}
+                  colSpan={
+                    inwardType === "Order Purchase Inward"
+                      ? 8
+                      : inwardType !== "Direct Inward"
+                        ? 7
+                        : 6
+                  }
                 >
                   Total
                 </td>
@@ -1036,14 +1057,14 @@ const InwardItems = ({
                     .toFixed(2)}
                 </td>
                 {(inwardType === "Direct Inward" ||
-                  receiptType === "Against Invoice") && (
+                  receiptType === "AGAINST_INVOICE") && (
                   <td className="text-right border border-gray-300 px-1 font-medium ">
                     {inwardItems
                       ?.reduce((sum, row) => sum + (Number(row.price) || 0), 0)
                       .toFixed(2)}
                   </td>
                 )}
-                {receiptType === "Against Invoice" && (
+                {receiptType === "AGAINST_INVOICE" && (
                   <td className="text-right border border-gray-300 px-1 font-medium ">
                     {inwardItems
                       ?.reduce((sum, row) => {
@@ -1054,7 +1075,7 @@ const InwardItems = ({
                       .toFixed(2)}
                   </td>
                 )}
-                {receiptType === "Against Invoice" && (
+                {receiptType === "AGAINST_INVOICE" && (
                   <td
                     className="text-right border border-gray-300"
                     colSpan={1}

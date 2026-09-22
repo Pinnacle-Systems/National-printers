@@ -41,6 +41,7 @@ import Modal from "../../../UiComponents/Modal/index.js";
 import { getImageUrlPath } from "../../../Constants/index.js";
 import { Plus } from "lucide-react";
 import { useSelector } from "react-redux";
+import { useGetPartyByIdQuery } from "../../../redux/services/PartyMasterService.js";
 
 const PurchaseInwardForm = ({
   onClose,
@@ -118,11 +119,17 @@ const PurchaseInwardForm = ({
 
   const [addData] = useAddPurchaseInwardEntryMutation();
   const [updateData] = useUpdatePurchaseInwardEntryMutation();
-
+  const { data: supplierData } = useGetPartyByIdQuery(supplierId, {
+    skip: !supplierId,
+  });
   const searchFields = {
     searchDocId,
     searchDocDate,
   };
+
+  const isSupplierOutside = useMemo(() => {
+    return supplierData?.data?.City?.state?.name !== "TAMILNADU";
+  }, [supplierData]);
 
   useEffect(() => {
     if (fromPoSupplierId && fromPoType && !id) {
@@ -227,7 +234,7 @@ const PurchaseInwardForm = ({
     netBillValue,
     attachments: attachments?.filter((i) => i.filePath),
   };
-
+  console.log("payload", data);
   const handleSubmitCustom = async (callback, data, text, nextProcess) => {
     try {
       const formData = new FormData();
@@ -337,7 +344,7 @@ const PurchaseInwardForm = ({
   const validateData = (data) => {
     const items = data?.inwardItems || [];
     const filledItems = items.filter((item) => item.styleItemId);
-    const isAgainstInvoice = data.receiptType === "Against Invoice";
+    const isAgainstInvoice = data.receiptType === "AGAINST_INVOICE";
     const isAmountMatched =
       Number(data?.netBillValue).toFixed(2) ===
       parseFloat(totals?.net || 0).toFixed(2);
@@ -361,7 +368,7 @@ const PurchaseInwardForm = ({
         title: "Tax Template is required!",
       },
 
-      // ✅ Conditional: NOT Against Invoice
+      // ✅ Conditional: NOT AGAINST_INVOICE
       {
         condition: !isAgainstInvoice && !data.dcNo,
         title: "DC No is required!",
@@ -417,12 +424,12 @@ const PurchaseInwardForm = ({
     const { items, ...totals } =
       calculateTaxWithHSNBreakupAndInsertIntoInwardItems(
         structuredClone(inwardItems), // clone to avoid mutating state
-        false,
+        isSupplierOutside,
         discountType,
         discountValue,
       );
     return { items, totals };
-  }, [inwardItems, discountType, discountValue]);
+  }, [inwardItems, discountType, discountValue, isSupplierOutside]);
 
   const enrichedItemsList = enrichedItems?.items || [];
   const totals = enrichedItems?.totals || {};
@@ -903,8 +910,8 @@ const PurchaseInwardForm = ({
                 value={invNo}
                 setValue={setInvNo}
                 readOnly={id}
-                required={receiptType === "Against Invoice"}
-                disabled={receiptType !== "Against Invoice"}
+                required={receiptType === "AGAINST_INVOICE"}
+                disabled={receiptType !== "AGAINST_INVOICE"}
               />
               <div className="w-28">
                 <TextInput
@@ -912,7 +919,7 @@ const PurchaseInwardForm = ({
                   value={netBillValue}
                   setValue={setNetBillValue}
                   readOnly={readOnly}
-                  required={receiptType === "Against Invoice"}
+                  required={receiptType === "AGAINST_INVOICE"}
                   type={"number"}
                   onFocus={(e) => {
                     e.target.select();
@@ -922,7 +929,7 @@ const PurchaseInwardForm = ({
                       e.target.value ? Number(e.target.value).toFixed(2) : "",
                     )
                   }
-                  disabled={receiptType !== "Against Invoice"}
+                  disabled={receiptType !== "AGAINST_INVOICE"}
                   className={"text-right"}
                 />
               </div>
@@ -965,9 +972,9 @@ const PurchaseInwardForm = ({
                 )}
                 value={taxTemplateId}
                 setValue={setTaxTemplateId}
-                required={receiptType === "Against Invoice"}
+                required={receiptType === "AGAINST_INVOICE"}
                 readOnly={readOnly}
-                disabled={receiptType !== "Against Invoice"}
+                disabled={receiptType !== "AGAINST_INVOICE"}
               />
               {/* <DropdownWithModal
                 name="Tax Type"
@@ -980,28 +987,28 @@ const PurchaseInwardForm = ({
                 )}
                 value={taxTemplateId}
                 setValue={setTaxTemplateId}
-                required={receiptType === "Against Invoice"}
+                required={receiptType === "AGAINST_INVOICE"}
                 readOnly={readOnly}
                 className={`w-[150px]`}
                 // disabled={childRecord.current > 0}
                 addNewLabel="+ Add New Tax Template"
                 childComponent={TaxTemplate}
                 addNewModalWidth="w-[82%] h-[85%]"
-                disabled={receiptType !== "Against Invoice"}
+                disabled={receiptType !== "AGAINST_INVOICE"}
               /> */}
               <TextInput
                 name={"Dc No."}
                 value={dcNo}
                 setValue={setDcNo}
                 readOnly={readOnly}
-                required={receiptType !== "Against Invoice"}
+                required={receiptType !== "AGAINST_INVOICE"}
               />
               <div className="w-44">
                 <DateInputNew
                   name="Dc Date"
                   value={dcDate}
                   setValue={setDcDate}
-                  required={receiptType !== "Against Invoice"}
+                  required={receiptType !== "AGAINST_INVOICE"}
                   readOnly={readOnly}
                   type={"date"}
                 />
@@ -1034,6 +1041,7 @@ const PurchaseInwardForm = ({
             receiptType={receiptType}
             taxTemplateId={taxTemplateId}
             gsmList={gsmList}
+            isSupplierOutside={isSupplierOutside}
           />
         </fieldset>
 
@@ -1111,7 +1119,7 @@ const PurchaseInwardForm = ({
               }}
             />
           </div>
-          {receiptType === "Against Invoice" ? (
+          {receiptType === "AGAINST_INVOICE" ? (
             <div className="border border-slate-200 p-2 bg-white rounded-md shadow-sm ">
               <div className="flex justify-between py-1 text-sm">
                 <span className="text-slate-600">Total Qty</span>
@@ -1172,46 +1180,50 @@ const PurchaseInwardForm = ({
         <div className="flex flex-col md:flex-row gap-2 justify-between mt-4">
           {/* Left Buttons */}
           <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={() => saveData("close")}
-              disabled={readOnly}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  saveData("close");
-                  e.stopPropagation();
-                }
-              }}
-              className="bg-indigo-500 text-white px-4 py-1 rounded-md hover:bg-indigo-600 flex items-center text-sm"
-            >
-              <HiOutlineRefresh className="w-4 h-4 mr-2" />
-              Save & Close
-            </button>
-            <button
-              onClick={() => saveData("new")}
-              disabled={readOnly}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  saveData("new");
-                }
-              }}
-              className="bg-indigo-500 text-white px-4 py-1 rounded-md hover:bg-indigo-600 flex items-center text-sm"
-            >
-              <FiSave className="w-4 h-4 mr-2" />
-              Save & New
-            </button>
+            {!readOnly && (
+              <button
+                onClick={() => saveData("close")}
+                disabled={readOnly}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    saveData("close");
+                    e.stopPropagation();
+                  }
+                }}
+                className="bg-indigo-500 text-white px-2 py-1 rounded hover:bg-indigo-600 flex items-center text-xs font-medium"
+              >
+                <HiOutlineRefresh className="w-3.5 h-3.5 mr-2" />
+                Save & Close
+              </button>
+            )}
+            {!readOnly && (
+              <button
+                onClick={() => saveData("new")}
+                disabled={readOnly}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    saveData("new");
+                  }
+                }}
+                className="bg-indigo-500 text-white px-2 py-1 rounded hover:bg-indigo-600 flex items-center text-xs font-medium"
+              >
+                <FiSave className="w-3.5 h-3.5 mr-2" />
+                Save & New
+              </button>
+            )}
           </div>
 
           <div className="flex gap-2 flex-wrap">
             {!id ||
               (readOnly && (
                 <button
-                  className="bg-yellow-600 text-white px-4 py-1 rounded-md hover:bg-yellow-700 flex items-center text-sm"
+                  className="bg-yellow-600 text-white px-2 py-1 rounded hover:bg-yellow-700 flex items-center text-xs font-medium"
                   onClick={() => setReadOnly(false)}
                 >
-                  <FiEdit2 className="w-4 h-4 mr-2" />
+                  <FiEdit2 className="w-3.5 h-3.5 mr-2" />
                   Edit
                 </button>
               ))}
@@ -1222,14 +1234,14 @@ const PurchaseInwardForm = ({
                   setSelectedAttachmentIndex(null);
                   setAttachmentModal(true);
                 }}
-                className="flex items-center gap-1 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                className="flex items-center font-medium gap-1 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
               >
                 📎 Upload
               </button>
             }
-            {receiptType === "Against Invoice" && (
+            {receiptType === "AGAINST_INVOICE" && (
               <button
-                className="text-sm bg-blue-600 text-white font-semibold hover:bg-blue-800 transition p-1  rounded"
+                className="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-800 flex items-center text-xs font-medium"
                 onClick={() => {
                   console.log(taxTemplateId);
                   if (!taxTemplateId) {

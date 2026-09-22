@@ -122,8 +122,6 @@ function getPOStatus(po) {
   return "Pending";
 }
 
-// ── Approval Status ───────────────────────────────────────────────────────────
-// purchaseOrder.service.js
 function getPOApprovalStatus(log, isApprovalConfigured = false) {
   if (!log) {
     return isApprovalConfigured
@@ -719,6 +717,18 @@ async function createPoItems(tx, poItems, po) {
           sizeId: itemDetails?.sizeId ? parseInt(itemDetails.sizeId) : null,
           colorId: itemDetails?.colorId ? parseInt(itemDetails.colorId) : null,
           gsmId: itemDetails?.gsmId ? parseInt(itemDetails.gsmId) : null,
+          sheetsPerPacket: itemDetails?.sheetsPerPacket
+            ? parseInt(itemDetails.sheetsPerPacket)
+            : null,
+          weightPerPacket: itemDetails?.weightPerPacket
+            ? parseFloat(itemDetails.weightPerPacket)
+            : null,
+          totalPackets: itemDetails?.totalPackets
+            ? parseInt(itemDetails.totalPackets)
+            : null,
+          pricePerKg: itemDetails?.pricePerKg
+            ? parseInt(itemDetails.pricePerKg)
+            : null,
         },
       });
     }),
@@ -882,6 +892,18 @@ async function update(id, body) {
       const gsmChanged =
         parseInt(newItem.gsmId || 0) !== parseInt(oldItem.gsmId || 0);
 
+      const sheetsPerPacket =
+        parseInt(newItem.sheetsPerPacket || 0) !==
+        parseInt(oldItem.sheetsPerPacket || 0);
+      const weightPerPacket =
+        parseInt(newItem.weightPerPacket || 0) !==
+        parseInt(oldItem.weightPerPacket || 0);
+      const totalPackets =
+        parseInt(newItem.totalPackets || 0) !==
+        parseInt(oldItem.totalPackets || 0);
+      const pricePerKg =
+        parseInt(newItem.pricePerKg || 0) !== parseInt(oldItem.pricePerKg || 0);
+
       if (
         styleChanged ||
         qtyChanged ||
@@ -894,7 +916,11 @@ async function update(id, body) {
         igChanged ||
         sizeChanged ||
         colorChanged ||
-        gsmChanged
+        gsmChanged ||
+        sheetsPerPacket ||
+        weightPerPacket ||
+        totalPackets ||
+        pricePerKg
       ) {
         console.log("Table changed on item", index, {
           styleChanged,
@@ -909,6 +935,10 @@ async function update(id, body) {
           sizeChanged,
           colorChanged,
           gsmChanged,
+          sheetsPerPacket,
+          weightPerPacket,
+          totalPackets,
+          pricePerKg,
         });
         return true;
       }
@@ -1086,6 +1116,14 @@ async function createNewVersionItems(
         sizeId: temp.sizeId ? parseInt(temp.sizeId) : null,
         colorId: temp.colorId ? parseInt(temp.colorId) : null,
         gsmId: temp.gsmId ? parseInt(temp.gsmId) : null,
+        sheetsPerPacket: temp.sheetsPerPacket
+          ? parseInt(temp.sheetsPerPacket)
+          : null,
+        weightPerPacket: temp.weightPerPacket
+          ? parseFloat(temp.weightPerPacket)
+          : null,
+        totalPackets: temp.totalPackets ? parseInt(temp.totalPackets) : null,
+        pricePerKg: temp.pricePerKg ? parseInt(temp.pricePerKg) : null,
       })),
   });
 }
@@ -1128,7 +1166,15 @@ async function getPoItemById(id) {
   const data = await prisma.poItems.findUnique({
     where: { id: parseInt(id) },
     include: {
-      Po: { select: { docId: true, dueDate: true, docDate: true, id: true } },
+      Po: {
+        select: {
+          docId: true,
+          dueDate: true,
+          docDate: true,
+          id: true,
+          OrderEntry: { select: { id: true, docId: true } },
+        },
+      },
       Uom: { select: { name: true } },
       StyleItem: { select: { name: true } },
       Hsn: { select: { name: true } },
