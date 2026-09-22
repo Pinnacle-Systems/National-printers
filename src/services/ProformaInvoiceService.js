@@ -17,10 +17,7 @@ async function getNextDocId(branchId, shortCode, startTime, endTime) {
   let lastObject = await prisma.proformaInvoice.findFirst({
     where: {
       branchId: parseInt(branchId),
-      AND: [
-        { createdAt: { gte: startTime } },
-        { createdAt: { lte: endTime } },
-      ],
+      AND: [{ createdAt: { gte: startTime } }, { createdAt: { lte: endTime } }],
     },
     orderBy: { id: "desc" },
   });
@@ -30,8 +27,8 @@ async function getNextDocId(branchId, shortCode, startTime, endTime) {
   if (lastObject) {
     const parts = lastObject.docId.split("/");
     const lastNum = parseInt(parts.at(-1));
-    if(!isNaN(lastNum)){
-         newDocId = `${branchObj.branchCode}/${shortCode}/PI/${lastNum + 1}`;
+    if (!isNaN(lastNum)) {
+      newDocId = `${branchObj.branchCode}/${shortCode}/PI/${lastNum + 1}`;
     }
   }
   return newDocId;
@@ -54,7 +51,7 @@ async function get(req) {
   const shortCode = finYearDate
     ? getYearShortCodeForFinYear(finYearDate?.startTime, finYearDate?.endTime)
     : "";
-  
+
   let data = await prisma.proformaInvoice.findMany({
     where: {
       branchId: branchId ? parseInt(branchId) : undefined,
@@ -65,13 +62,17 @@ async function get(req) {
           ]
         : undefined,
       docId: serachDocNo ? { contains: serachDocNo } : undefined,
-      customer: searchCustomer ? { name: { contains: searchCustomer } } : undefined,
-      OrderEntry: searchOrderNo ? { docId: { contains: searchOrderNo } } : undefined,
+      customer: searchCustomer
+        ? { name: { contains: searchCustomer } }
+        : undefined,
+      OrderEntry: searchOrderNo
+        ? { docId: { contains: searchOrderNo } }
+        : undefined,
     },
     include: {
       customer: { select: { id: true, name: true } },
       items: true,
-      OrderEntry: { select: { id: true, docId: true } },
+      OrderEntry: { select: { id: true, docId: true, productionType: true } },
     },
     orderBy: { id: "desc" },
   });
@@ -131,8 +132,8 @@ async function getOne(id) {
               Hsn: true,
             },
             orderBy: { itemOrder: "asc" },
-          }
-        }
+          },
+        },
       },
     },
   });
@@ -204,7 +205,7 @@ async function create(body) {
         finYearDate?.endDateEndTime,
       )
     : "";
-  
+
   let newDocId = await getNextDocId(
     branchId,
     shortCode,
@@ -226,20 +227,37 @@ async function create(body) {
       orderEntryId: orderEntryId ? parseInt(orderEntryId) : null,
       taxTemplateId: taxTemplateId ? parseInt(taxTemplateId) : null,
       deliveryType,
-      deliveryCustomerId: deliveryCustomerId ? parseInt(deliveryCustomerId) : null,
+      deliveryCustomerId: deliveryCustomerId
+        ? parseInt(deliveryCustomerId)
+        : null,
       modeOfPayment,
-      deliveryCharge: deliveryCharge && deliveryCharge !== "" ? parseFloat(deliveryCharge) : null,
+      deliveryCharge:
+        deliveryCharge && deliveryCharge !== ""
+          ? parseFloat(deliveryCharge)
+          : null,
       remarks,
       termsAndCondition,
       termsId: termsId ? parseInt(termsId) : null,
       items: {
         create: JSON.parse(items || "[]").map((item, idx) => ({
-          StyleItem: item.styleItemId ? { connect: { id: parseInt(item.styleItemId) } } : undefined,
-          Size: item.sizeId ? { connect: { id: parseInt(item.sizeId) } } : undefined,
-          Uom: item.uomId ? { connect: { id: parseInt(item.uomId) } } : undefined,
-          Gsm: item.gsmId ? { connect: { id: parseInt(item.gsmId) } } : undefined,
-          Hsn: item.hsnId ? { connect: { id: parseInt(item.hsnId) } } : undefined,
-          SizeTemplate: item.sizeTemplateId ? { connect: { id: parseInt(item.sizeTemplateId) } } : undefined,
+          StyleItem: item.styleItemId
+            ? { connect: { id: parseInt(item.styleItemId) } }
+            : undefined,
+          Size: item.sizeId
+            ? { connect: { id: parseInt(item.sizeId) } }
+            : undefined,
+          Uom: item.uomId
+            ? { connect: { id: parseInt(item.uomId) } }
+            : undefined,
+          Gsm: item.gsmId
+            ? { connect: { id: parseInt(item.gsmId) } }
+            : undefined,
+          Hsn: item.hsnId
+            ? { connect: { id: parseInt(item.hsnId) } }
+            : undefined,
+          SizeTemplate: item.sizeTemplateId
+            ? { connect: { id: parseInt(item.sizeTemplateId) } }
+            : undefined,
           qty: parseFloat(item.qty || 0),
           price: parseFloat(item.price || 0),
           taxPercent: parseFloat(item.taxPercent || 0),
@@ -253,7 +271,9 @@ async function create(body) {
             create: (item.sizeBreakup || [])
               .filter((sb) => (parseFloat(sb.qty) || 0) > 0)
               .map((sb) => ({
-                Size: sb.sizeId ? { connect: { id: parseInt(sb.sizeId) } } : undefined,
+                Size: sb.sizeId
+                  ? { connect: { id: parseInt(sb.sizeId) } }
+                  : undefined,
                 qty: parseFloat(sb.qty || 0),
                 barcodeFrom: sb.barcodeFrom,
                 barcodeTo: sb.barcodeTo,
@@ -261,17 +281,18 @@ async function create(body) {
           },
         })),
       },
-      attachments: attachments && JSON.parse(attachments)?.length > 0
-        ? {
-            createMany: {
-              data: JSON.parse(attachments).map((sub) => ({
-                date: sub?.date ? new Date(sub?.date) : undefined,
-                filePath: sub?.filePath ? sub?.filePath : undefined,
-                name: sub?.name ? sub?.name : undefined,
-              })),
-            },
-          }
-        : undefined,
+      attachments:
+        attachments && JSON.parse(attachments)?.length > 0
+          ? {
+              createMany: {
+                data: JSON.parse(attachments).map((sub) => ({
+                  date: sub?.date ? new Date(sub?.date) : undefined,
+                  filePath: sub?.filePath ? sub?.filePath : undefined,
+                  name: sub?.name ? sub?.name : undefined,
+                })),
+              },
+            }
+          : undefined,
     },
   });
 
@@ -320,7 +341,10 @@ async function update(id, body, files) {
 
   const isApprovalOnlyUpdate =
     (approvalStatus !== undefined || isApproved !== undefined) &&
-    !docDate && !customerId && !userId && !items;
+    !docDate &&
+    !customerId &&
+    !userId &&
+    !items;
 
   if (isApprovalOnlyUpdate) {
     // Derive both fields from approvalStatus if provided, else from isApproved
@@ -348,7 +372,8 @@ async function update(id, body, files) {
     if (att.filePath) {
       const fullPath = path.join("./uploads", att.filePath);
       fs.unlink(fullPath, (err) => {
-        if (err) console.warn(`Could not delete file: ${fullPath}`, err.message);
+        if (err)
+          console.warn(`Could not delete file: ${fullPath}`, err.message);
       });
     }
   });
@@ -367,12 +392,15 @@ async function update(id, body, files) {
       if (!oldItem) return true;
 
       const basicChanged =
-        parseInt(newItem.styleItemId || 0) !== parseInt(oldItem.styleItemId || 0) ||
+        parseInt(newItem.styleItemId || 0) !==
+          parseInt(oldItem.styleItemId || 0) ||
         parseFloat(newItem.qty || 0) !== parseFloat(oldItem.qty || 0) ||
         parseFloat(newItem.price || 0) !== parseFloat(oldItem.price || 0) ||
-        parseFloat(newItem.taxPercent || 0) !== parseFloat(oldItem.taxPercent || 0) ||
+        parseFloat(newItem.taxPercent || 0) !==
+          parseFloat(oldItem.taxPercent || 0) ||
         (newItem.discountType || null) !== (oldItem.discountType || null) ||
-        parseFloat(newItem.discountValue || 0) !== parseFloat(oldItem.discountValue || 0) ||
+        parseFloat(newItem.discountValue || 0) !==
+          parseFloat(oldItem.discountValue || 0) ||
         parseInt(newItem.sizeId || 0) !== parseInt(oldItem.sizeId || 0) ||
         parseInt(newItem.uomId || 0) !== parseInt(oldItem.uomId || 0) ||
         parseInt(newItem.gsmId || 0) !== parseInt(oldItem.gsmId || 0) ||
@@ -400,7 +428,9 @@ async function update(id, body, files) {
     });
   }
 
-  const nextQuoteVersion = isTableChanged ? currentQuoteVersion + 1 : currentQuoteVersion;
+  const nextQuoteVersion = isTableChanged
+    ? currentQuoteVersion + 1
+    : currentQuoteVersion;
 
   const data = await prisma.proformaInvoice.update({
     where: { id: parseInt(id) },
@@ -416,41 +446,64 @@ async function update(id, body, files) {
       orderEntryId: orderEntryId ? parseInt(orderEntryId) : null,
       taxTemplateId: taxTemplateId ? parseInt(taxTemplateId) : null,
       deliveryType,
-      deliveryCustomerId: deliveryCustomerId ? parseInt(deliveryCustomerId) : null,
+      deliveryCustomerId: deliveryCustomerId
+        ? parseInt(deliveryCustomerId)
+        : null,
       modeOfPayment,
-      deliveryCharge: deliveryCharge && deliveryCharge !== "" ? parseFloat(deliveryCharge) : null,
+      deliveryCharge:
+        deliveryCharge && deliveryCharge !== ""
+          ? parseFloat(deliveryCharge)
+          : null,
       quoteVersion: nextQuoteVersion,
-      ...(isApproved !== undefined && { isApproved: isApproved === "true" || isApproved === true }),
-      items: isTableChanged ? {
-        create: parseItems.map((item, idx) => ({
-          StyleItem: item.styleItemId ? { connect: { id: parseInt(item.styleItemId) } } : undefined,
-          Size: item.sizeId ? { connect: { id: parseInt(item.sizeId) } } : undefined,
-          Uom: item.uomId ? { connect: { id: parseInt(item.uomId) } } : undefined,
-          Gsm: item.gsmId ? { connect: { id: parseInt(item.gsmId) } } : undefined,
-          Hsn: item.hsnId ? { connect: { id: parseInt(item.hsnId) } } : undefined,
-          SizeTemplate: item.sizeTemplateId ? { connect: { id: parseInt(item.sizeTemplateId) } } : undefined,
-          qty: parseFloat(item.qty || 0),
-          price: parseFloat(item.price || 0),
-          taxPercent: parseFloat(item.taxPercent || 0),
-          discountType: item.discountType,
-          discountValue: parseFloat(item.discountValue || 0),
-          amount: parseFloat(item.amount || 0),
-          quoteVersion: nextQuoteVersion,
-          trackingType: item.trackingType,
-          remarks: item.remarks,
-          itemOrder: idx,
-          sizeBreakup: {
-            create: (item.sizeBreakup || [])
-              .filter((sb) => (parseFloat(sb.qty) || 0) > 0)
-              .map((sb) => ({
-                Size: sb.sizeId ? { connect: { id: parseInt(sb.sizeId) } } : undefined,
-                qty: parseFloat(sb.qty || 0),
-                barcodeFrom: sb.barcodeFrom,
-                barcodeTo: sb.barcodeTo,
-              })),
-          },
-        })),
-      } : undefined,
+      ...(isApproved !== undefined && {
+        isApproved: isApproved === "true" || isApproved === true,
+      }),
+      items: isTableChanged
+        ? {
+            create: parseItems.map((item, idx) => ({
+              StyleItem: item.styleItemId
+                ? { connect: { id: parseInt(item.styleItemId) } }
+                : undefined,
+              Size: item.sizeId
+                ? { connect: { id: parseInt(item.sizeId) } }
+                : undefined,
+              Uom: item.uomId
+                ? { connect: { id: parseInt(item.uomId) } }
+                : undefined,
+              Gsm: item.gsmId
+                ? { connect: { id: parseInt(item.gsmId) } }
+                : undefined,
+              Hsn: item.hsnId
+                ? { connect: { id: parseInt(item.hsnId) } }
+                : undefined,
+              SizeTemplate: item.sizeTemplateId
+                ? { connect: { id: parseInt(item.sizeTemplateId) } }
+                : undefined,
+              qty: parseFloat(item.qty || 0),
+              price: parseFloat(item.price || 0),
+              taxPercent: parseFloat(item.taxPercent || 0),
+              discountType: item.discountType,
+              discountValue: parseFloat(item.discountValue || 0),
+              amount: parseFloat(item.amount || 0),
+              quoteVersion: nextQuoteVersion,
+              trackingType: item.trackingType,
+              remarks: item.remarks,
+              itemOrder: idx,
+              sizeBreakup: {
+                create: (item.sizeBreakup || [])
+                  .filter((sb) => (parseFloat(sb.qty) || 0) > 0)
+                  .map((sb) => ({
+                    Size: sb.sizeId
+                      ? { connect: { id: parseInt(sb.sizeId) } }
+                      : undefined,
+                    qty: parseFloat(sb.qty || 0),
+                    barcodeFrom: sb.barcodeFrom,
+                    barcodeTo: sb.barcodeTo,
+                  })),
+              },
+            })),
+          }
+        : undefined,
       attachments: {
         deleteMany: {
           ...(incomingAttachmentIds.length > 0 && {

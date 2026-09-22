@@ -51,7 +51,11 @@ import {
   ReusableInput,
   TextInput,
 } from "../../../Inputs";
-import { orderTypes, departmentTypes } from "../../../Utils/DropdownData";
+import {
+  orderTypes,
+  departmentTypes,
+  poTypes,
+} from "../../../Utils/DropdownData";
 import { useCallback, useEffect, useRef, useState } from "react";
 import moment from "moment";
 import { findFromList, getCommonParams, ModeChip } from "../../../Utils/helper";
@@ -196,6 +200,7 @@ const JobCardForm = ({
   plateList,
   dieList,
   branchData,
+  branchList,
   formOrderCustomerId,
   setFormOrderCustomerId,
   fromOrderId,
@@ -206,13 +211,18 @@ const JobCardForm = ({
   setFromOrderQty,
   canApprove,
   userData,
+  hasPermission,
 }) => {
   const today = new Date();
 
   const [docDate, setDocDate] = useState(
     moment.utc(today).format("YYYY-MM-DD"),
   );
+  const [jobCardType, SetJobCardType] = useState("ORDER");
   const [customerId, setCustomerId] = useState("");
+  const [orderBranchId, setOrderBranchId] = useState("");
+  console.log(orderBranchId, "orderBranchId");
+
   const [remarks, setRemarks] = useState("");
   const [orderType, setOrderType] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
@@ -310,12 +320,13 @@ const JobCardForm = ({
     currentBranch?.data?.proformaInvoiceEnabled || false;
   const isApprovalEnabled =
     currentBranch?.data?.proformaInvoiceApprovalEnabled || false;
+  console.log(isProformaEnabled, isApprovalEnabled, "isProformaEnabled");
 
   // ✅ added back — conditional fetch based on isProformaEnabled
-  const { data: orderList } = useGetOrderEntryQuery(
-    { params: { companyId, branchId } },
-    { skip: isProformaEnabled },
-  );
+  const { data: orderList } = useGetOrderEntryQuery({
+    params: { companyId, branchId },
+  });
+  console.log(orderList, "orderList");
 
   const { data: styleItemList } = useGetStyleItemMasterQuery({ params });
 
@@ -392,8 +403,10 @@ const JobCardForm = ({
         ? moment.utc(data.docDate).format("YYYY-MM-DD")
         : moment.utc(new Date()).format("YYYY-MM-DD"),
     );
+    SetJobCardType(data?.jobCardType || "ORDER");
     setOrderType(data?.orderType || "");
     setCustomerId(data?.customerId || "");
+    setOrderBranchId(data?.orderBranchId || "");
     setRemarks(data?.remarks || "");
     setOrderQty(data?.orderQty || "");
     setDeliveryDate(
@@ -574,9 +587,11 @@ const JobCardForm = ({
     branchId,
     userId,
     finYearId,
+    jobCardType,
     orderType,
     orderQty,
     customerId,
+    orderBranchId,
     boardItems,
     gsmId,
     boardId,
@@ -716,8 +731,8 @@ const JobCardForm = ({
     const checks = [
       // { condition: !data.orderEntryId, title: "Order No is required!" },
       { condition: !data.docDate, title: "Job Card Date  is required!" },
-      { condition: !data.orderType, title: "Order Type is required!" },
-      { condition: !data.orderQty, title: "Order Quantity is required!" },
+      // { condition: !data.orderType, title: "Order Type is required!" },
+      // { condition: !data.orderQty, title: "Order Quantity is required!" },
       { condition: !data.customerId, title: "Customer is required!" },
       { condition: !data.followUpId, title: "Follow Up is required!" },
       { condition: !data.designerId, title: "Designer is required!" },
@@ -855,43 +870,85 @@ const JobCardForm = ({
               className="bg-slate-50"
             />
           </Field>
+          <div className="w-32">
+            <DropdownInput
+              name="Job Card Type"
+              options={poTypes}
+              value={jobCardType}
+              setValue={SetJobCardType}
+              required={true}
+              readOnly={readOnly}
+              disabled={readOnly}
+              ref={customerRef}
+            />
+          </div>
         </div>
       </SectionCard>
 
       {/* CUSTOMER DETAILS */}
-      <SectionCard title="Customer Details">
+      <SectionCard
+        title={
+          jobCardType === "GENERAL" ? "Branch Details" : "Customer Details"
+        }
+      >
         <div className="flex flex-col gap-3">
-          <Field label="Customer" required>
-            <DropdownWithModal
-              name=""
-              options={dropDownListObject(
-                id
-                  ? customerList?.data?.filter((i) => i?.isCustomer)
-                  : customerList?.data?.filter(
-                      (i) => i?.active && i?.isCustomer,
-                    ),
-                "name",
-                "id",
-              )}
-              value={customerId}
-              setValue={(val) => {
-                setCustomerId(val);
-                setOrderEntryId("");
-                setProformaInvoiceId("");
-                setOrderType("");
-                setOrderEntryItemId("");
-                setItemGroup("");
-                setOrderQty("");
-              }}
-              required
-              readOnly={readOnly}
-              addNewLabel="+ Add New Customer"
-              childComponent={PartyMaster}
-              addNewModalWidth="w-[90%] h-[95%]"
-              disabled={!!id}
-              ref={customerRef}
-            />
-          </Field>
+          {jobCardType === "GENERAL" ? (
+            <Field label="Branch Name" required>
+              <DropdownInput
+                name=""
+                options={dropDownListObject(
+                  branchList ? branchList.data : [],
+                  "branchName",
+                  "id",
+                )}
+                value={orderBranchId}
+                setValue={(val) => {
+                  setOrderBranchId(val);
+                  setOrderEntryId("");
+                  setProformaInvoiceId("");
+                  setOrderType("");
+                  setOrderEntryItemId("");
+                  setItemGroup("");
+                  setOrderQty("");
+                }}
+                required={true}
+                readOnly={readOnly}
+                disabled={!!id}
+              />
+            </Field>
+          ) : (
+            <Field label="Customer" required>
+              <DropdownWithModal
+                name=""
+                options={dropDownListObject(
+                  id
+                    ? customerList?.data?.filter((i) => i?.isCustomer)
+                    : customerList?.data?.filter(
+                        (i) => i?.active && i?.isCustomer,
+                      ),
+                  "name",
+                  "id",
+                )}
+                value={customerId}
+                setValue={(val) => {
+                  setCustomerId(val);
+                  setOrderEntryId("");
+                  setProformaInvoiceId("");
+                  setOrderType("");
+                  setOrderEntryItemId("");
+                  setItemGroup("");
+                  setOrderQty("");
+                }}
+                required
+                readOnly={readOnly}
+                addNewLabel="+ Add New Customer"
+                childComponent={PartyMaster}
+                addNewModalWidth="w-[90%] h-[95%]"
+                disabled={!!id}
+                ref={customerRef}
+              />
+            </Field>
+          )}
           <Field label="Department">
             <DropdownInput
               name=""
@@ -909,7 +966,7 @@ const JobCardForm = ({
       <SectionCard title="Order Details">
         <div className="grid grid-cols-12 gap-x-2 gap-y-2">
           <Field label="Order No" required className="col-span-3">
-            {isProformaEnabled ? (
+            {jobCardType === "ORDER" ? (
               <DropdownNew
                 name=""
                 dataList={proformaList?.data
@@ -926,7 +983,7 @@ const JobCardForm = ({
                   })
                   ?.map((item) => ({
                     ...item,
-                    orderDocId: item.OrderEntry?.docId || item.docId,
+                    orderDocId: item.OrderEntry?.docId,
                   }))}
                 value={proformaInvoiceId}
                 setValue={(val) => {
@@ -936,11 +993,7 @@ const JobCardForm = ({
                   );
                   if (selected) {
                     setOrderEntryId(selected.orderEntryId);
-                    setCustomerId(selected.customerId);
-                    setOrderType(
-                      selected.productionType || selected.orderType || "",
-                    );
-                    setOrderQty(selected.orderQty || "");
+                    setOrderType(selected.OrderEntry?.productionType);
                     setOrderEntryItemId("");
                   }
                 }}
@@ -953,22 +1006,28 @@ const JobCardForm = ({
               <DropdownNew
                 name=""
                 dataList={orderList?.data?.filter((item) => {
-                  if (!customerId) return false;
                   const approvedCheck = isApprovalEnabled
                     ? item.isApproved === true
                     : true;
-                  return approvedCheck && item.customerId === customerId;
+                  if (jobCardType === "GENERAL") {
+                    if (!orderBranchId) return false;
+
+                    return (
+                      approvedCheck &&
+                      item.orderType === "GENERAL" &&
+                      String(item.orderBranchId) === String(orderBranchId)
+                    );
+                  } else {
+                    if (!customerId) return false;
+                    return approvedCheck && item.customerId === customerId;
+                  }
                 })}
                 value={orderEntryId}
                 setValue={(val) => {
                   setOrderEntryId(val);
                   const selected = orderList?.data?.find((o) => o.id === val);
                   if (selected) {
-                    setCustomerId(selected.customerId);
-                    setOrderType(
-                      selected.productionType || selected.orderType || "",
-                    );
-                    setOrderQty(selected.orderQty || "");
+                    setOrderType(selected.productionType);
                     setOrderEntryItemId("");
                   }
                 }}
