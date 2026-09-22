@@ -16,6 +16,9 @@ async function get(req) {
       },
       Size: true,
     },
+    orderBy: {
+      id: "asc",
+    },
   });
   return {
     statusCode: 0,
@@ -46,7 +49,14 @@ async function getOne(id) {
 }
 
 async function create(body) {
-  const { name, companyId, active = true, sizeId } = await body;
+  const {
+    name,
+    companyId,
+    active = true,
+    sizeId,
+    departmentId,
+    isDefault,
+  } = await body;
 
   const data = await prisma.machine.create({
     data: {
@@ -54,6 +64,8 @@ async function create(body) {
       active,
       sizeId: sizeId ? parseInt(sizeId) : undefined,
       companyId: parseInt(companyId),
+      departmentId: departmentId ? parseInt(departmentId) : undefined,
+      isDefault: isDefault ?? false,
     },
   });
 
@@ -61,7 +73,8 @@ async function create(body) {
 }
 
 async function update(id, body) {
-  const { name, active, companyId, sizeId } = await body;
+  const { name, active, companyId, sizeId, departmentId, isDefault } =
+    await body;
   const dataFound = await prisma.machine.findUnique({
     where: {
       id: parseInt(id),
@@ -77,6 +90,8 @@ async function update(id, body) {
       active,
       sizeId: sizeId ? parseInt(sizeId) : undefined,
       companyId: parseInt(companyId),
+      departmentId: departmentId ? parseInt(departmentId) : undefined,
+      isDefault: isDefault ?? false,
     },
   });
   return { statusCode: 0, data };

@@ -25,6 +25,9 @@ import { Size } from "..";
 import { dropDownListObject } from "../../../Utils/contructObject";
 import { useGetSizeMasterQuery } from "../../../redux/services/SizemasterService";
 import { DropdownWithModal } from "../../../Inputs/Reuseable";
+import { useGetDepartmentQuery } from "../../../redux/services/DepartmentMasterService";
+import { DepartmentMaster } from "../../../Basic/components";
+import { Checkbox } from "@mui/material";
 
 export default function Form({
   onSuccess,
@@ -39,8 +42,10 @@ export default function Form({
   const [id, setId] = useState("");
   const [name, setName] = useState("");
   const [sizeId, setSizeId] = useState("");
+  const [departmentId, setDepartmentId] = useState("");
   const [active, setActive] = useState(true);
   const { refs, handlers, focusFirstInput } = useFormKeyboardNavigation();
+  const [isDefault, setIsDefault] = useState("");
 
   const [searchValue, setSearchValue] = useState("");
   const childRecord = useRef(0);
@@ -62,6 +67,7 @@ export default function Form({
   } = useGetMachineMasterByIdQuery(id, { skip: !id });
 
   const { data: sizeList } = useGetSizeMasterQuery({ params });
+  const { data: departmentList } = useGetDepartmentQuery({ params });
   const [trigger, { data: LazyData }] = useLazyGetMachineMasterByIdQuery();
 
   const [addData] = useAddMachineMasterMutation();
@@ -82,12 +88,16 @@ export default function Form({
       setActive(id ? (data?.active ? data.active : false) : true);
       childRecord.current = data?.childRecord ? data?.childRecord : 0;
       setSizeId(data?.sizeId ? data.sizeId : "");
+      setDepartmentId(data?.departmentId ? data.departmentId : "");
+      setIsDefault(data?.isDefault ? data.isDefault : false);
     },
     [id],
   );
 
   useEffect(() => {
-    syncFormWithDb(singleData?.data);
+    if (id && singleData?.data) {
+      syncFormWithDb(singleData.data);
+    }
   }, [isSingleFetching, isSingleLoading, id, syncFormWithDb, singleData]);
 
   const data = {
@@ -98,10 +108,12 @@ export default function Form({
       sessionStorage.getItem("sessionId") + "userCompanyId",
     ),
     sizeId,
+    departmentId,
+    isDefault,
   };
 
   const validateData = (data) => {
-    if (data.name) {
+    if (data.name && data.departmentId) {
       return true;
     }
     return false;
@@ -122,10 +134,12 @@ export default function Form({
       if (nextProcess == "new") {
         syncFormWithDb(undefined);
         onNew();
+        setId("");
         countryNameRef?.current?.focus();
       } else {
         setForm(false);
         syncFormWithDb(undefined);
+        setId("");
       }
       Swal.fire({
         title: text + "  " + "Successfully",
@@ -166,7 +180,9 @@ export default function Form({
       });
       return false;
     }
-
+    if (!window.confirm("Are you sure save the details ...?")) {
+      return;
+    }
     if (id) {
       handleSubmitCustom(updateData, data, "Updated", nextProcess);
     } else {
@@ -277,7 +293,7 @@ export default function Form({
           <div className="bg-white p-3 rounded-md border border-gray-200 h-full">
             <div className="space-y-4 ">
               <fieldset className=" rounded mt-2">
-                <div className="grid grid-cols-2 my-2 gap-x-2">
+                <div className="grid grid-cols-2 my-3 gap-x-5">
                   <div className="w-[50%">
                     <TextInput
                       name="Machine"
@@ -304,11 +320,49 @@ export default function Form({
                         setSizeId(val);
                       }}
                       readOnly={readOnly}
-                      // disabled={childRecord.current > 0}
+                      disabled={childRecord.current > 0}
                       addNewLabel="+ Add New Size"
                       childComponent={Size}
                       addNewModalWidth="w-[40%] h-[45%]"
                     />
+                  </div>
+                  <div className=" mt-3">
+                    <DropdownWithModal
+                      name="Department"
+                      options={dropDownListObject(
+                        id
+                          ? departmentList?.data
+                          : departmentList?.data?.filter(
+                              (item) => item?.active,
+                            ),
+                        "name",
+                        "id",
+                      )}
+                      value={departmentId}
+                      setValue={(val) => {
+                        setDepartmentId(val);
+                      }}
+                      required={true}
+                      readOnly={readOnly}
+                      disabled={childRecord.current > 0}
+                      addNewLabel="+ Add New Department"
+                      childComponent={DepartmentMaster}
+                      addNewModalWidth="w-[40%] h-[45%]"
+                    />
+                  </div>
+                  <div className="flex items-center mt-5">
+                    <Checkbox
+                      checked={isDefault}
+                      onChange={(e) => setIsDefault(e.target.checked)}
+                      disabled={readOnly}
+                      size="small"
+                      className="mt-1"
+                      readOnly={readOnly}
+                    />
+
+                    <label className="text-[14px] text-slate-700 font-medium">
+                      Is Default
+                    </label>
                   </div>
                 </div>
                 <ToggleButton
@@ -466,7 +520,7 @@ export default function Form({
           <Modal
             isOpen={form}
             form={form}
-            widthClass={"w-[600px] h-[350px]"}
+            widthClass={"w-[600px] h-[400px]"}
             onClose={() => {
               setForm(false);
               syncFormWithDb(undefined);

@@ -15,6 +15,12 @@ import {
   useLazyGetProcessMasterByIdQuery,
   useUpdateProcessMasterMutation,
 } from "../../../redux/services/ProcessMasterService";
+import { Checkbox } from "@mui/material";
+import { UserPermissions } from "../../../Utils/UserPermissions";
+import { DepartmentMaster } from "../../../Basic/components";
+import { DropdownWithModal } from "../../../Inputs/Reuseable";
+import { dropDownListObject } from "../../../Utils/contructObject";
+import { useGetDepartmentQuery } from "../../../redux/services/DepartmentMasterService";
 
 export default function Form({
   onSuccess,
@@ -24,12 +30,12 @@ export default function Form({
   deleteLabel,
 } = {}) {
   const [form, setForm] = useState(false);
-
+  const [isOutsideJob, setIsOutsideJob] = useState(false);
   const [readOnly, setReadOnly] = useState(false);
   const [id, setId] = useState("");
   const [name, setName] = useState("");
-  const [isOutSide, setIsOutSide] = useState(false);
   const [active, setActive] = useState(true);
+  const [departmentId, setDepartmentId] = useState("");
   const { refs, handlers, focusFirstInput } = useFormKeyboardNavigation();
 
   const [searchValue, setSearchValue] = useState("");
@@ -45,43 +51,58 @@ export default function Form({
     isLoading,
     isFetching,
   } = useGetProcessMasterQuery({ params, searchParams: searchValue });
+  console.log(allData, "allData");
+
   const {
     data: singleData,
     isFetching: isSingleFetching,
     isLoading: isSingleLoading,
   } = useGetProcessMasterByIdQuery(id, { skip: !id });
   const [trigger, { data: LazyData }] = useLazyGetProcessMasterByIdQuery();
+  const { data: departmentList } = useGetDepartmentQuery({ params });
 
   const [addData] = useAddProcessMasterMutation();
   const [updateData] = useUpdateProcessMasterMutation();
   const [removeData] = useDeleteProcessMasterMutation();
 
+  const { hasPermission } = UserPermissions();
+  const handleCreate = () => {
+    hasPermission(() => {
+      setForm(true);
+      onNew();
+    }, "create");
+  };
+
   const syncFormWithDb = useCallback(
     (data) => {
       setName(data?.name ? data.name : "");
-      setIsOutSide(data?.isOutSide ? data.isOutSide : false);
       setActive(id ? (data?.active ? data.active : false) : true);
+      setIsOutsideJob(data?.isOutsideJob ? data?.isOutsideJob : false);
+      setDepartmentId(data?.departmentId);
       childRecord.current = data?.childRecord ? data?.childRecord : 0;
     },
     [id],
   );
 
   useEffect(() => {
-    syncFormWithDb(singleData?.data);
+    if (id && singleData?.data) {
+      syncFormWithDb(singleData.data);
+    }
   }, [isSingleFetching, isSingleLoading, id, syncFormWithDb, singleData]);
 
   const data = {
     id,
     name,
-    isOutSide,
     active,
     companyId: secureLocalStorage.getItem(
       sessionStorage.getItem("sessionId") + "userCompanyId",
     ),
+    isOutsideJob,
+    departmentId,
   };
 
   const validateData = (data) => {
-    if (data.name) {
+    if (data.name && data?.departmentId) {
       return true;
     }
     return false;
@@ -101,11 +122,13 @@ export default function Form({
 
       if (nextProcess == "new") {
         syncFormWithDb(undefined);
+        setId("");
         onNew();
         countryNameRef?.current?.focus();
       } else {
         setForm(false);
         syncFormWithDb(undefined);
+        setId("");
       }
       Swal.fire({
         title: text + "  " + "Successfully",
@@ -146,9 +169,9 @@ export default function Form({
       });
       return false;
     }
-    // if (!window.confirm("Are you sure save the details ...?")) {
-    //     return;
-    // }
+    if (!window.confirm("Are you sure save the details ...?")) {
+      return;
+    }
     if (id) {
       handleSubmitCustom(updateData, data, "Updated", nextProcess);
     } else {
@@ -199,6 +222,7 @@ export default function Form({
     setSearchValue("");
     syncFormWithDb(undefined);
     setReadOnly(false);
+    setDepartmentId("");
   };
 
   const ACTIVE = (
@@ -220,10 +244,17 @@ export default function Form({
     },
 
     {
-      header: "Process",
+      header: "Process Name",
       accessor: (item) => item?.name,
       //   cellClass: () => "font-medium  text-gray-900",
-      className: "font-medium text-gray-900 text-center uppercase w-72",
+      className: "font-medium text-gray-900 text-left uppercase w-72",
+    },
+
+    {
+      header: "Department",
+      accessor: (item) => item?.Department?.name,
+      //   cellClass: () => "font-medium  text-gray-900",
+      className: "font-medium text-gray-900 text-left uppercase w-72",
     },
 
     {
@@ -231,11 +262,6 @@ export default function Form({
       accessor: (item) => (item.active ? ACTIVE : INACTIVE),
       //   cellClass: () => "font-medium text-gray-900",
       className: "font-medium text-gray-900 text-center uppercase w-16",
-    },
-    {
-      header: "Outside",
-      accessor: (item) => (item.isOutSide ? "YES" : "NO"),
-      className: "font-medium text-gray-900 text-center uppercase w-20",
     },
   ];
 
@@ -266,10 +292,10 @@ export default function Form({
           <div className="bg-white p-3 rounded-md border border-gray-200 h-full">
             <div className="space-y-4 ">
               <fieldset className=" rounded mt-2">
-                <div className="grid grid-cols-2 my-2 gap-4">
-                  <div className="w-full">
+                <div className="flex gap-x-8 my-2">
+                  <div className="w-[50%]">
                     <TextInputNew
-                      name="Process"
+                      name="Process Name"
                       value={name}
                       setValue={setName}
                       required={true}
@@ -278,33 +304,56 @@ export default function Form({
                       ref={countryNameRef}
                     />
                   </div>
-                  <div className="flex items-center gap-2 mt-4">
-                    <input
-                      type="checkbox"
-                      id="isOutSide"
-                      className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                      checked={isOutSide}
-                      onChange={(e) => setIsOutSide(e.target.checked)}
-                      disabled={readOnly}
+                  <div className="w-[50%]">
+                    <DropdownWithModal
+                      name="Department"
+                      options={dropDownListObject(
+                        id
+                          ? departmentList?.data
+                          : departmentList?.data?.filter(
+                              (item) => item?.active,
+                            ),
+                        "name",
+                        "id",
+                      )}
+                      value={departmentId}
+                      setValue={setDepartmentId}
+                      required={true}
+                      readOnly={readOnly}
+                      className={`w-[150px]`}
+                      disabled={childRecord.current > 0}
+                      addNewLabel="+ Add New Department"
+                      childComponent={DepartmentMaster}
+                      addNewModalWidth="w-[40%] h-[48%]"
                     />
-                    <label
-                      htmlFor="isOutSide"
-                      className="text-xs font-bold text-gray-500 uppercase"
-                    >
-                      Is Outside Process
-                    </label>
                   </div>
                 </div>
-                <ToggleButton
-                  name="Status"
-                  options={statusDropdown}
-                  value={active}
-                  setActive={setActive}
-                  required={true}
-                  readOnly={readOnly}
-                  ref={toggleButtonRef}
-                  onKeyDown={handlers.handleToggleKeyDown}
-                />
+                <div className="flex gap-x-10 items-center mt-5">
+                  <div className="flex items-center">
+                    <Checkbox
+                      checked={isOutsideJob}
+                      onChange={(e) => setIsOutsideJob(e.target.checked)}
+                      disabled={readOnly}
+                      size="small"
+                      className="mt-1"
+                      readOnly={readOnly}
+                    />
+
+                    <label className="text-[14px] text-slate-700 font-medium">
+                      IsOutside
+                    </label>
+                  </div>
+                  <ToggleButton
+                    name=""
+                    options={statusDropdown}
+                    value={active}
+                    setActive={setActive}
+                    // required={true}
+                    readOnly={readOnly}
+                    ref={toggleButtonRef}
+                    onKeyDown={handlers.handleToggleKeyDown}
+                  />
+                </div>
               </fieldset>
             </div>
           </div>
@@ -426,10 +475,7 @@ export default function Form({
         <h5 className="text-lg font-bold text-gray-800">Process Master</h5>
         <div className="flex items-center">
           <button
-            onClick={() => {
-              setForm(true);
-              onNew();
-            }}
+            onClick={handleCreate}
             className="bg-white border  border-indigo-600 text-indigo-600 hover:bg-indigo-700 hover:text-white text-xs px-2 py-1 rounded-md shadow transition-colors duration-200 flex items-center gap-2"
           >
             + Add New Process

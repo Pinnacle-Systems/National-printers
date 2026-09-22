@@ -343,6 +343,8 @@ model Department {
   doctor    Employee[] @relation()
   Company   Company    @relation(fields: [companyId], references: [id])
   companyId Int
+  processes Process[]
+  machines  Machine[]
 }
 
 enum PageType {
@@ -2007,7 +2009,9 @@ model Process {
   active           Boolean?           @default(true)
   Company          Company?           @relation(fields: [companyId], references: [id])
   companyId        Int?
-  isOutSide        Boolean            @default(false)
+  isOutsideJob     Boolean?           @default(false)
+  Department       Department?        @relation(fields: [departmentId], references: [id])
+  departmentId     Int?
   processGroupList ProcessGroupList[]
 
   laminationDetails       LaminationDetails[]
@@ -2262,5 +2266,8 @@ model Machine {
   companyId      Int?
   Size           Size?            @relation(fields: [sizeId], references: [id])
   sizeId         Int?
+  Department     Department?      @relation(fields: [departmentId], references: [id])
+  departmentId   Int?
+  isDefault      Boolean?         @default(false)
   machineDetails MachineDetails[]
 }
