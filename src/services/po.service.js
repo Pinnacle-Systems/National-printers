@@ -122,7 +122,6 @@ function getPOStatus(po) {
   return "Pending";
 }
 
-
 function getPOApprovalStatus(log, isApprovalConfigured = false) {
   if (!log) {
     return isApprovalConfigured
@@ -718,7 +717,7 @@ async function createPoItems(tx, poItems, po) {
           sizeId: itemDetails?.sizeId ? parseInt(itemDetails.sizeId) : null,
           colorId: itemDetails?.colorId ? parseInt(itemDetails.colorId) : null,
           gsmId: itemDetails?.gsmId ? parseInt(itemDetails.gsmId) : null,
-           sheetsPerPacket: itemDetails?.sheetsPerPacket
+          sheetsPerPacket: itemDetails?.sheetsPerPacket
             ? parseInt(itemDetails.sheetsPerPacket)
             : null,
           weightPerPacket: itemDetails?.weightPerPacket
@@ -893,7 +892,7 @@ async function update(id, body) {
       const gsmChanged =
         parseInt(newItem.gsmId || 0) !== parseInt(oldItem.gsmId || 0);
 
-          const sheetsPerPacket =
+      const sheetsPerPacket =
         parseInt(newItem.sheetsPerPacket || 0) !==
         parseInt(oldItem.sheetsPerPacket || 0);
       const weightPerPacket =
@@ -935,7 +934,8 @@ async function update(id, body) {
           igChanged,
           sizeChanged,
           colorChanged,
-          gsmChanged,  sheetsPerPacket,
+          gsmChanged,
+          sheetsPerPacket,
           weightPerPacket,
           totalPackets,
           pricePerKg,
@@ -1166,7 +1166,15 @@ async function getPoItemById(id) {
   const data = await prisma.poItems.findUnique({
     where: { id: parseInt(id) },
     include: {
-      Po: { select: { docId: true, dueDate: true, docDate: true, id: true } },
+      Po: {
+        select: {
+          docId: true,
+          dueDate: true,
+          docDate: true,
+          id: true,
+          OrderEntry: { select: { id: true, docId: true } },
+        },
+      },
       Uom: { select: { name: true } },
       StyleItem: { select: { name: true } },
       Hsn: { select: { name: true } },

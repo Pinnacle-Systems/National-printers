@@ -271,19 +271,22 @@ model Employee {
 }
 
 model FinYear {
-  id                  Int                 @id @default(autoincrement())
-  from                DateTime
-  to                  DateTime
-  Company             Company?            @relation(fields: [companyId], references: [id])
-  companyId           Int?
-  active              Boolean             @default(true)
-  DeliveryChallan     DeliveryChallan[]
-  DeliveryInvoice     DeliveryInvoice[]
-  openingBalances     OpeningBalance[]
-  purchaseBillEntries PurchaseBillEntry[]
-  proformaInvoices    ProformaInvoice[]
-  orderEntries        OrderEntry[]
-  pos                 Po[]
+  id                    Int                    @id @default(autoincrement())
+  from                  DateTime
+  to                    DateTime
+  Company               Company?               @relation(fields: [companyId], references: [id])
+  companyId             Int?
+  active                Boolean                @default(true)
+  DeliveryChallan       DeliveryChallan[]
+  DeliveryInvoice       DeliveryInvoice[]
+  openingBalances       OpeningBalance[]
+  purchaseBillEntries   PurchaseBillEntry[]
+  proformaInvoices      ProformaInvoice[]
+  orderEntries          OrderEntry[]
+  pos                   Po[]
+  purchaseInwards       PurchaseInward[]
+  purchaseInwardReturns PurchaseInwardReturn[]
+  purchaseCancels       PurchaseCancel[]
 }
 
 model EmployeeCategory {
@@ -777,6 +780,15 @@ model Stock {
   colorId               Int?
   Gsm                   Gsm?                 @relation(fields: [gsmId], references: [id])
   gsmId                 Int?
+  JobCard               JobCard?             @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
+  jobCardId             Int?
+  Style                 Style?               @relation(fields: [styleId], references: [id], onDelete: Cascade)
+  styleId               Int?
+  OrderEntry            OrderEntry?          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId               Int?
+
+  SalesReturn   SalesReturn? @relation(fields: [salesReturnId], references: [id], onDelete: Cascade)
+  salesReturnId Int?
 }
 
 model SalesBill {
@@ -841,6 +853,7 @@ model SalesReturn {
   SalesReturnItems SalesReturnItems[]
   Uom              Uom?               @relation(fields: [uomId], references: [id])
   uomId            Int?
+  stocks           Stock[]
 }
 
 model SalesReturnItems {
@@ -929,6 +942,7 @@ model Style {
   gsmId                Int?
   DeliveryChallanItems DeliveryChallanItems[]
   DeliveryInvoiceItems DeliveryInvoiceItems[]
+  stocks               Stock[]
 }
 
 model StyleItem {
@@ -1258,29 +1272,29 @@ model QuoteVersion {
 }
 
 model PoItems {
-  id            Int        @id @default(autoincrement())
-  Po            Po?        @relation(fields: [poId], references: [id], onDelete: Cascade)
-  poId          Int?
-  Uom           Uom?       @relation(fields: [uomId], references: [id])
-  uomId         Int?
-  StyleItem     StyleItem? @relation(fields: [styleItemId], references: [id])
-  styleItemId   Int?
-  Hsn           Hsn?       @relation(fields: [hsnId], references: [id])
-  hsnId         Int?
-  qty           Float?
-  price         Float?
-  discountType  String?
-  discountValue Float?
-  taxPercent    Float?
-  quoteVersion  Int        @default(1)
-  Itemgroup     ItemGroup? @relation(fields: [itemGroupId], references: [id])
-  itemGroupId   Int?
-  Size          Size?      @relation(fields: [sizeId], references: [id])
-  sizeId        Int?
-  Color         Color?     @relation(fields: [colorId], references: [id])
-  colorId       Int?
-  Gsm           Gsm?       @relation(fields: [gsmId], references: [id])
-  gsmId         Int?
+  id              Int        @id @default(autoincrement())
+  Po              Po?        @relation(fields: [poId], references: [id], onDelete: Cascade)
+  poId            Int?
+  Uom             Uom?       @relation(fields: [uomId], references: [id])
+  uomId           Int?
+  StyleItem       StyleItem? @relation(fields: [styleItemId], references: [id])
+  styleItemId     Int?
+  Hsn             Hsn?       @relation(fields: [hsnId], references: [id])
+  hsnId           Int?
+  qty             Float?
+  price           Float?
+  discountType    String?
+  discountValue   Float?
+  taxPercent      Float?
+  quoteVersion    Int        @default(1)
+  Itemgroup       ItemGroup? @relation(fields: [itemGroupId], references: [id])
+  itemGroupId     Int?
+  Size            Size?      @relation(fields: [sizeId], references: [id])
+  sizeId          Int?
+  Color           Color?     @relation(fields: [colorId], references: [id])
+  colorId         Int?
+  Gsm             Gsm?       @relation(fields: [gsmId], references: [id])
+  gsmId           Int?
   sheetsPerPacket Int?
   weightPerPacket Float?
   totalPackets    Int?
@@ -1326,6 +1340,8 @@ model PurchaseInward {
   updatedById            Int?
   Branch                 Branch?                  @relation(fields: [branchId], references: [id])
   branchId               Int?
+  FinYear                FinYear?                 @relation(fields: [finYearId], references: [id])
+  finYearId              Int?
   dcNo                   String?
   dcDate                 DateTime?                @db.Date
   supplier               Party?                   @relation(fields: [supplierId], references: [id])
@@ -1382,6 +1398,8 @@ model InwardItems {
   taxPercent       Float?
   Gsm              Gsm?            @relation(fields: [gsmId], references: [id])
   gsmId            Int?
+  orderEntryId     Int?
+  OrderEntry       OrderEntry?     @relation(fields: [orderEntryId], references: [id])
 }
 
 model Location {
@@ -1414,6 +1432,8 @@ model PurchaseInwardReturn {
   updatedById         Int?
   Branch              Branch?               @relation(fields: [branchId], references: [id])
   branchId            Int?
+  FinYear             FinYear?              @relation(fields: [finYearId], references: [id])
+  finYearId           Int?
   dcNo                String?
   dcDate              DateTime?             @db.Date
   supplier            Party?                @relation(fields: [supplierId], references: [id])
@@ -1473,6 +1493,8 @@ model PurchaseCancel {
   updatedById         Int?
   Branch              Branch?               @relation(fields: [branchId], references: [id])
   branchId            Int?
+  FinYear             FinYear?              @relation(fields: [finYearId], references: [id])
+  finYearId           Int?
   supplier            Party?                @relation(fields: [supplierId], references: [id])
   supplierId          Int?
   active              Boolean               @default(true)
@@ -1839,6 +1861,8 @@ model OrderEntry {
   ProformaInvoices  ProformaInvoice[]
   orderItems        OrderItems[]
   pos               Po[]
+  stocks            Stock[]
+  inwardItems       InwardItems[]
 }
 
 model OrderItems {
@@ -2114,6 +2138,7 @@ model JobCard {
   printingDetails      PrintingDetails[]
   plateDetails         PlateDetails[]
   finishingProcesses   FinishingProcess[]
+  stocks               Stock[]
 }
 
 model ProcessRoute {
