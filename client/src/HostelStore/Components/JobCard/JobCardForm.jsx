@@ -1,194 +1,84 @@
-// ─────────────────────────────────────────────────────────────
-// CheckBox Component
-// ─────────────────────────────────────────────────────────────
-export const CheckBox = ({
-  name,
-  value,
-  setValue,
-  readOnly = false,
-  className,
-  required = false,
-  disabled = false,
-  tabIndex = null,
-}) => {
-  return (
-    <label
-      className={`inline-flex items-center gap-1.5 cursor-pointer select-none
-        text-xs font-medium text-slate-700 leading-none
-        ${readOnly || disabled ? "opacity-50 cursor-not-allowed" : "hover:text-indigo-600"}
-        ${className || ""}`}
-    >
-      <input
-        tabIndex={tabIndex ?? undefined}
-        type="checkbox"
-        required={required}
-        checked={value}
-        onChange={() => !readOnly && !disabled && setValue(!value)}
-        disabled={readOnly || disabled}
-        className="
-          w-[14px] h-[14px] min-w-[14px] min-h-[14px]
-          rounded
-          border border-slate-400
-          accent-indigo-600
-          cursor-pointer
-          disabled:cursor-not-allowed
-        "
-      />
-      <span>{name}</span>
-    </label>
-  );
-};
-
-// ─────────────────────────────────────────────────────────────
-// JobCardForm — 5-column card layout
-// ─────────────────────────────────────────────────────────────
 import { IoArrowBackCircleSharp } from "react-icons/io5";
-import { QRCodeCanvas } from "qrcode.react";
 import {
+  CheckBoxNew,
+  DateInputNew,
   DropdownInput,
-  DropdownInputNew,
   DropdownNew,
+  FxSelectWithAdd,
   ReusableInput,
   TextInput,
 } from "../../../Inputs";
-import {
-  orderTypes,
-  departmentTypes,
-  poTypes,
-} from "../../../Utils/DropdownData";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { blockTypes, productionTypes } from "../../../Utils/DropdownData";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import moment from "moment";
 import { findFromList, getCommonParams, ModeChip } from "../../../Utils/helper";
 import { toast } from "react-toastify";
-import {
-  FiCheck,
-  FiEdit2,
-  FiEye,
-  FiPrinter,
-  FiSave,
-  FiSend,
-} from "react-icons/fi";
+import { FiCheck, FiEdit2, FiPrinter, FiSave, FiSend } from "react-icons/fi";
 import { HiOutlineRefresh } from "react-icons/hi";
 import Swal from "sweetalert2";
 import { dropDownListObject } from "../../../Utils/contructObject";
 import {
-  BoardMaster,
+  ColorMaster,
   DieMaster,
-  Gsm,
-  PartyMaster,
   PlateMaster,
   Size,
+  StyleItemMaster,
 } from "../index.js";
 import { DropdownWithModal } from "../../../Inputs/Reuseable.js";
 import {
   useAddJobCardMutation,
   useGetJobCardByIdQuery,
+  useGetJobCardListQuery,
+  useLazyGetJobCardByIdQuery,
   useUpdateJobCardMutation,
 } from "../../../redux/uniformService/JobCardService.js";
-import { useGetProformaInvoiceQuery } from "../../../redux/uniformService/ProformaInvoiceService.js"; // ✅ added back
-import { useGetBranchByIdQuery } from "../../../redux/services/BranchMasterService.js"; // ✅ added back
 import { useGetProcessMasterQuery } from "../../../redux/services/ProcessMasterService.js";
 import { useGetProcessGroupMasterQuery } from "../../../redux/services/ProcessGroupMaster.service.js";
 import secureLocalStorage from "react-secure-storage";
-import { useGetBoardMasterQuery } from "../../../redux/services/boardService.js";
 import Modal from "../../../UiComponents/Modal/index.js";
 import { PDFViewer } from "@react-pdf/renderer";
 import tw from "../../../Utils/tailwind-react-pdf.js";
 import JobCardPrintFormat from "./JobCardPrintFormat.jsx";
-import OrderEntryApi, {
-  useGetOrderEntryQuery,
-  useGetOrderEntryByIdQuery,
+import {
+  useGetOrderItemsListQuery,
+  useGetRefListQuery,
+  useLazyGetOrderEntryByIdQuery,
 } from "../../../redux/uniformService/OrderEntryService.js";
-import { useDispatch } from "react-redux";
 import { invalidateOrderEntryModule } from "../../../redux/Dispatch/OrderInvalidateTags.js";
-import { useGetEmployeeQuery } from "../../../redux/services/EmployeeMasterService.js";
-import { useGetSizeMasterQuery } from "../../../redux/services/SizemasterService.js";
-import { useGetStyleItemMasterQuery } from "../../../redux/services/StyleItemMasterService.js";
-import { ProcessRoutePanel, routeKeysToDb } from "./ProcessRoutePanel.jsx";
-import { MdKeyboardDoubleArrowLeft, MdArrowBack } from "react-icons/md";
-import TransactionLayout from "../../../Basic/components/Reuseable/TransactionLayout.jsx";
-import TransactionActions from "../../../Basic/components/Reuseable/TransactionActions.jsx";
-import { HiX } from "react-icons/hi";
+import {
+  ProcessRoutePanel,
+  routeKeysToDb,
+  buildCompletedSet,
+} from "./ProcessRoutePanel.jsx";
 import { useAddApprovalStausMutation } from "../../../redux/uniformService/PoServices.js";
+import { MdKeyboardDoubleArrowLeft } from "react-icons/md";
+import TransactionLayout from "../../../Basic/components/Reuseable/TransactionLayout.jsx";
+import { QRCodeCanvas } from "qrcode.react";
+import {
+  CheckBox,
+  Field,
+  LVHeader,
+  LVRow,
+  mapBoardQualitiesToRows,
+  SectionCard,
+  toggleArr,
+  toggleLV,
+  toggleLVProp,
+} from "./Utils.jsx";
+import { useGetSizeMasterQuery } from "../../../redux/services/SizemasterService.js";
+import { Plus } from "lucide-react";
 import { useGetMachineMasterQuery } from "../../../redux/services/MachineMasterService.js";
+import { invalidateJobCardModule } from "../../../redux/Dispatch/JobCardInvalidateTags.js";
+import QRCode from "qrcode";
+import { LocationMaster } from "../../../Basic/components/index.js";
+import { useGetLocationMasterQuery } from "../../../redux/services/LocationMasterService.js";
+import BoardDetails, { emptyRow } from "./BoardDetails.jsx";
+import { useGetStyleItemMasterQuery } from "../../../redux/services/StyleItemMasterService.js";
+import { useLazyGetBoardQtyQuery } from "../../../redux/services/StockService.js";
+import { useGetColorMasterQuery } from "../../../redux/services/ColorMasterService.js";
 
-// ── Section card ─────────────────────────────────────────────
-const SectionCard = ({ title, children, className = "" }) => (
-  <div
-    className={`bg-white rounded-lg border border-slate-300 shadow-sm flex flex-col ${className}`}
-  >
-    {title && (
-      <div className="bg-[#f8f9fa] border-b border-slate-200 px-3 py-1.5">
-        <h3 className="text-[11px] font-bold uppercase tracking-wide text-[#5c5cff]">
-          {title}
-        </h3>
-      </div>
-    )}
-    <div className="p-2.5 flex-1">{children}</div>
-  </div>
-);
+const DEFAULT_BOARD_ROWS = 2;
 
-const Col = ({ title, children, className = "" }) => (
-  <div className={`flex flex-col gap-2.5 gap-y-3 ${className}`}>{children}</div>
-);
-
-// ── Field label + input wrapper ───────────────────────────────
-const Field = ({ label, children, required, className = "" }) => (
-  <div className={`flex flex-col gap-0.5 ${className}`}>
-    <span className="text-[10px] font-bold text-slate-800 uppercase tracking-tight flex gap-1">
-      {label}{" "}
-      {required && <span className="text-red-500 font-bold text-xs">*</span>}
-    </span>
-    {children}
-  </div>
-);
-
-// ── LV Row (Lamination / Varnish) ─────────────────────────────
-const LVRow = ({ item, selected, onMain, onFront, onFrontBack, readOnly }) => (
-  <div className="flex items-center gap-2 gap-y-4 py-1 border-b border-slate-100 last:border-0">
-    <div className="flex-[2] min-w-0">
-      <CheckBox
-        name={item.name}
-        value={!!selected}
-        setValue={onMain}
-        readOnly={readOnly}
-      />
-    </div>
-    <div className="flex-1 flex justify-center">
-      <CheckBox
-        name=""
-        value={selected?.isFront || false}
-        setValue={onFront}
-        readOnly={!selected || readOnly}
-      />
-    </div>
-    <div className="flex-1 flex justify-center">
-      <CheckBox
-        name=""
-        value={selected?.isFrontAndBack || false}
-        setValue={onFrontBack}
-        readOnly={!selected || readOnly}
-      />
-    </div>
-  </div>
-);
-
-// ── Shared LV column header ───────────────────────────────────
-const LVHeader = () => (
-  <div className="flex items-center gap-2 pb-1 mb-1 border-b border-slate-200">
-    <span className="flex-[2] text-[9px] font-bold uppercase tracking-wider text-slate-400">
-      Type
-    </span>
-    <span className="flex-1 text-center text-[9px] font-bold uppercase tracking-wider text-slate-400">
-      Front
-    </span>
-    <span className="flex-1 text-center text-[9px] font-bold uppercase tracking-wider text-slate-400">
-      F&B
-    </span>
-  </div>
-);
-
-// ─────────────────────────────────────────────────────────────
 const JobCardForm = ({
   onClose,
   id,
@@ -200,64 +90,44 @@ const JobCardForm = ({
   plateList,
   dieList,
   branchData,
-  branchList,
   formOrderCustomerId,
-  setFormOrderCustomerId,
   fromOrderId,
-  setFromOrderId,
   fromOrderType,
-  setFromOrderType,
   fromOrderQty,
-  setFromOrderQty,
   canApprove,
   userData,
+  employeeList,
   hasPermission,
 }) => {
   const today = new Date();
-
   const [docDate, setDocDate] = useState(
     moment.utc(today).format("YYYY-MM-DD"),
   );
-  const [jobCardType, SetJobCardType] = useState("ORDER");
   const [customerId, setCustomerId] = useState("");
-  const [orderBranchId, setOrderBranchId] = useState("");
-  console.log(orderBranchId, "orderBranchId");
-
+  const [plateSupplierId, setPlateSupplierId] = useState("");
   const [remarks, setRemarks] = useState("");
-  const [orderType, setOrderType] = useState("");
-  const [deliveryDate, setDeliveryDate] = useState("");
+  const [orderType, setOrderType] = useState("ORDER");
   const [docId, setDocId] = useState("");
   const [orderQty, setOrderQty] = useState("");
   const [printModalOpen, setPrintModalOpen] = useState(false);
-
-  const [gsmId, setGsmId] = useState("");
-  const [boardId, setBoardId] = useState("");
-  const [fullBoardId, setFullBoardId] = useState("");
-  const [noOfPockets, setNoOfPockets] = useState("");
-  const [cuttingSizeId, setCuttingSizeId] = useState("");
-  const [runningQty, setRunningQty] = useState("");
-  const [isFourColor, setIsFourColor] = useState(false);
-  const [isCutColor, setIsCutColor] = useState(false);
-  const [isFront, setIsFront] = useState(false);
-  const [isFrontAndBack, setIsFrontAndBack] = useState(false);
-  const [selectedPrinting, setSelectedPrinting] = useState([]);
-  const [selectedFinishing, setSelectedFinishing] = useState([]);
-
-  const [isCMYK, setIsCMYK] = useState(false);
-  const [isCutColMachine, setIsCutColMachine] = useState(false);
-  const [isFrontMachine, setIsFrontMachine] = useState(false);
-  const [isFrontBackMachine, setIsFrontBackMachine] = useState(false);
-  const [totalPlateSet, setTotalPlateSet] = useState("");
+  const [otherBoardId, setOtherBoardId] = useState("");
+  const [totalPlatesets, setTotalPlatesets] = useState("");
   const [plateId, setPlateId] = useState("");
   const [dieId, setDieId] = useState("");
+  const [cuttingSizeId, setCuttingSizeId] = useState("");
+  const [splitType, setSplitType] = useState("");
+  const [boardItems, setBoardItems] = useState(
+    Array.from({ length: DEFAULT_BOARD_ROWS }, emptyRow),
+  );
 
-  const [boardItems, setBoardItems] = useState([]);
+  const [selectedPrinting, setSelectedPrinting] = useState([]);
   const [selectedProcesses, setSelectedProcesses] = useState([]);
   const [selectedMachines, setSelectedMachines] = useState([]);
+  const [selectedFinishing, setSelectedFinishing] = useState([]);
+  const [selectedLabelPrinting, setSelectedLabelPrinting] = useState([]);
   const [laminations, setLaminations] = useState([]);
   const [varnishes, setVarnishes] = useState([]);
   const [orderEntryId, setOrderEntryId] = useState("");
-  const [proformaInvoiceId, setProformaInvoiceId] = useState(""); // ✅ added back
   const customerRef = useRef(null);
   const { userId, finYearId, branchId, companyId } = getCommonParams();
   const [pendingAction, setPendingAction] = useState(null);
@@ -267,135 +137,164 @@ const JobCardForm = ({
   const [actionType, setActionType] = useState("");
   const [approvalRemarks, setApprovalRemarks] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
-  const [department, setDepartment] = useState("");
-  const [itemGroup, setItemGroup] = useState("");
-  const [tagCardUps, setTagCardUps] = useState("");
-  const [followUp, setFollowUp] = useState("");
-  const [designer, setDesigner] = useState("");
-  const [orderEntryItemId, setOrderEntryItemId] = useState("");
+  const [productionType, setProductionType] = useState("SAMPLE");
   const [styleItemId, setStyleItemId] = useState("");
-  const [sizeModal, setSizeModal] = useState(false);
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState(null);
-  const qrRef = useRef(null);
+  const [tagCardUps, setTagCardUps] = useState("");
+  const [itemGroupId, setItemGroupId] = useState("");
+  const [itemType, setItemType] = useState("");
+  const [followUpId, setFollowUpId] = useState("");
+  const [designerId, setDesignerId] = useState("");
+  const [labelItemId, setLabelItemId] = useState("");
+  const [block, setBlock] = useState("NEW");
+  const [labelQty, setLabelQty] = useState("");
+  const [rollQty, setRollQty] = useState("");
+  const [cutAndSeal, setCutAndSeal] = useState("");
+  const [jobCardSizeDetails, setJobCardSizeDetails] = useState([]);
+  const [selectedOrderData, setSelectedOrderData] = useState(null);
+  const [trackingType, setTrackingType] = useState("Barcode");
+  const [sizeModalOpen, setSizeModalOpen] = useState(false);
 
-  // LABEL DETAILS STATE
-  const [labelQuality, setLabelQuality] = useState("");
-  const [labelBlock, setLabelBlock] = useState("");
-  const [labelRollQty, setLabelRollQty] = useState("");
-  const [labelCutAndSeal, setLabelCutAndSeal] = useState("");
+  const childRecord = useRef(0);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState("");
+  const [orderItemId, setOrderItemId] = useState("");
+  const [plateDetails, setPlateDetails] = useState(
+    Array.from({ length: 6 }, () => ({
+      plateId: "",
+      machineId: "",
+      plateName: "",
+      description: "",
+      qty: "",
+    })),
+  );
   const [labelSizeId, setLabelSizeId] = useState("");
   const [totalMeter, setTotalMeter] = useState("");
-
-  const [plateDetailsModal, setPlateDetailsModal] = useState(false);
-  const [plateDetails, setPlateDetails] = useState(
-    Array(6).fill({ plateName: "", qty: "" }),
-  );
-  const [contextMenu, setContextMenu] = useState(null);
-
-  const dispatch = useDispatch();
-
+  const [blockDate, setBlockDate] = useState("");
+  const [isRepeatedJobCard, setIsRepeatedJobCard] = useState();
+  const [refJobCardId, setRefJobCardId] = useState("");
+  const [pendingPrint, setPendingPrint] = useState(false);
+  const [isAmendment, setIsAmendment] = useState(false);
+  const [storeId, setStoreId] = useState("");
+  const qrRef = useRef(null);
+  const [runningQty, setRunningQty] = useState("");
+  const [stockQty, setStockQty] = useState("");
+  const [dieDescription, setDieDescription] = useState("");
+  const [dieMethod, setDieMethod] = useState("");
+  const [isHold, setIsHold] = useState(false);
+  const [isCancelled, setIsCancelled] = useState(false);
   const params = {
     companyId: secureLocalStorage.getItem(
       sessionStorage.getItem("sessionId") + "userCompanyId",
     ),
   };
+  const [lenght, setLenght] = useState("");
+  const [width, setWidth] = useState("");
+  const [meter, setMeter] = useState("");
+  const [colorId, setColorId] = useState("");
+  const [isOldPlate, setIsOldPlate] = useState(false);
+  const [isNewPlate, setIsNewPlate] = useState(false);
+  const [triggerGetBoardQty] = useLazyGetBoardQtyQuery();
 
-  const { data: processList, isFetching: isProcessFetching } =
-    useGetProcessMasterQuery({ params });
-  const { data: boardData, isFetching: isBoardListFetching } =
-    useGetBoardMasterQuery({ params });
-  const { data: processGroupList, isFetching: isProcessGroupFetching } =
-    useGetProcessGroupMasterQuery({ params });
-  const { data: employeeList } = useGetEmployeeQuery({ params });
-  const { data: sizeList } = useGetSizeMasterQuery({ params: { companyId } });
-  const { data: machineList } = useGetMachineMasterQuery({
-    params: { companyId, branchId },
-  });
-
-  // ✅ added back — branch feature flags
-  const { data: currentBranch } = useGetBranchByIdQuery(branchId, {
-    skip: !branchId,
-  });
-  const isProformaEnabled =
-    currentBranch?.data?.proformaInvoiceEnabled || false;
-  const isApprovalEnabled =
-    currentBranch?.data?.proformaInvoiceApprovalEnabled || false;
-  console.log(isProformaEnabled, isApprovalEnabled, "isProformaEnabled");
-
-  // ✅ added back — conditional fetch based on isProformaEnabled
-  const { data: orderList } = useGetOrderEntryQuery({
+  const { data: processList } = useGetProcessMasterQuery({ params });
+  const { data: processGroupList } = useGetProcessGroupMasterQuery({ params });
+  const { data: orderList } = useGetRefListQuery({
     params: { companyId, branchId },
   });
   console.log(orderList, "orderList");
 
-  const { data: styleItemList } = useGetStyleItemMasterQuery({ params });
-
-  // ✅ added back
-  const { data: proformaList } = useGetProformaInvoiceQuery(
-    { params: { companyId, branchId } },
-    { skip: !isProformaEnabled },
-  );
+  const { data: sizeList } = useGetSizeMasterQuery({
+    params: { companyId, branchId },
+  });
+  const { data: styleList } = useGetStyleItemMasterQuery({
+    params: { companyId, branchId },
+  });
+  const { data: machineList } = useGetMachineMasterQuery({
+    params: { companyId, branchId },
+  });
+  const { data: jobCardList } = useGetJobCardListQuery({
+    params: { companyId, branchId },
+  });
+  const { data: styleItemList } = useGetOrderItemsListQuery({
+    params: { orderEntryId },
+  });
+  const { data: locationData } = useGetLocationMasterQuery({
+    params: { branchId },
+  });
+  const { data: colorData } = useGetColorMasterQuery({
+    params: { branchId },
+  });
 
   const getGroupIds = (groupName) =>
     processGroupList?.data
-      ?.find((g) => g.name?.trim().toUpperCase() === groupName.toUpperCase())
+      ?.find((g) => g.name === groupName)
       ?.processGroupList?.map((i) => i.processId) || [];
+  const filterByGroup = (groupName) =>
+    processList?.data?.filter((p) => getGroupIds(groupName).includes(p.id)) ||
+    [];
 
-  const filterByGroup = (groupName) => {
-    const ids = getGroupIds(groupName);
-    return (
-      processList?.data?.filter((p) =>
-        ids.some((id) => String(id) === String(p.id)),
-      ) || []
-    );
-  };
-
-  const { data: selectedOrderData } = useGetOrderEntryByIdQuery(orderEntryId, {
-    skip: !orderEntryId,
-  });
-
-  const selectedItem = selectedOrderData?.data?.orderItems?.find(
-    (i) => i.id === orderEntryItemId,
-  );
-
-  // Fallback: If "DEFAULT" group is empty, show all processes that aren't in other major groups
-  const laminationIds = getGroupIds("LAMINATION");
-  const varnishIds = getGroupIds("VARNISH");
-  const machineIds = getGroupIds("MACHINE");
-  const printingIds = getGroupIds("PRINTING");
-  const finishingIds = getGroupIds("FINISHING");
-
-  const defaultList =
-    filterByGroup("DEFAULT").length > 0
-      ? filterByGroup("DEFAULT")
-      : processList?.data?.filter(
-          (p) =>
-            !laminationIds.includes(p.id) &&
-            !varnishIds.includes(p.id) &&
-            !machineIds.includes(p.id) &&
-            !printingIds.includes(p.id) &&
-            !finishingIds.includes(p.id),
-        ) || [];
-
+  const boardList = filterByGroup("BOARD QUALITY");
+  const printingList = filterByGroup("PRINTING");
+  const defaultList = filterByGroup("DEFAULT");
   const laminationList = filterByGroup("LAMINATION");
   const varnishList = filterByGroup("VARNISH");
-  // const machineList = filterByGroup("MACHINE");
   const finishingList = filterByGroup("FINISHING");
-  const isLabel = itemGroup?.toUpperCase() === "LABEL";
-  const printingList = filterByGroup("PRINTING");
-  const boardList =
-    boardData?.data?.filter((i) => (id ? true : i?.active)) || [];
+  const labelPrintingList = filterByGroup("LABEL PRINTING");
+
+  // Make sure "DYEING" matches the exact casing of your Process Group name
+  // if it doesn't match exactly, you might need to change it to "Dyeing" etc.
+  const dieProcessList = filterByGroup("DYEING");
+
   const {
     data: singleData,
     isFetching: isSingleFetching,
     isLoading: isSingleLoading,
   } = useGetJobCardByIdQuery(id, { skip: !id });
+
   const status = singleData?.data?.approvalStatus?.status;
+  const isDisabledPermission =
+    (status === "APPROVED" || status === "PENDING") && !canApprove;
+
+  const dbProcessRoute = singleData?.data?.processRoute || [];
+  const anyCompleted = dbProcessRoute.some((r) => r.status === "COMPLETED");
+  const routeFieldsLocked = anyCompleted && !isAmendment;
+
+  const completedSet = useMemo(
+    () => buildCompletedSet(dbProcessRoute),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(dbProcessRoute)],
+  );
+
+  const isCompletedInRoute = (type, processIds) => {
+    const ids = Array.isArray(processIds) ? processIds : [processIds];
+    const routeEntries = dbProcessRoute.filter(
+      (r) => r.type === type && ids.includes(r.processId),
+    );
+    if (routeEntries.length === 0) return false;
+    return routeEntries.every((r) => r.status === "COMPLETED");
+  };
+
+  const isItemCompleted = (type, itemId) =>
+    completedSet.has(`${type}:${itemId}`);
+
+  // ── Derive a plain array of boardIds for ProcessRoutePanel & lock helpers ──
+  const boardProcessIds = useMemo(
+    () => boardItems?.filter((r) => r.processId).map((r) => r.processId),
+    [boardItems],
+  );
+
+  const allBoardQualitiesCompleted =
+    boardProcessIds.length > 0 &&
+    boardProcessIds.every((bid) => isItemCompleted("boardQuality", bid));
+
+  const boardCompleted = isCompletedInRoute("board", otherBoardId);
+  const cuttingFieldsLocked = allBoardQualitiesCompleted && boardCompleted;
 
   const [addData] = useAddJobCardMutation();
   const [updateData] = useUpdateJobCardMutation();
   const [addApprovalStatus] = useAddApprovalStausMutation();
+  const [getOrderById] = useLazyGetOrderEntryByIdQuery();
+  const [getRefById] = useLazyGetJobCardByIdQuery();
 
+  // ── Sync form from DB data ────────────────────────────────────────────────
   const syncFormWithDb = useCallback((data) => {
     setDocId(data?.docId || "New");
     setDocDate(
@@ -403,41 +302,44 @@ const JobCardForm = ({
         ? moment.utc(data.docDate).format("YYYY-MM-DD")
         : moment.utc(new Date()).format("YYYY-MM-DD"),
     );
-    SetJobCardType(data?.jobCardType || "ORDER");
-    setOrderType(data?.orderType || "");
+    setOrderType(data?.orderType || "ORDER");
+    setBlockDate(
+      data?.blockDate ? moment.utc(data.blockDate).format("YYYY-MM-DD") : "",
+    );
+    setProductionType(data?.productionType || "SAMPLE");
     setCustomerId(data?.customerId || "");
-    setOrderBranchId(data?.orderBranchId || "");
+    setPlateSupplierId(data?.plateSupplierId || "");
     setRemarks(data?.remarks || "");
     setOrderQty(data?.orderQty || "");
-    setDeliveryDate(
-      data?.deliveryDate
-        ? moment.utc(data.deliveryDate).format("YYYY-MM-DD")
-        : "",
-    );
-    setDepartment(data?.department || "");
-    setGsmId(data?.gsmId || "");
-    setFullBoardId(data?.fullBoardId || "");
-    setNoOfPockets(data?.noOfPockets || "");
-    setCuttingSizeId(data?.cuttingSizeId || "");
-    setRunningQty(data?.runningQty || "");
-    setIsFourColor(data?.isFourColor || false);
-    setIsCutColor(data?.isCutColor || false);
-    setIsFront(data?.isFront || false);
-    setIsFrontAndBack(data?.isFrontAndBack || false);
-    setIsCMYK(data?.isCMYK || false);
-    setIsCutColMachine(data?.isCutColMachine || false);
-    setIsFrontMachine(data?.isFrontMachine || false);
-    setIsFrontBackMachine(data?.isFrontBackMachine || false);
     setPlateId(data?.plateId || "");
     setDieId(data?.dieId || "");
-    setTotalPlateSet(data?.totalPlateSet || "");
-    setBoardItems(data?.boardQualities?.map((b) => b.boardId) || []);
-    setSelectedProcesses(data?.processDetails?.map((p) => p.processId) || []);
-    setSelectedPrinting(data?.printingDetails?.map((p) => p.processId) || []);
-    setSelectedFinishing(
-      data?.finishingProcesses?.map((p) => p.processId) || [],
-    );
+    setTotalPlatesets(data?.totalPlatesets || "");
+    setCuttingSizeId(data?.cuttingSizeId || "");
+    setSplitType(data?.splitType || "");
+    // Map DB boardQualities → row objects; default to 2 empty rows
+    const mappedRows = mapBoardQualitiesToRows(data?.boardQualities);
+    setBoardItems([
+      ...mappedRows,
+      ...Array.from(
+        { length: Math.max(0, DEFAULT_BOARD_ROWS - mappedRows.length) },
+        emptyRow,
+      ),
+    ]);
 
+    setSelectedProcesses(data?.processDetails?.map((p) => p.processId) || []);
+    setSelectedPrinting(
+      data?.printingDetails?.map((p) => ({
+        processId: p.processId,
+        isFront: p.isFront,
+        isFrontAndBack: p.isFrontAndBack,
+      })) || [],
+    );
+    setSelectedFinishing(
+      data?.finishingProcesses?.map((f) => f.processId) || [],
+    );
+    setSelectedLabelPrinting(
+      data?.labelPrintingDetails?.map((p) => p.processId) || [],
+    );
     setLaminations(
       data?.laminationDetails?.map((l) => ({
         processId: l.laminationId,
@@ -454,8 +356,7 @@ const JobCardForm = ({
     );
     setSelectedMachines(data?.machineDetails?.map((m) => m.macId) || []);
     setOrderEntryId(data?.orderEntryId || "");
-    setProformaInvoiceId(data?.proformaInvoiceId || ""); // ✅ added back
-    setBoardId(data?.boardId || "");
+    setOtherBoardId(data?.otherBoardId || "");
     setJobRunTime(data?.jobRunTime || "");
     setProcessRoute(
       data?.processRoute
@@ -467,30 +368,48 @@ const JobCardForm = ({
                 : r.isFrontAndBack
                   ? "frontback"
                   : "";
-              return `${r.type}:${r.processId}${sub ? `:${sub}` : ""}`;
+              const pid = r.type === "die" ? data?.dieId : r.processId;
+              return `${r.type}:${pid}${sub ? `:${sub}` : ""}`;
             })
         : [],
     );
-    setItemGroup(data?.itemGroup || "");
-    setTagCardUps(data?.tagCardUps || "");
-    setFollowUp(data?.followUpId || "");
-    setDesigner(data?.designerId || "");
-    setLabelQuality(data?.labelQuality || "");
-    setLabelBlock(data?.labelBlock || "");
-    setLabelRollQty(data?.labelRollQty || "");
-    setLabelCutAndSeal(data?.labelCutAndSeal || "");
-    setOrderEntryItemId(data?.orderEntryItemId || "");
     setStyleItemId(data?.styleItemId || "");
-    setPlateDetails(
-      data?.plateDetails?.length > 0
-        ? [...data.plateDetails]
-        : Array(6).fill({ plateName: "", qty: "" }),
-    );
-    setReadOnly(
-      (["PENDING", "APPROVED"].includes(status) && !canApprove) || readOnly,
-    );
+    setTagCardUps(data?.tagCardUps || "");
+    setItemGroupId(data?.itemGroupId || "");
+    setItemType(data?.itemType || "");
+    setFollowUpId(data?.followUpId || "");
+    setDesignerId(data?.designerId || "");
+    setLabelItemId(data?.labelItemId || "");
+    setBlock(data?.block || "NEW");
+    setLabelQty(data?.labelQty || "");
+    setRollQty(data?.rollQty || "");
+    setCutAndSeal(data?.cutAndSeal || "");
+    setJobCardSizeDetails(data?.jobCardSizeDetails || []);
+    setTrackingType(data?.trackingType || "");
+    setOrderItemId(data?.orderItemId || "");
     setLabelSizeId(data?.labelSizeId || "");
-    setTotalMeter(data?.totalMeter || "");
+    setTotalMeter(data?.totalMeter?.toFixed(3) || "");
+    setIsRepeatedJobCard(data?.isRepeatedJobCard || false);
+    setStoreId(data?.storeId || "");
+    setRefJobCardId(data?.refJobCardId || "");
+    setRunningQty(data?.runningQty || "");
+    setColorId(data?.colorId || "");
+    setDieMethod(data?.dieMethod || "");
+
+    setDieDescription(data?.dieDescription || "");
+    setIsHold(data?.isHold || false);
+    setIsCancelled(data?.isCancelled || false);
+    setWidth(data?.width || "");
+    setLenght(data?.lenght || "");
+    setMeter(data?.meter || "");
+    const rawPlates = data?.plateDetails || [];
+    const paddedPlates = [...rawPlates];
+    while (paddedPlates.length < 6)
+      paddedPlates.push({ plateName: "", qty: "" });
+    setPlateDetails(paddedPlates);
+    setIsNewPlate(data?.isNewPlate);
+    setIsOldPlate(data?.isOldPlate);
+    childRecord.current = data?.childRecord ? data?.childRecord : 0;
   }, []);
 
   useEffect(() => {
@@ -498,145 +417,119 @@ const JobCardForm = ({
     else syncFormWithDb(undefined);
   }, [isSingleFetching, isSingleLoading, id, syncFormWithDb, singleData]);
 
-  const toggleArr = (setter, val) =>
-    setter((prev) =>
-      prev.includes(val) ? prev.filter((x) => x !== val) : [...prev, val],
-    );
-
-  const toggleLV = (setter, id) =>
-    setter((prev) => {
-      const exists = prev.find((l) => l.processId === id);
-      return exists
-        ? prev.filter((l) => l.processId !== id)
-        : [...prev, { processId: id, isFront: false, isFrontAndBack: false }];
-    });
-
-  const toggleLVProp = (setter, id, prop) =>
-    setter((prev) =>
-      prev.map((l) => (l.processId === id ? { ...l, [prop]: !l[prop] } : l)),
-    );
-
-  const handlePlateDetailsChange = (index, field, value) => {
-    const updated = [...plateDetails];
-    updated[index] = { ...updated[index], [field]: value };
-    setPlateDetails(updated);
-  };
-
-  const handlePlateDetailsKeyDown = (e, index) => {
-    if (e.key === "Enter" && index === plateDetails.length - 1) {
-      setPlateDetails([...plateDetails, { plateName: "", qty: "" }]);
+  useEffect(() => {
+    if (pendingPrint && singleData?.data && !isSingleFetching) {
+      openPrintModal(singleData.data.id, singleData.data.docId);
+      setPendingPrint(false);
     }
-  };
+  }, [pendingPrint, singleData, isSingleFetching]);
 
-  const handlePlateDetailsContextMenu = (e, index) => {
-    e.preventDefault();
-    setContextMenu({
-      mouseX: e.clientX,
-      mouseY: e.clientY,
-      rowId: index,
-    });
-  };
+  useEffect(() => {
+    const getBoardQty = async () => {
+      try {
+        if (storeId && colorId && labelItemId && labelSizeId) {
+          const response = await triggerGetBoardQty({
+            params: {
+              storeId: storeId,
+              colorId: colorId,
+              styleItemId: labelItemId,
+              sizeId: labelSizeId,
+              isLabel: true,
+            },
+          }).unwrap();
 
-  const handleCloseContextMenu = () => {
-    setContextMenu(null);
-  };
-
-  const deletePlateRow = (index) => {
-    setPlateDetails((prev) => {
-      const filtered = prev.filter((_, i) => i !== index);
-      // Ensure at least 6 rows always show
-      if (filtered.length < 6) {
-        return [
-          ...filtered,
-          ...Array(6 - filtered.length).fill({ plateName: "", qty: "" }),
-        ];
+          setStockQty(response?.stockQty ?? 0);
+        }
+      } catch (error) {
+        console.error("Failed to fetch board quantity:", error);
+        setStockQty(0);
       }
-      return filtered;
-    });
-    handleCloseContextMenu();
-  };
+    };
 
-  const deleteAllPlateRows = () => {
-    setPlateDetails(Array(6).fill({ plateName: "", qty: "" }));
-    handleCloseContextMenu();
-  };
+    getBoardQty();
+  }, [storeId, colorId, labelItemId, labelSizeId]);
 
-  const handleClosePlateModal = () => {
-    // Check if any row has one field filled but not the other
-    const invalidRow = plateDetails.find(
-      (row) =>
-        (row.plateName?.trim() && !row.qty) ||
-        (!row.plateName?.trim() && row.qty),
-    );
-
-    if (invalidRow) {
-      Swal.fire({
-        title: "Incomplete Row",
-        text: "Please provide both Plate Name and Quantity for all filled rows.",
-        icon: "warning",
-        confirmButtonColor: "#4f46e5",
-      });
-      return;
-    }
-    setPlateDetailsModal(false);
-  };
-
-  const data = {
+  // ── formData — boardItems sent as boardDetails (row objects) ─────────────
+  const formData = {
     id,
     docDate,
-    branchId,
-    userId,
-    finYearId,
-    jobCardType,
+    branchId: parseInt(branchId),
+    userId: parseInt(userId),
+    finYearId: parseInt(finYearId),
     orderType,
     orderQty,
     customerId,
-    orderBranchId,
-    boardItems,
-    gsmId,
-    boardId,
+    plateSupplierId,
+    boardQualities: boardItems.filter((r) => r.processId),
+    otherBoardId,
     remarks,
-    fullBoardId,
-    noOfPockets,
-    cuttingSizeId,
-    runningQty,
-    isFourColor,
-    isCutColor,
-    isFront,
-    isFrontAndBack,
-    isCMYK,
-    isCutColMachine,
-    isFrontMachine,
-    isFrontBackMachine,
     plateId,
     dieId,
-    totalPlateSet,
+    totalPlatesets,
     selectedProcesses,
     laminations,
     varnishes,
     selectedMachines,
     orderEntryId,
-    proformaInvoiceId, // ✅ added back
     jobRunTime,
     processRoute: routeKeysToDb(processRoute),
-    department,
-    itemGroup,
-    tagCardUps,
-    followUpId: followUp,
-    designerId: designer,
-    orderEntryItemId,
+    productionType,
     styleItemId,
-    labelCutAndSeal,
+    tagCardUps,
+    itemGroupId,
+    itemType,
+    followUpId,
+    designerId,
+    labelItemId,
+    block,
+    labelQty,
+    rollQty,
+    cutAndSeal,
+    jobCardSizeDetails,
+    trackingType,
+    orderItemId,
+    selectedPrinting,
     plateDetails: plateDetails?.filter(
-      (plate) => plate?.plateName && plate?.qty,
+      (plate) => plate?.machineId && plate?.plateId,
     ),
     labelSizeId,
     totalMeter,
-    selectedPrinting,
     selectedFinishing,
-    labelQuality,
-    labelBlock,
-    labelRollQty,
+    blockDate,
+    isRepeatedJobCard,
+    refJobCardId,
+    isAmendment,
+    storeId,
+    cuttingSizeId,
+    splitType,
+    runningQty,
+    selectedLabelPrinting,
+    colorId,
+    dieDescription,
+    dieMethod,
+    isHold,
+    isCancelled,
+    lenght,
+    width,
+    meter,
+    isNewPlate,
+    isOldPlate,
+  };
+
+  const openPrintModal = async (overrideId, overrideDocId) => {
+    const printId = overrideId ?? id;
+    const printDocId = overrideDocId ?? docId;
+    try {
+      const dataUrl = await QRCode.toDataURL(
+        JSON.stringify({ id: printId, docId: printDocId }),
+        { width: 120, margin: 1, errorCorrectionLevel: "H" },
+      );
+      setQrCodeDataUrl(dataUrl);
+    } catch (err) {
+      console.error("QR gen failed", err);
+      setQrCodeDataUrl("");
+    }
+    setPrintModalOpen(true);
   };
 
   const handleSubmitCustom = async (callback, data, text, nextProcess) => {
@@ -644,98 +537,141 @@ const JobCardForm = ({
       const returnData = await callback(data).unwrap();
       if (returnData.statusCode === 1) {
         toast.error(returnData.message);
-      } else {
-        Swal.fire({
-          icon: "success",
-          title: `${text || "Saved"} Successfully`,
-          showConfirmButton: false,
-          timer: 2000,
-          didClose: () => {
-            if (returnData.statusCode === 0) {
-              if (!id) {
-                Swal.fire({
-                  icon: "question",
-                  title: "Do You Want to Print?",
-                  showCancelButton: true,
-                  confirmButtonText: "Yes, Print",
-                  cancelButtonText: "No [Esc]",
-                  confirmButtonColor: "#3085d6",
-                  cancelButtonColor: "#6b7280",
-                  focusConfirm: true,
-                  allowEnterKey: true,
-                  allowEscapeKey: true,
-                  didOpen: () => {
-                    const confirmButton = Swal.getConfirmButton();
-                    const cancelButton = Swal.getCancelButton();
-                    if (confirmButton) {
-                      confirmButton.focus();
-                      confirmButton.addEventListener("keydown", (e) => {
-                        if (e.key === "Tab" && !e.shiftKey) {
-                          e.preventDefault();
-                          cancelButton?.focus();
-                        }
-                      });
-                    }
-                    if (cancelButton) {
-                      cancelButton.addEventListener("keydown", (e) => {
-                        if (e.key === "Tab" && e.shiftKey) {
-                          e.preventDefault();
-                          confirmButton?.focus();
-                        }
-                      });
-                    }
-                  },
-                }).then((result) => {
-                  if (result.isConfirmed) {
-                    setPrintModalOpen(true);
-                    if (returnData?.data?.id) {
-                      setId(returnData.data.id);
-                    }
-                    setPendingAction(nextProcess);
-                  } else {
-                    if (nextProcess === "new") {
-                      syncFormWithDb(undefined);
-                      setId("");
-                      setDocId("New");
-                      setTimeout(() => {
-                        supplierRef.current?.focus();
-                      }, 300);
-                    }
-                    if (nextProcess === "close") {
-                      onClose();
-                    }
-                  }
-                });
-              } else {
-                if (nextProcess === "new") {
-                  setId(0);
-                  setDocId("New");
-                  syncFormWithDb(undefined);
-                  setTimeout(() => customerRef.current?.focus(), 100);
-                }
-                if (nextProcess === "close") onClose();
-              }
-            } else {
-              toast.error(returnData?.message);
-            }
-          },
-        });
-        invalidateOrderEntryModule();
+        return;
       }
+      Swal.fire({
+        icon: "success",
+        title: `${text || "Saved"} Successfully`,
+        showConfirmButton: false,
+        timer: 2000,
+        didClose: () => {
+          invalidateJobCardModule();
+          if (returnData.statusCode === 0) {
+            if (!id) {
+              Swal.fire({
+                icon: "question",
+                title: "Do You Want to Print?",
+                showCancelButton: true,
+                confirmButtonText: "Yes, Print",
+                cancelButtonText: "No [Esc]",
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#6b7280",
+                focusConfirm: true,
+                allowEnterKey: true,
+                allowEscapeKey: true,
+              }).then((result) => {
+                if (result.isConfirmed) {
+                  if (returnData?.data?.id) setId(returnData.data.id);
+                  setPendingPrint(true);
+                } else {
+                  if (nextProcess === "new") {
+                    syncFormWithDb(undefined);
+                    setId("");
+                    setDocId("New");
+                    setTimeout(() => customerRef.current?.focus(), 300);
+                  }
+                  if (nextProcess === "close") onClose();
+                }
+              });
+            } else {
+              if (nextProcess === "new") {
+                setId(0);
+                setDocId("New");
+                syncFormWithDb(undefined);
+                setTimeout(() => customerRef.current?.focus(), 100);
+              }
+              if (nextProcess === "close") onClose();
+            }
+          } else {
+            toast.error(returnData?.message);
+          }
+        },
+      });
+      invalidateOrderEntryModule();
     } catch (error) {
       console.error("submit error", error);
     }
   };
 
-  const validateData = (data) => {
+  const isLabel = itemType === "LABEL";
+
+  const validateData = (d) => {
     const checks = [
-      // { condition: !data.orderEntryId, title: "Order No is required!" },
-      { condition: !data.docDate, title: "Job Card Date  is required!" },
-      // { condition: !data.orderType, title: "Order Type is required!" },
-      // { condition: !data.orderQty, title: "Order Quantity is required!" },
-      { condition: !data.customerId, title: "Customer is required!" },
-      { condition: !data.followUpId, title: "Follow Up is required!" },
-      { condition: !data.designerId, title: "Designer is required!" },
+      { condition: !d.docDate, title: "Document Date is required!" },
+      { condition: !d.customerId, title: "Customer is required!" },
+      { condition: !d.orderEntryId, title: "Order No is required!" },
+      { condition: !d.productionType, title: "Production Type is required!" },
+      { condition: !d.styleItemId, title: "Item Description is required!" },
+      { condition: !d.orderQty, title: "Order Quantity is required!" },
+      { condition: !d.followUpId, title: "Follow-Up is required!" },
+      { condition: !d.designerId, title: "Designer is required!" },
+      { condition: !d.storeId, title: "Location is required!" },
+      {
+        condition: d.isRepeatedJobCard && !d.refJobCardId,
+        title: "Reference Job Card is required!",
+      },
+      {
+        condition: !isLabel && d.boardQualities?.length === 0,
+        title: "Select Board Quality!",
+      },
+      {
+        condition:
+          !isLabel &&
+          d.boardQualities?.filter((r) => r.processId)?.some((r) => !r.gsmId),
+        title: "Select GSM!",
+      },
+      {
+        condition:
+          !isLabel &&
+          d.boardQualities
+            ?.filter((r) => r.processId)
+            ?.some((r) => !r.fullBoardId),
+        title: "Select Board Size!",
+      },
+      {
+        condition:
+          !isLabel &&
+          d.boardQualities
+            ?.filter((r) => r.processId)
+            ?.some((r) => !r.noOfSheets),
+        title: "Enter No of Sheets!",
+      },
+      {
+        condition: !isLabel && !d.cuttingSizeId,
+        title: "Enter Cutting Size!",
+      },
+      {
+        condition: !isLabel && !d.runningQty,
+        title: "Enter Running Quantity!",
+      },
+      {
+        condition: isLabel && !d.labelItemId,
+        title: "Select Label Item!",
+      },
+      {
+        condition: isLabel && !d.labelSizeId,
+        title: "Select Label Size!",
+      },
+      {
+        condition: isLabel && !d.colorId,
+        title: "Select Label Color!",
+      },
+      {
+        condition: isLabel && !d.rollQty,
+        title: "Enter Roll Quantity!",
+      },
+      {
+        condition: isLabel && !d.block,
+        title: "Enter Block!",
+      },
+      {
+        condition: isLabel && d.selectedLabelPrinting?.length === 0,
+        title: "Select Printing Process!",
+      },
+      {
+        condition: isLabel && d.selectedFinishing?.length === 0,
+        title: "Select Finishing Process!",
+      },
     ];
     const failed = checks.find((c) => c.condition);
     if (failed) {
@@ -747,28 +683,40 @@ const JobCardForm = ({
       });
       return false;
     }
+    const duplicateBoard = d.boardQualities?.some((item, index, arr) => {
+      const key = `${item.processId || 0}-${item.gsmd || 0}-${item.fullBoardId || 0}`;
+
+      return (
+        arr.findIndex(
+          (r) =>
+            `${r.processId || 0}-${r.GSMId || 0}-${r.fullBoardId || 0}` === key,
+        ) !== index
+      );
+    });
+
+    if (duplicateBoard) {
+      Swal.fire({
+        icon: "warning",
+        title: "Duplicate Board Quality is not allowed!",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+      return false;
+    }
     return true;
   };
 
   const saveData = (nextProcess, options = {}) => {
     const submitApprovalFlag = !!options.submitApproval;
-    if (!validateData(data)) return;
+    if (!validateData(formData)) return;
     if (id && !window.confirm("Are you sure you want to update the details?"))
       return;
-    if (id)
-      handleSubmitCustom(
-        updateData,
-        { ...data, ...(submitApprovalFlag ? { submitApproval: true } : {}) },
-        "Updated",
-        nextProcess,
-      );
-    else
-      handleSubmitCustom(
-        addData,
-        { ...data, ...(submitApprovalFlag ? { submitApproval: true } : {}) },
-        "Added",
-        nextProcess,
-      );
+    const payload = {
+      ...formData,
+      ...(submitApprovalFlag ? { submitApproval: true } : {}),
+    };
+    if (id) handleSubmitCustom(updateData, payload, "Updated", nextProcess);
+    else handleSubmitCustom(addData, payload, "Added", nextProcess);
   };
 
   const handleKeyDown = (e) => {
@@ -781,19 +729,6 @@ const JobCardForm = ({
   useEffect(() => {
     customerRef.current?.focus();
   }, []);
-
-  useEffect(() => {
-    if (printModalOpen && qrRef.current) {
-      // Small timeout to ensure canvas is fully rendered
-      const timeoutId = setTimeout(() => {
-        const canvas = qrRef.current.querySelector("canvas") || qrRef.current;
-        if (canvas && canvas.toDataURL) {
-          setQrCodeDataUrl(canvas.toDataURL());
-        }
-      }, 500);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [printModalOpen]);
 
   useEffect(() => {
     if (formOrderCustomerId && fromOrderId && fromOrderType && !id) {
@@ -825,7 +760,6 @@ const JobCardForm = ({
         referencePage: "JOB CARD",
         recordData: {},
       }).unwrap();
-
       if (result.statusCode === 0) {
         toast.success(
           result.message ||
@@ -835,6 +769,7 @@ const JobCardForm = ({
         );
         setApprovalModal(false);
         onClose();
+        invalidateJobCardModule();
       } else {
         toast.error(result.message || "Action failed");
         setApprovalModal(false);
@@ -847,683 +782,499 @@ const JobCardForm = ({
     }
   };
 
+  const handleJobCardChange = async (value) => {
+    if (!value.id) return;
+    try {
+      const result = await getRefById(value?.id || value).unwrap();
+      const data = result?.data;
+      if (!data) return;
+      setOtherBoardId(data?.otherBoardId || "");
+      setPlateId(data?.plateId || "");
+      setDieId(data?.dieId || "");
+      setTotalPlatesets(data?.totalPlatesets || "");
+      const mappedRows = mapBoardQualitiesToRows(data?.boardQualities);
+      setBoardItems(
+        mappedRows.length > 0
+          ? mappedRows
+          : Array.from({ length: DEFAULT_BOARD_ROWS }, emptyRow),
+      );
+
+      setSelectedProcesses(data?.processDetails?.map((p) => p.processId) || []);
+      setSelectedPrinting(
+        data?.printingDetails?.map((p) => ({
+          processId: p.processId,
+          isFront: p.isFront,
+          isFrontAndBack: p.isFrontAndBack,
+        })) || [],
+      );
+      setSelectedFinishing(
+        data?.finishingProcesses?.map((f) => f.processId) || [],
+      );
+      setSelectedLabelPrinting(
+        data?.labelPrintingDetails?.map((p) => p.processId) || [],
+      );
+      setLaminations(
+        data?.laminationDetails?.map((l) => ({
+          processId: l.laminationId,
+          isFront: l.isFront,
+          isFrontAndBack: l.isFrontAndBack,
+        })) || [],
+      );
+      setVarnishes(
+        data?.varnishDetails?.map((v) => ({
+          processId: v.varnishId,
+          isFront: v.isFront,
+          isFrontAndBack: v.isFrontAndBack,
+        })) || [],
+      );
+      setSelectedMachines(data?.machineDetails?.map((m) => m.macId) || []);
+      setJobRunTime(data?.jobRunTime || "");
+      setTagCardUps(data?.tagCardUps || "");
+      setProcessRoute(
+        data?.processRoute
+          ? [...data.processRoute]
+              .sort((a, b) => a.sequence - b.sequence)
+              .map((r) => {
+                const sub = r.isFront
+                  ? "front"
+                  : r.isFrontAndBack
+                    ? "frontback"
+                    : "";
+                const pid = r.type === "die" ? data?.dieId : r.processId;
+                return `${r.type}:${pid}${sub ? `:${sub}` : ""}`;
+              })
+          : [],
+      );
+      setLabelItemId(data?.labelItemId || "");
+      setBlock(data?.block || "NEW");
+      setBlockDate(
+        data?.blockDate ? moment.utc(data.blockDate).format("YYYY-MM-DD") : "",
+      );
+      setLabelQty(data?.labelQty || "");
+      setRollQty(data?.rollQty || "");
+      setCutAndSeal(data?.cutAndSeal || "");
+      setLabelSizeId(data?.labelSizeId || "");
+      setTotalMeter(data?.totalMeter?.toFixed(3) || "");
+      setItemGroupId(data?.itemGroupId || "");
+      setItemType(data?.itemType || "");
+      setJobCardSizeDetails(
+        data?.jobCardSizeDetails?.map((s) => ({
+          sizeId: s.sizeId || "",
+          qty: s.qty || "",
+          barcodeFrom: s.barcodeFrom || "",
+          barcodeTo: s.barcodeTo || "",
+        })) || [],
+      );
+      const rawPlates = data?.plateDetails || [];
+      const paddedPlates = [...rawPlates];
+      while (paddedPlates.length < 6)
+        paddedPlates.push({
+          plateId: "",
+          machineId: "",
+          plateName: "",
+          description: "",
+          qty: "",
+        });
+      setPlateDetails(paddedPlates);
+      setIsAmendment(data?.isAmendment || false);
+      setColorId(data?.colorId || "");
+    } catch (err) {
+      console.error("Failed to load ref job card", err);
+    }
+  };
+
+  // ── Completion-lock helpers ───────────────────────────────────────────────
+  const isBoardQualityLocked = (boardItemId) =>
+    isItemCompleted("boardQuality", boardItemId) || routeFieldsLocked;
+
+  const isBoardLocked = otherBoardId
+    ? isItemCompleted("board", otherBoardId) || routeFieldsLocked
+    : routeFieldsLocked;
+
+  const isCuttingLocked =
+    routeFieldsLocked ||
+    (boardProcessIds.length > 0 &&
+      boardProcessIds.every((bid) => isItemCompleted("boardQuality", bid)));
+
+  const isPrintingItemLocked = (printId) =>
+    isItemCompleted("printing", printId) || routeFieldsLocked;
+  const isProcessItemLocked = (procId) =>
+    isItemCompleted("process", procId) || routeFieldsLocked;
+  const isLaminationItemLocked = (laminationProcId) =>
+    isItemCompleted("lamination", laminationProcId) || routeFieldsLocked;
+  const isVarnishItemLocked = (varnishProcId) =>
+    isItemCompleted("varnish", varnishProcId) || routeFieldsLocked;
+  const isFinishingItemLocked = (finId) =>
+    isItemCompleted("finishing", finId) || routeFieldsLocked;
+
+  // ── HEADER ────────────────────────────────────────────────────────────────
   const headerContent = (
-    <div className="grid grid-cols-[1.1fr_1.4fr_3.8fr_0.7fr] gap-2 p-2 bg-[#f1f3f9] rounded-md border border-slate-200 shadow-sm">
-      {/* BASIC DETAILS */}
-      <SectionCard title="Basic Details">
-        <div className="grid grid-cols-2 gap-2">
-          <Field label="Job Card No">
-            <TextInput
-              label=""
-              readOnly
-              value={docId}
-              className="bg-slate-50 font-medium"
-            />
-          </Field>
-          <Field label="Job Card Date">
-            <TextInput
-              label=""
+    <div className="flex flex-col xl:flex-row gap-1">
+      <div className="w-fit border border-slate-200 p-1.5 bg-white rounded-md shadow-sm">
+        <h2 className="text-[10px] font-bold text-gray-500 mb-1 uppercase border-b pb-0.5">
+          Basic Details
+        </h2>
+        <div className="flex gap-x-1">
+          <div className="w-32">
+            <ReusableInput label="Job Card No" readOnly value={docId} />
+          </div>
+          <div className="w-28">
+            <ReusableInput
+              label="Job Card Date"
               value={docDate}
               type="date"
               readOnly
               disabled
-              className="bg-slate-50"
-            />
-          </Field>
-          <div className="w-32">
-            <DropdownInput
-              name="Job Card Type"
-              options={poTypes}
-              value={jobCardType}
-              setValue={SetJobCardType}
-              required={true}
-              readOnly={readOnly}
-              disabled={readOnly}
-              ref={customerRef}
             />
           </div>
         </div>
-      </SectionCard>
-
-      {/* CUSTOMER DETAILS */}
-      <SectionCard
-        title={
-          jobCardType === "GENERAL" ? "Branch Details" : "Customer Details"
-        }
-      >
-        <div className="flex flex-col gap-3">
-          {jobCardType === "GENERAL" ? (
-            <Field label="Branch Name" required>
-              <DropdownInput
-                name=""
-                options={dropDownListObject(
-                  branchList ? branchList.data : [],
-                  "branchName",
-                  "id",
-                )}
-                value={orderBranchId}
-                setValue={(val) => {
-                  setOrderBranchId(val);
-                  setOrderEntryId("");
-                  setProformaInvoiceId("");
-                  setOrderType("");
-                  setOrderEntryItemId("");
-                  setItemGroup("");
-                  setOrderQty("");
-                }}
-                required={true}
-                readOnly={readOnly}
-                disabled={!!id}
-              />
-            </Field>
-          ) : (
-            <Field label="Customer" required>
-              <DropdownWithModal
-                name=""
-                options={dropDownListObject(
-                  id
-                    ? customerList?.data?.filter((i) => i?.isCustomer)
-                    : customerList?.data?.filter(
-                        (i) => i?.active && i?.isCustomer,
-                      ),
-                  "name",
-                  "id",
-                )}
-                value={customerId}
-                setValue={(val) => {
-                  setCustomerId(val);
-                  setOrderEntryId("");
-                  setProformaInvoiceId("");
-                  setOrderType("");
-                  setOrderEntryItemId("");
-                  setItemGroup("");
-                  setOrderQty("");
-                }}
-                required
-                readOnly={readOnly}
-                addNewLabel="+ Add New Customer"
-                childComponent={PartyMaster}
-                addNewModalWidth="w-[90%] h-[95%]"
-                disabled={!!id}
-                ref={customerRef}
-              />
-            </Field>
-          )}
-          <Field label="Department">
-            <DropdownInput
-              name=""
-              options={departmentTypes}
-              value={department}
-              setValue={setDepartment}
+        <div className="flex gap-x-2">
+          <div className="mt-5 mr-2">
+            <CheckBoxNew
+              name="Is Repeated"
               readOnly={readOnly}
-              disabled={readOnly}
+              value={isRepeatedJobCard}
+              setValue={setIsRepeatedJobCard}
+              disabled={readOnly || childRecord.current > 0}
+              className="text-[11px] font-medium"
             />
-          </Field>
-        </div>
-      </SectionCard>
-
-      {/* ORDER DETAILS */}
-      <SectionCard title="Order Details">
-        <div className="grid grid-cols-12 gap-x-2 gap-y-2">
-          <Field label="Order No" required className="col-span-3">
-            {jobCardType === "ORDER" ? (
+          </div>
+          {isRepeatedJobCard && (
+            <div className="w-36 mt-2">
               <DropdownNew
-                name=""
-                dataList={proformaList?.data
-                  ?.filter((item) => {
-                    if (!customerId) return false;
-                    const approvedCheck = isApprovalEnabled
-                      ? item.isApproved === true
-                      : true;
-                    return (
-                      item.orderEntryId &&
-                      approvedCheck &&
-                      item.customerId === customerId
-                    );
-                  })
-                  ?.map((item) => ({
-                    ...item,
-                    orderDocId: item.OrderEntry?.docId,
-                  }))}
-                value={proformaInvoiceId}
-                setValue={(val) => {
-                  setProformaInvoiceId(val);
-                  const selected = proformaList?.data?.find(
-                    (p) => p.id === val,
-                  );
-                  if (selected) {
-                    setOrderEntryId(selected.orderEntryId);
-                    setOrderType(selected.OrderEntry?.productionType);
-                    setOrderEntryItemId("");
-                  }
-                }}
+                name="Job Card No"
+                dataList={jobCardList?.data}
+                value={refJobCardId}
+                setValue={setRefJobCardId}
                 required
                 readOnly={readOnly}
-                disabled={readOnly}
-                otherField={"orderDocId"}
-              />
-            ) : (
-              <DropdownNew
-                name=""
-                dataList={orderList?.data?.filter((item) => {
-                  const approvedCheck = isApprovalEnabled
-                    ? item.isApproved === true
-                    : true;
-                  if (jobCardType === "GENERAL") {
-                    if (!orderBranchId) return false;
-
-                    return (
-                      approvedCheck &&
-                      item.orderType === "GENERAL" &&
-                      String(item.orderBranchId) === String(orderBranchId)
-                    );
-                  } else {
-                    if (!customerId) return false;
-                    return approvedCheck && item.customerId === customerId;
-                  }
-                })}
-                value={orderEntryId}
-                setValue={(val) => {
-                  setOrderEntryId(val);
-                  const selected = orderList?.data?.find((o) => o.id === val);
-                  if (selected) {
-                    setOrderType(selected.productionType);
-                    setOrderEntryItemId("");
-                  }
-                }}
-                required
-                readOnly={readOnly}
-                disabled={readOnly}
+                disabled={readOnly || childRecord.current > 0}
                 otherField={"docId"}
+                beforeChange={handleJobCardChange}
               />
-            )}
-          </Field>
+            </div>
+          )}
+        </div>
+      </div>
 
-          <Field label="Production Type" required className="col-span-2">
-            <TextInput
-              name=""
-              value={orderType}
-              readOnly
-              disabled
-              className="bg-slate-50 font-medium"
-            />
-          </Field>
+      <div className="w-fit border border-slate-200 p-1.5 bg-white rounded-md shadow-sm">
+        <h2 className="text-[10px] font-bold text-gray-500 mb-1 uppercase border-b pb-0.5">
+          Customer Details
+        </h2>
+        <div className="w-72 px-1">
+          <DropdownNew
+            name="Customer"
+            dataList={
+              id
+                ? customerList?.data?.filter((i) => i?.isCustomer)
+                : customerList?.data?.filter((i) => i?.active && i?.isCustomer)
+            }
+            value={customerId}
+            setValue={setCustomerId}
+            required
+            readOnly={readOnly}
+            disabled={readOnly || childRecord.current > 0}
+            ref={customerRef}
+          />
+        </div>
+      </div>
 
-          <Field label="Item Description" className="col-span-4">
+      <div className="flex-1 border border-slate-200 p-1.5 bg-white rounded-md shadow-sm">
+        <h2 className="text-[10px] font-bold text-gray-500 mb-1 uppercase border-b pb-0.5">
+          Order Details
+        </h2>
+        <div className="flex gap-2 px-1">
+          <div className="w-44">
             <DropdownNew
-              name=""
-              dataList={
-                selectedOrderData?.data?.orderItems?.map((item) => ({
-                  ...item,
-                  itemDescription:
-                    item.StyleItem?.name || item.remarks || "No Name",
-                })) || []
-              }
-              value={orderEntryItemId}
-              setValue={(val) => {
-                setOrderEntryItemId(val);
-                const item = selectedOrderData?.data?.orderItems?.find(
-                  (i) => i.id === val,
-                );
-                if (item) {
-                  setOrderQty(item.orderQty || orderQty);
-                  setItemGroup(item.ItemGroup?.name || "");
-                  setStyleItemId(item.styleItemId || "");
-                  setLabelQuality(item.StyleItem?.name || "");
-                }
-              }}
-              otherField={"itemDescription"}
+              name="Order No"
+              dataList={orderList?.data?.filter(
+                (item) =>
+                  ["APPROVED", "NOT_CONFIGURED"].includes(
+                    item?.approvalStatus?.status,
+                  ) &&
+                  item?.customerId === customerId &&
+                  (id || item?.creationStatus !== "FULLY_CREATED"),
+              )}
+              value={orderEntryId}
+              setValue={setOrderEntryId}
+              required
               readOnly={readOnly}
-              disabled={readOnly || !orderEntryId}
+              disabled={readOnly || childRecord.current > 0}
+              otherField={"docId"}
+              beforeChange={async (selectedValue) => {
+                if (isRepeatedJobCard && refJobCardId) {
+                  const res = await getOrderById(selectedValue?.id).unwrap();
+                  setSelectedOrderData(res?.data);
+                  return;
+                }
+                if (!selectedValue) {
+                  setProductionType("SAMPLE");
+                  setStyleItemId("");
+                  setOrderQty("");
+                  setTagCardUps("");
+                  setJobRunTime("");
+                  setSelectedOrderData(null);
+                  setJobCardSizeDetails([]);
+                  return;
+                }
+                const res = await getOrderById(selectedValue?.id).unwrap();
+                setSelectedOrderData(res?.data);
+                setItemGroupId("");
+                setItemType("");
+                setStyleItemId("");
+                setOrderQty("");
+                setJobCardSizeDetails([]);
+                setBoardItems(
+                  Array.from({ length: DEFAULT_BOARD_ROWS }, emptyRow),
+                );
+                setOtherBoardId("");
+                setSelectedPrinting([]);
+                setSelectedProcesses([]);
+                setSelectedMachines([]);
+                setLaminations([]);
+                setPlateDetails(
+                  Array.from({ length: 6 }, () => ({
+                    plateId: "",
+                    machineId: "",
+                    plateName: "",
+                    description: "",
+                    qty: "",
+                  })),
+                );
+                setVarnishes([]);
+                setProductionType(res?.data?.productionType);
+              }}
             />
-          </Field>
-          <Field label="Item Group" className="col-span-3">
-            <TextInput
-              value={itemGroup}
-              setValue={setItemGroup}
-              readOnly
-              disabled
-              className="w-full bg-slate-50"
+          </div>
+          <div className="w-64">
+            <DropdownNew
+              name="Item Description"
+              dataList={styleItemList?.data?.filter((item) =>
+                id ? true : item.childRecord === 0,
+              )}
+              value={styleItemId}
+              setValue={setStyleItemId}
+              required
+              disabled={readOnly || childRecord.current > 0}
+              beforeChange={(selectedValue) => {
+                if (isRepeatedJobCard && refJobCardId) {
+                  const selectedOrderItem = selectedOrderData?.orderItems?.find(
+                    (item) => item.styleItemId === selectedValue?.id,
+                  );
+                  setOrderQty(selectedOrderItem?.orderQty || "");
+                  return;
+                }
+                setItemGroupId(selectedValue?.itemGroupId);
+                setItemType(selectedValue?.itemGroupName);
+                const selectedOrderItem = selectedOrderData?.orderItems?.find(
+                  (item) => item.styleItemId === selectedValue?.id,
+                );
+                setOrderQty(selectedOrderItem?.orderQty || "");
+                setTrackingType(selectedOrderItem?.trackingType || "");
+                setOrderItemId(selectedOrderItem?.id);
+                setJobCardSizeDetails(
+                  selectedOrderItem?.sizeBreakup?.map((s) => ({
+                    sizeId: s.sizeId || "",
+                    qty: s.qty || "",
+                    barcodeFrom: s.barcodeFrom || "",
+                    barcodeTo: s.barcodeTo || "",
+                  })) || [],
+                );
+                setBoardItems(
+                  Array.from({ length: DEFAULT_BOARD_ROWS }, emptyRow),
+                );
+                setSelectedProcesses([]);
+                setSelectedMachines([]);
+                setLaminations([]);
+                setVarnishes([]);
+                setSelectedPrinting([]);
+                setPlateDetails(
+                  Array.from({ length: 6 }, () => ({
+                    plateId: "",
+                    machineId: "",
+                    plateName: "",
+                    description: "",
+                    qty: "",
+                  })),
+                );
+                setOtherBoardId("");
+                setSelectedFinishing([]);
+                setSelectedLabelPrinting([]);
+              }}
             />
-          </Field>
-          <Field label="Order Qty" required className="col-span-2">
+          </div>
+          <div className="w-20">
             <TextInput
-              name=""
+              name="Order Qty"
               value={orderQty}
               setValue={setOrderQty}
-              readOnly
-              disabled
+              readOnly={true}
               required
               type="number"
-              className="text-right w-full bg-slate-50"
-              placeholder="Order Qty"
+              className="text-right w-full"
+              onFocus={(e) => e.target.select()}
+              onBlur={(e) =>
+                setOrderQty(
+                  e.target.value ? Number(e.target.value).toFixed(3) : "",
+                )
+              }
             />
-          </Field>
-
-          {!isLabel && (
-            <Field label="Tag/Card ups" className="col-span-2">
-              <TextInput
-                value={tagCardUps}
-                setValue={setTagCardUps}
-                readOnly={readOnly}
-                className="w-full"
-              />
-            </Field>
-          )}
-
-          {!isLabel && (
-            <Field label="Job Run time (Hours)" className="col-span-2">
-              <TextInput
-                type="number"
-                value={jobRunTime}
-                setValue={setJobRunTime}
-                readOnly={readOnly}
-                className="w-full text-right"
-              />
-            </Field>
-          )}
-
-          <Field label="Follow Up" required className="col-span-3">
-            <DropdownNew
-              name=""
-              dataList={employeeList?.data || []}
-              otherField="name"
-              otherValue="id"
-              value={followUp}
-              setValue={setFollowUp}
-              readOnly={readOnly}
-              disabled={readOnly}
-            />
-          </Field>
-
-          <Field label="Designer" required className="col-span-3">
-            <DropdownNew
-              name=""
-              dataList={employeeList?.data || []}
-              otherField="name"
-              otherValue="id"
-              value={designer}
-              setValue={setDesigner}
-              readOnly={readOnly}
-              disabled={readOnly}
-            />
-          </Field>
+          </div>
         </div>
-      </SectionCard>
+        <div className="flex gap-2 mt-1">
+          <div className="w-28">
+            <DropdownInput
+              name="Production Type"
+              options={productionTypes}
+              value={productionType}
+              setValue={setProductionType}
+              required
+              readOnly={true}
+              disabled={readOnly}
+            />
+          </div>
+          <div className="w-40">
+            <DropdownNew
+              name="Follow Up"
+              dataList={
+                id
+                  ? employeeList?.data
+                  : employeeList?.data?.filter((i) => i?.active)
+              }
+              value={followUpId}
+              setValue={setFollowUpId}
+              required
+              readOnly={readOnly}
+              disabled={
+                isDisabledPermission || readOnly || childRecord.current > 0
+              }
+            />
+          </div>
+          <div className="w-40">
+            <DropdownNew
+              name="Designer"
+              dataList={
+                id
+                  ? employeeList?.data
+                  : employeeList?.data?.filter((i) => i?.active)
+              }
+              value={designerId}
+              setValue={setDesignerId}
+              required
+              readOnly={readOnly}
+              disabled={
+                isDisabledPermission || readOnly || childRecord.current > 0
+              }
+            />
+          </div>
+        </div>
+      </div>
 
-      {/* QR CODE */}
-      <SectionCard title="QR CODE">
-        <div className="flex flex-col items-center justify-center h-full min-h-[80px] border-2 border-dashed border-slate-200 rounded text-center p-1 bg-white">
-          {id ? (
-            <div className="flex flex-col items-center">
+      <div className="border border-slate-200 p-1.5 bg-white rounded-md shadow-sm">
+        <h2 className="text-[10px] font-bold text-gray-500 mb-1 uppercase border-b pb-0.5">
+          Other Details
+        </h2>
+        <div className="flex gap-2 flex-wrap px-1">
+          <div className="w-28">
+            <TextInput
+              name="Tag/Card Ups"
+              value={tagCardUps}
+              setValue={setTagCardUps}
+              readOnly={readOnly}
+              className="w-full text-right"
+              onFocus={(e) => e.target.select()}
+              disabled={isDisabledPermission || childRecord.current > 0}
+            />
+          </div>
+          <div className="w-28">
+            <TextInput
+              name="Job Run Time (Hrs)"
+              value={jobRunTime}
+              setValue={setJobRunTime}
+              readOnly={readOnly}
+              className="w-full text-right"
+              type="number"
+              onFocus={(e) => e.target.select()}
+              disabled={isDisabledPermission || childRecord.current > 0}
+            />
+          </div>
+        </div>
+        <DropdownWithModal
+          name="Location"
+          options={dropDownListObject(
+            id
+              ? locationData?.data
+              : locationData?.data?.filter((item) => item?.active),
+            "storeName",
+            "id",
+          )}
+          value={storeId}
+          setValue={setStoreId}
+          required={true}
+          readOnly={readOnly}
+          className="w-[150px]"
+          addNewLabel="+ Add New Location"
+          childComponent={LocationMaster}
+          addNewModalWidth="w-[40%] h-[48%]"
+          disabled={isDisabledPermission || isCuttingLocked}
+        />
+      </div>
+
+      <div className="w-fit border border-slate-200 p-1.5 bg-white rounded-md shadow-sm">
+        <h2 className="text-xs font-bold text-gray-500 mb-1 uppercase border-b pb-0.5">
+          QR Code
+        </h2>
+        {docId && docId !== "New" ? (
+          <div className="flex flex-col items-center justify-center gap-1">
+            <div className="flex flex-col items-center justify-center w-28 h-28 border-2 border-dashed border-slate-200 rounded bg-white">
               <QRCodeCanvas
-                ref={qrRef}
                 value={JSON.stringify({ id, docId })}
                 size={80}
-                className="border border-slate-200 rounded mx-auto my-2"
+                className="border border-slate-200 rounded"
                 level="H"
               />
-              <div className="text-[9px] font-bold text-slate-800 tracking-tight">
+              <span className="text-[9px] font-bold text-slate-700 mt-1 tracking-tight">
                 {docId}
-              </div>
-            </div>
-          ) : (
-            <span className="text-[10px] text-slate-400 font-medium leading-tight">
-              QR appears
-              <br />
-              after save
-            </span>
-          )}
-        </div>
-      </SectionCard>
-    </div>
-  );
-
-  const labelDetailsContent = (
-    <div className="grid grid-cols-3 gap-3 h-full items-stretch">
-      {/* COLUMN 1: LABEL DETAILS & TECHNICAL FIELDS & REMARKS */}
-      <div className="flex flex-col gap-3 h-full">
-        <SectionCard title="Label Details">
-          <div className="grid grid-cols-3 gap-3">
-            <Field label="Label Quality">
-              <TextInput
-                value={findFromList(styleItemId, styleItemList?.data, "name")}
-                setValue={setLabelQuality}
-                readOnly={true}
-                className="w-full bg-slate-50"
-              />
-            </Field>
-            <Field label="Label Size">
-              <DropdownWithModal
-                options={dropDownListObject(
-                  id
-                    ? sizeList?.data
-                    : sizeList?.data?.filter((i) => i?.active),
-                  "name",
-                  "id",
-                )}
-                value={labelSizeId}
-                setValue={setLabelSizeId}
-                readOnly={readOnly}
-                addNewLabel="+ Add Size"
-                childComponent={Size}
-                addNewModalWidth="w-[30%] h-[45%]"
-              />
-            </Field>
-            <Field label="Total Meter">
-              <TextInput
-                value={totalMeter}
-                setValue={setTotalMeter}
-                readOnly={readOnly}
-                type="number"
-                className="w-full text-right"
-              />
-            </Field>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="TECHNICAL FIELDS" className="flex-1">
-          <div className="flex flex-col gap-3 h-full">
-            <div className="grid grid-cols-3 gap-3">
-              <Field label="Block">
-                <TextInput
-                  value={labelBlock}
-                  setValue={setLabelBlock}
-                  readOnly={readOnly}
-                  className="w-full"
-                />
-              </Field>
-              <Field label="Roll Qty">
-                <TextInput
-                  value={labelRollQty}
-                  setValue={setLabelRollQty}
-                  readOnly={readOnly}
-                  className="w-full text-right"
-                />
-              </Field>
-              <Field label="Label Qty">
-                <TextInput
-                  value={orderQty}
-                  readOnly
-                  disabled
-                  className="w-full bg-slate-50 text-right font-bold"
-                />
-              </Field>
-            </div>
-          </div>
-        </SectionCard>
-      </div>
-
-      {/* COLUMN 2: Finishing Processes & Remarks */}
-      <div className="flex flex-col gap-3 h-full">
-        <SectionCard title="Finishing Processes">
-          <div className="grid grid-cols-2 gap-x-2 gap-y-3">
-            {finishingList?.map((item) => (
-              <CheckBox
-                key={item.id}
-                name={item.name}
-                value={selectedFinishing.includes(item.id)}
-                setValue={() => toggleArr(setSelectedFinishing, item.id)}
-                readOnly={readOnly}
-              />
-            ))}
-          </div>
-        </SectionCard>
-
-        <SectionCard title="REMARKS" className="flex-1">
-          <Field label="" className="h-full">
-            <textarea
-              className="w-full p-2 border border-slate-300 rounded-md text-[11px] focus:ring-1 focus:ring-indigo-500 outline-none flex-1 min-h-[100px] bg-white transition-all shadow-inner resize-none h-full"
-              value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
-              readOnly={readOnly}
-              placeholder="Enter special label instructions..."
-            />
-          </Field>
-        </SectionCard>
-      </div>
-
-      {/* COLUMN 3: SIZE BREAKUP */}
-      <SectionCard title="SIZE BREAKUP" className="h-full">
-        <div className="h-full overflow-auto">
-          {selectedItem?.sizeBreakup?.length > 0 ? (
-            <div className="min-w-full">
-              {/* --- BARCODE TYPE TABLE --- */}
-              {selectedItem?.trackingType === "Barcode" && (
-                <table className="w-full text-[11px] border-collapse">
-                  <thead className="sticky top-0 z-20">
-                    <tr className="bg-slate-50 text-black uppercase text-[10px] font-bold">
-                      <th className="border border-slate-200 px-2 py-1.5 text-center w-11">
-                        S.NO
-                      </th>
-                      <th className="border border-slate-200 px-2 py-1.5 text-center">
-                        FROM
-                      </th>
-                      <th className="border border-slate-200 px-2 py-1.5 text-center">
-                        TO
-                      </th>
-                      <th className="border border-slate-200 px-2 py-1.5 text-center w-16">
-                        QTY
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedItem?.sizeBreakup
-                      ?.filter((row) => (Number(row.qty) || 0) > 0)
-                      ?.map((row, idx) => (
-                        <tr
-                          key={idx}
-                          className="hover:bg-slate-50 transition-colors"
-                        >
-                          <td className="border border-slate-200 px-2 py-1 text-center text-slate-500">
-                            {idx + 1}
-                          </td>
-                          <td className="border border-slate-200 px-2 py-1 text-left text-slate-600 font-mono">
-                            {row.barcodeFrom || "-"}
-                          </td>
-                          <td className="border border-slate-200 px-2 py-1 text-left text-slate-600 font-mono">
-                            {row.barcodeTo || "-"}
-                          </td>
-                          <td className="border border-slate-200 px-2 py-1 text-right font-bold text-indigo-600">
-                            {row.qty}
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              )}
-
-              {/* --- SIZE TEMPLATE TYPE TABLE --- */}
-              {selectedItem?.trackingType === "Size Template" && (
-                <table className="w-full text-[11px] border-collapse">
-                  <thead className="sticky top-0 z-20">
-                    <tr className="bg-slate-50 text-black uppercase text-[10px] font-bold">
-                      <th className="border border-slate-200 px-2 py-1.5 text-center w-11">
-                        S.NO
-                      </th>
-                      <th className="border border-slate-200 px-2 py-1.5 text-center">
-                        SIZE
-                      </th>
-                      <th className="border border-slate-200 px-2 py-1.5 text-center w-20">
-                        QTY
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedItem?.sizeBreakup
-                      ?.filter((row) => (Number(row.qty) || 0) > 0)
-                      ?.map((row, idx) => (
-                        <tr
-                          key={idx}
-                          className="hover:bg-slate-50 transition-colors"
-                        >
-                          <td className="border border-slate-200 px-2 py-1 text-center text-slate-500">
-                            {idx + 1}
-                          </td>
-                          <td className="border border-slate-200 px-2 py-1 text-left font-medium text-slate-700">
-                            {row.Size?.name ||
-                              sizeList?.data?.find(
-                                (s) => String(s.id) === String(row.sizeId),
-                              )?.name ||
-                              row.size ||
-                              "All Items"}
-                          </td>
-                          <td className="border border-slate-200 px-2 py-1 text-right font-bold text-indigo-600">
-                            {row.qty}
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              )}
-
-              {/* --- SIZE TEMPLATE + BARCODE TYPE TABLE --- */}
-              {selectedItem?.trackingType === "Size Template + Barcode" && (
-                <table className="w-full text-[11px] border-collapse">
-                  <thead className="sticky top-0 z-20">
-                    <tr className="bg-slate-50 text-black uppercase text-[10px] font-bold">
-                      <th className="border border-slate-200 px-2 py-1.5 text-center w-11">
-                        S.NO
-                      </th>
-                      <th className="border border-slate-200 px-2 py-1.5 text-center w-24">
-                        SIZE
-                      </th>
-                      <th className="border border-slate-200 px-2 py-1.5 text-center w-24">
-                        FROM
-                      </th>
-                      <th className="border border-slate-200 px-2 py-1.5 text-center w-24">
-                        TO
-                      </th>
-                      <th className="border border-slate-200 px-2 py-1.5 text-center w-16">
-                        QTY
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedItem?.sizeBreakup
-                      ?.filter((row) => (Number(row.qty) || 0) > 0)
-                      ?.map((row, idx) => (
-                        <tr
-                          key={idx}
-                          className="hover:bg-slate-50 transition-colors"
-                        >
-                          <td className="border border-slate-200 px-2 py-1 text-center text-slate-500">
-                            {idx + 1}
-                          </td>
-                          <td className="border border-slate-200 px-2 py-1 text-left font-medium text-slate-700">
-                            {row.Size?.name ||
-                              sizeList?.data?.find(
-                                (s) => String(s.id) === String(row.sizeId),
-                              )?.name ||
-                              row.size ||
-                              "All Items"}
-                          </td>
-                          <td className="border border-slate-200 px-2 py-1 text-left text-slate-600 font-mono">
-                            {row.barcodeFrom || "-"}
-                          </td>
-                          <td className="border border-slate-200 px-2 py-1 text-left text-slate-600 font-mono">
-                            {row.barcodeTo || "-"}
-                          </td>
-                          <td className="border border-slate-200 px-2 py-1 text-right font-bold text-indigo-600">
-                            {row.qty}
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full py-8 text-slate-400 gap-2">
-              <FiEye className="text-2xl opacity-20" />
-              <span className="text-[10px] italic">
-                No size details available
               </span>
             </div>
-          )}
-        </div>
-      </SectionCard>
+          </div>
+        ) : (
+          <div className="flex justify-center items-center mt-2 w-28">
+            <div className="w-28 h-28 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded bg-white text-slate-400 text-[10px] font-medium text-center leading-tight">
+              <span>
+                QR appears
+                <br />
+                after save
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 
+  // ── GRID ──────────────────────────────────────────────────────────────────
   const gridItemsContent = (
-    <div className="h-full overflow-y-auto px-1 bg-[#f1f3f9] p-2 rounded-md border border-slate-200 flex flex-col">
-      {isLabel ? (
-        <div className="min-h-full flex flex-col">{labelDetailsContent}</div>
-      ) : (
-        <div className="grid grid-cols-4 gap-3 items-stretch h-full">
-          {/* COLUMN 1: BOARD QUALITY & CUTTING DETAILS */}
-          <div className="flex flex-col gap-3 h-full">
-            <SectionCard title="Board Quality">
-              <div className="grid grid-cols-2 gap-x-2 gap-y-3">
-                {boardList?.map((item) => (
-                  <CheckBox
-                    key={item.id}
-                    name={item.name}
-                    value={boardItems.includes(item.id)}
-                    setValue={() => toggleArr(setBoardItems, item.id)}
-                    readOnly={readOnly}
-                  />
-                ))}
-              </div>
-            </SectionCard>
-
-            <SectionCard title="Cutting Details" className="flex-1">
-              <div className="grid grid-cols-2 gap-x-3 gap-y-3">
-                <Field label="GSM">
-                  <DropdownWithModal
-                    name=""
-                    options={dropDownListObject(
-                      id
-                        ? gsmList?.data
-                        : gsmList?.data?.filter((i) => i?.active),
-                      "name",
-                      "id",
-                    )}
-                    value={gsmId}
-                    setValue={setGsmId}
-                    readOnly={readOnly}
-                    addNewLabel="+ Add GSM"
-                    childComponent={Gsm}
-                    addNewModalWidth="w-[30%] h-[45%]"
-                  />
-                </Field>
-                <Field label="Others / Board">
-                  <DropdownWithModal
-                    name=""
-                    options={dropDownListObject(
-                      id
-                        ? boardData?.data
-                        : boardData?.data?.filter((i) => i?.active),
-                      "name",
-                      "id",
-                    )}
-                    value={boardId}
-                    setValue={setBoardId}
-                    readOnly={readOnly}
-                    addNewLabel="+ Add Board"
-                    childComponent={BoardMaster}
-                    addNewModalWidth="w-[30%] h-[45%]"
-                  />
-                </Field>
-                <Field label="Full Board">
-                  <DropdownWithModal
-                    name=""
-                    options={dropDownListObject(
-                      id
-                        ? sizeList?.data
-                        : sizeList?.data?.filter((i) => i?.active),
-                      "name",
-                      "id",
-                    )}
-                    value={fullBoardId}
-                    setValue={setFullBoardId}
-                    readOnly={readOnly}
-                    addNewLabel="+ Add Size"
-                    childComponent={Size}
-                    addNewModalWidth="w-[30%] h-[45%]"
-                  />
-                </Field>
+    <div className="h-full overflow-auto">
+      {itemType !== "LABEL" && (
+        <div className="grid grid-cols-4 gap-x-2 items-stretch w-full">
+          {/* COL span-2: Board + Printing + Plate */}
+          <div className="flex flex-col gap-2 col-span-2">
+            <SectionCard title="Board & Cutting Details" overflow={false}>
+              <BoardDetails
+                boardItems={boardItems}
+                setBoardItems={setBoardItems}
+                boardList={boardList}
+                gsmList={gsmList}
+                sizeList={sizeList}
+                readOnly={readOnly}
+                id={id}
+                isDisabledPermission={isDisabledPermission}
+                isCuttingLocked={isCuttingLocked}
+                childRecord={childRecord}
+                storeId={storeId}
+              />
+              <div className="grid grid-cols-4 gap-x-4 mt-5">
                 <Field label="Cutting Size">
                   <DropdownWithModal
                     name=""
@@ -1540,19 +1291,21 @@ const JobCardForm = ({
                     addNewLabel="+ Add Size"
                     childComponent={Size}
                     addNewModalWidth="w-[30%] h-[45%]"
+                    disabled={isDisabledPermission || isCuttingLocked}
+                    required={true}
                   />
                 </Field>
-                <Field label="No. of Sheets">
+                <Field label="Split Type">
                   <TextInput
                     name=""
-                    value={noOfPockets}
-                    setValue={setNoOfPockets}
+                    value={splitType}
+                    setValue={setSplitType}
                     readOnly={readOnly}
-                    type="number"
                     className="w-full text-right"
+                    disabled={isDisabledPermission || isCuttingLocked}
                   />
                 </Field>
-                <Field label="Running Qty">
+                <Field label="Running Qty" required={true}>
                   <TextInput
                     name=""
                     value={runningQty}
@@ -1560,114 +1313,299 @@ const JobCardForm = ({
                     readOnly={readOnly}
                     type="number"
                     className="w-full text-right"
+                    disabled={isDisabledPermission || isCuttingLocked}
+                    required={true}
                   />
                 </Field>
               </div>
             </SectionCard>
-          </div>
-          {/* COLUMN 4: PRINTING, PLATE & DIE, SIZE DETAILS */}
 
-          <div className="flex flex-col gap-3 h-full">
-            <SectionCard title="Printing Details">
-              <div className="grid grid-cols-2 gap-x-2 gap-y-3">
-                {printingList?.map((item) => (
-                  <CheckBox
-                    key={item.id}
-                    name={item.name}
-                    value={selectedPrinting.includes(item.id)}
-                    setValue={() => toggleArr(setSelectedPrinting, item.id)}
-                    readOnly={readOnly}
-                  />
-                ))}
-              </div>
-            </SectionCard>
-            <SectionCard title="Plate & Die Details">
-              <div className="flex flex-col gap-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Plate Details">
-                    <DropdownWithModal
-                      name=""
-                      options={dropDownListObject(
-                        id
-                          ? plateList?.data
-                          : plateList?.data?.filter((i) => i?.active),
-                        "name",
-                        "id",
-                      )}
-                      value={plateId}
-                      setValue={setPlateId}
-                      readOnly={readOnly}
-                      addNewLabel="+ Add Plate"
-                      childComponent={PlateMaster}
-                    />
-                  </Field>
-                  <Field label="Die Details">
-                    <DropdownWithModal
-                      name=""
-                      options={dropDownListObject(
-                        id
-                          ? dieList?.data
-                          : dieList?.data?.filter((i) => i?.active),
-                        "name",
-                        "id",
-                      )}
-                      value={dieId}
-                      setValue={setDieId}
-                      readOnly={readOnly}
-                      addNewLabel="+ Add Die"
-                      childComponent={DieMaster}
-                    />
-                  </Field>
-                  <Field label="Total Plate Sets">
-                    <TextInput
-                      name=""
-                      value={totalPlateSet}
-                      setValue={setTotalPlateSet}
-                      readOnly={readOnly}
-                      type="number"
-                      className="w-full text-right"
-                    />
-                  </Field>
-                </div>
-              </div>
-            </SectionCard>
-
-            <div className="grid grid-cols-2 gap-3 flex-1">
-              <SectionCard title="Plate Set" className="h-full">
-                <div className="flex items-center justify-center p-2 h-full">
-                  <button
-                    onClick={() => setPlateDetailsModal(true)}
-                    className="bg-indigo-600 text-white px-3 py-1.5 rounded-md text-[11px] font-semibold hover:bg-indigo-700 transition-all shadow-sm w-full"
-                  >
-                    Plate Details
-                  </button>
-                </div>
-              </SectionCard>
-
-              <SectionCard title="Size / Barcode Details" className="h-full">
-                <div className="flex items-center justify-center h-full">
-                  <button
-                    onClick={() => setSizeModal(true)}
-                    disabled={
-                      !selectedItem || selectedItem.trackingType === "None"
+            <SectionCard title="Plate Details" className="flex-1 flex flex-col">
+              <div className="grid grid-cols-5 gap-x-3 items-center">
+                <div className="w-72 px-1">
+                  <DropdownNew
+                    name="Plate Supplier"
+                    dataList={
+                      id
+                        ? customerList?.data?.filter((i) => i?.isSupplier)
+                        : customerList?.data?.filter(
+                            (i) => i?.active && i?.isSupplier,
+                          )
                     }
-                    className={`p-2 rounded-full transition-all ${
-                      !selectedItem || selectedItem.trackingType === "None"
-                        ? "text-slate-300 cursor-not-allowed"
-                        : "text-indigo-600 hover:bg-indigo-50 hover:scale-110 active:scale-95"
-                    }`}
-                    title="View Size Details"
-                  >
-                    <FiEye size={22} />
-                  </button>
+                    value={plateSupplierId}
+                    setValue={setPlateSupplierId}
+                    required
+                    readOnly={readOnly}
+                    disabled={readOnly || childRecord.current > 0}
+                    // ref={customerRef}
+                  />
                 </div>
-              </SectionCard>
-            </div>
+                <Field></Field>
+                {/* <Field label="Plate Details">
+                  <DropdownWithModal
+                    name=""
+                    options={dropDownListObject(
+                      id
+                        ? plateList?.data
+                        : plateList?.data?.filter((i) => i?.active),
+                      "name",
+                      "id",
+                    )}
+                    value={plateId}
+                    setValue={setPlateId}
+                    readOnly={readOnly}
+                    addNewLabel="+ Add Plate"
+                    childComponent={PlateMaster}
+                    addNewModalWidth="w-[30%] h-[45%]"
+                    disabled={isDisabledPermission}
+                  />
+                </Field>
+
+                <Field label="Total Plate Sets">
+                  <TextInput
+                    name=""
+                    value={totalPlatesets}
+                    setValue={setTotalPlatesets}
+                    type="number"
+                    readOnly={readOnly}
+                    className="w-full text-right"
+                    disabled={isDisabledPermission}
+                  />
+                </Field> */}
+
+                {/* <div className="justify-center items-center">
+                  <button
+                    onClick={() => setSizeModalOpen(true)}
+                    className="border w-auto rounded-md text-[10px] bg-blue-700 font-semibold uppercase tracking-wider text-white p-1"
+                  >
+                    View Size Details
+                  </button>
+                </div> */}
+                <CheckBox
+                  name="Old Plate"
+                  value={isOldPlate}
+                  setValue={(val) => {
+                    setIsOldPlate(val);
+                    if (val) setIsNewPlate(false);
+                  }}
+                  readOnly={readOnly}
+                  disabled={isDisabledPermission}
+                />
+                <CheckBox
+                  name="New Plate"
+                  value={isNewPlate}
+                  setValue={(val) => {
+                    setIsNewPlate(val);
+                    if (val) setIsOldPlate(false);
+                  }}
+                  readOnly={readOnly}
+                  disabled={isDisabledPermission}
+                />
+              </div>
+
+              <div className="mt-1 border border-slate-200 rounded-lg p-3 bg-white flex-1 overflow-y-auto">
+                <h4 className="text-[13px] font-semibold text-slate-800 mb-2">
+                  Plate Set Details
+                </h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full table-fixed border-collapse text-[11px]">
+                    <thead>
+                      <tr className="bg-gray-200 text-gray-700 h-7">
+                        <th className="sticky top-0 z-20 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-slate-700 uppercase w-6">
+                          S.No
+                        </th>
+                        <th className="sticky top-0 z-20 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-slate-700 uppercase w-32">
+                          Machine Name
+                        </th>
+                        <th className="sticky top-0 z-20 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-slate-700 uppercase w-32">
+                          Plate Size
+                        </th>
+                        <th className="sticky top-0 z-20 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-slate-700 uppercase w-40">
+                          Description
+                        </th>
+                        <th className="sticky top-0 z-20 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-slate-700 uppercase w-12">
+                          Qty
+                        </th>
+                        {!readOnly && (
+                          <th className="sticky top-0 z-20 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-slate-700 uppercase w-12">
+                            Actions
+                          </th>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {plateDetails.map((row, idx) => (
+                        <tr
+                          key={idx}
+                          className={
+                            idx % 2 === 0 ? "bg-white h-7" : "bg-gray-50 h-7"
+                          }
+                        >
+                          <td className="border border-gray-300 text-center text-[10px] text-gray-500">
+                            {idx + 1}
+                          </td>
+
+                          <td className=" text-[11px] border border-gray-300 text-left">
+                            <FxSelectWithAdd
+                              inputId={`machineId-input-${idx}`}
+                              value={row.machineId}
+                              onChange={(val) => {
+                                const next = [...plateDetails];
+                                next[idx] = {
+                                  ...next[idx],
+                                  machineId: val,
+                                };
+                                setPlateDetails(next);
+                              }}
+                              options={(machineList?.data || [])
+                                .filter((item) => (id ? true : item.active))
+                                .map((item) => ({
+                                  label: item.name,
+                                  value: item.id,
+                                }))}
+                              readOnly={readOnly}
+                              placeholder=""
+                              addNew={true}
+                              // childComponent={StyleItemMaster}
+                              addNewModalWidth="w-[50%] h-[55%]"
+                              // nextRef={vehicleRef}
+                            />
+                          </td>
+                          <td className=" text-[11px] border border-gray-300 text-left">
+                            <FxSelectWithAdd
+                              inputId={`plateId-input-${idx}`}
+                              value={row.plateId}
+                              onChange={(val) => {
+                                const next = [...plateDetails];
+                                next[idx] = {
+                                  ...next[idx],
+                                  plateId: val,
+                                };
+                                console.log(next, "next");
+
+                                setPlateDetails(next);
+                              }}
+                              options={(plateList?.data || [])
+                                .filter((item) => (id ? true : item.active))
+                                .map((item) => ({
+                                  label: item.name,
+                                  value: item.id,
+                                }))}
+                              readOnly={readOnly}
+                              placeholder=""
+                              addNew={true}
+                              // childComponent={StyleItemMaster}
+                              addNewModalWidth="w-[50%] h-[55%]"
+                              // nextRef={vehicleRef}
+                            />
+                          </td>
+                          {console.log(plateDetails, "plateDetails")}
+                          <td className="border border-gray-300 p-0">
+                            <input
+                              type="text"
+                              className="w-full px-1 py-0.5 bg-transparent text-[11px] outline-none focus:bg-white"
+                              value={row.plateName}
+                              onChange={(e) => {
+                                const next = [...plateDetails];
+                                next[idx] = {
+                                  ...next[idx],
+                                  plateName: e.target.value,
+                                };
+                                setPlateDetails(next);
+                              }}
+                              disabled={readOnly || isDisabledPermission}
+                              placeholder="Description"
+                            />
+                          </td>
+                          <td className="border border-gray-300 p-0">
+                            <input
+                              type="number"
+                              min="0"
+                              className="w-full px-1 py-0.5 text-right bg-transparent text-[11px] outline-none focus:bg-white"
+                              value={row.qty}
+                              onChange={(e) => {
+                                const next = [...plateDetails];
+                                next[idx] = {
+                                  ...next[idx],
+                                  qty: e.target.value,
+                                };
+                                setPlateDetails(next);
+                              }}
+                              onBlur={(e) => {
+                                const next = [...plateDetails];
+                                next[idx] = {
+                                  ...next[idx],
+                                  qty: e.target.value
+                                    ? Number(e.target.value)
+                                    : "",
+                                };
+                                setPlateDetails(next);
+                              }}
+                              onFocus={(e) => e.target.select()}
+                              disabled={readOnly || isDisabledPermission}
+                              placeholder="0"
+                            />
+                          </td>
+                          {!readOnly && (
+                            <td className="border border-gray-300 text-center">
+                              <div className="flex items-center justify-center gap-0.5">
+                                <button
+                                  onClick={() =>
+                                    setPlateDetails((prev) => [
+                                      ...prev,
+                                      { plateName: "", qty: "" },
+                                    ])
+                                  }
+                                  className="p-0.5 bg-blue-50 hover:bg-blue-100 rounded"
+                                  tabIndex={-1}
+                                  disabled={isDisabledPermission}
+                                >
+                                  <Plus size={11} className="text-blue-700" />
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    setPlateDetails((prev) => {
+                                      const next = prev.filter(
+                                        (_, i) => i !== idx,
+                                      );
+                                      return next.length > 0
+                                        ? next
+                                        : [{ plateName: "", qty: "" }];
+                                    })
+                                  }
+                                  className="p-0.5 bg-red-50 hover:bg-red-100 rounded"
+                                  tabIndex={-1}
+                                  disabled={isDisabledPermission}
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-3 w-3 text-red-700"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                </button>
+                              </div>
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </SectionCard>
           </div>
-          {/* COLUMN 2: PROCESS DETAILS & LAMINATION DETAILS */}
-          <div className="flex flex-col gap-3 h-full">
+
+          {/* COL 3: Process + Lamination */}
+          <div className="flex flex-col gap-2">
             <SectionCard title="Process Details">
-              <div className="grid grid-cols-2 gap-x-2 gap-y-3">
+              <div className="grid grid-cols-2 gap-y-4 min-h-[165px]">
                 {defaultList?.map((item) => (
                   <CheckBox
                     key={item.id}
@@ -1675,68 +1613,199 @@ const JobCardForm = ({
                     value={selectedProcesses.includes(item.id)}
                     setValue={() => toggleArr(setSelectedProcesses, item.id)}
                     readOnly={readOnly}
+                    disabled={
+                      isDisabledPermission || isProcessItemLocked(item.id)
+                    }
                   />
                 ))}
               </div>
             </SectionCard>
-
-            <SectionCard title="Lamination Details" className="flex-1">
-              <LVHeader />
-              <div className="space-y-1">
-                {laminationList?.map((item) => {
-                  const selected = laminations.find(
-                    (l) => l.processId === item.id,
-                  );
-                  return (
-                    <LVRow
-                      key={item.id}
-                      item={item}
-                      selected={selected}
-                      onMain={() => toggleLV(setLaminations, item.id)}
-                      onFront={() =>
-                        toggleLVProp(setLaminations, item.id, "isFront")
-                      }
-                      onFrontBack={() =>
-                        toggleLVProp(setLaminations, item.id, "isFrontAndBack")
-                      }
-                      readOnly={readOnly}
-                    />
-                  );
-                })}
-              </div>
+            <SectionCard
+              title="Lamination Details "
+              className="flex-1 flex flex-col"
+            >
+              {laminationList?.length > 0 ? (
+                <>
+                  <LVHeader />
+                  {laminationList.map((item) => {
+                    const sel = laminations.find(
+                      (l) => l.processId === item.id,
+                    );
+                    return (
+                      <LVRow
+                        key={item.id}
+                        item={item}
+                        selected={sel}
+                        onMain={() => toggleLV(setLaminations, item.id)}
+                        onFront={() =>
+                          toggleLVProp(setLaminations, item.id, "isFront")
+                        }
+                        onFrontBack={() =>
+                          toggleLVProp(
+                            setLaminations,
+                            item.id,
+                            "isFrontAndBack",
+                          )
+                        }
+                        readOnly={
+                          readOnly ||
+                          isDisabledPermission ||
+                          isLaminationItemLocked(item.id)
+                        }
+                      />
+                    );
+                  })}
+                </>
+              ) : (
+                <p className="text-xs text-slate-400 italic">
+                  No lamination options configured.
+                </p>
+              )}
             </SectionCard>
           </div>
 
-          {/* COLUMN 3: VARNISH DETAILS & MACHINES */}
-          <div className="flex flex-col gap-3 h-full">
+          {/* COL 4: Varnish + Machines */}
+          <div className="flex flex-col gap-2">
             <SectionCard title="Varnish Details">
-              <LVHeader />
-              <div className="space-y-1">
-                {varnishList?.map((item) => {
-                  const selected = varnishes.find(
-                    (v) => v.processId === item.id,
-                  );
-                  return (
-                    <LVRow
-                      key={item.id}
-                      item={item}
-                      selected={selected}
-                      onMain={() => toggleLV(setVarnishes, item.id)}
-                      onFront={() =>
-                        toggleLVProp(setVarnishes, item.id, "isFront")
-                      }
-                      onFrontBack={() =>
-                        toggleLVProp(setVarnishes, item.id, "isFrontAndBack")
-                      }
-                      readOnly={readOnly}
-                    />
-                  );
-                })}
-              </div>
+              {varnishList?.length > 0 ? (
+                <>
+                  <LVHeader />
+                  {varnishList.map((item) => {
+                    const sel = varnishes.find((v) => v.processId === item.id);
+                    return (
+                      <LVRow
+                        key={item.id}
+                        item={item}
+                        selected={sel}
+                        onMain={() => toggleLV(setVarnishes, item.id)}
+                        onFront={() =>
+                          toggleLVProp(setVarnishes, item.id, "isFront")
+                        }
+                        onFrontBack={() =>
+                          toggleLVProp(setVarnishes, item.id, "isFrontAndBack")
+                        }
+                        readOnly={
+                          readOnly ||
+                          isDisabledPermission ||
+                          isVarnishItemLocked(item.id)
+                        }
+                      />
+                    );
+                  })}
+                </>
+              ) : (
+                <p className="text-xs text-slate-400 italic">
+                  No varnish options configured.
+                </p>
+              )}
             </SectionCard>
 
-            <SectionCard title="Machines" className="flex-1">
-              <div className="grid grid-cols-2 gap-x-2 gap-y-4">
+            <SectionCard title="Printing Details">
+              {printingList?.length > 0 ? (
+                <>
+                  <LVHeader />
+                  {printingList.map((item) => {
+                    const sel = selectedPrinting.find(
+                      (p) => p.processId === item.id,
+                    );
+                    return (
+                      <LVRow
+                        key={item.id}
+                        item={item}
+                        selected={sel}
+                        onMain={() => toggleLV(setSelectedPrinting, item.id)}
+                        onFront={() =>
+                          toggleLVProp(setSelectedPrinting, item.id, "isFront")
+                        }
+                        onFrontBack={() =>
+                          toggleLVProp(
+                            setSelectedPrinting,
+                            item.id,
+                            "isFrontAndBack",
+                          )
+                        }
+                        readOnly={
+                          readOnly ||
+                          isDisabledPermission ||
+                          isPrintingItemLocked(item.id)
+                        }
+                      />
+                    );
+                  })}
+                </>
+              ) : (
+                <p className="text-xs text-slate-400 italic">
+                  No printing options configured.
+                </p>
+              )}
+            </SectionCard>
+            <SectionCard title="Die Details" className="flex-1 flex flex-col">
+              <div className="grid grid-cols-2 gap-y-4 mb-4">
+                {dieProcessList?.map((item) => (
+                  <CheckBox
+                    key={item.id}
+                    name={item.name}
+                    value={selectedProcesses.includes(item.id)}
+                    setValue={() => {
+                      setSelectedProcesses((prev) => {
+                        const isAlreadySelected = prev.includes(item.id);
+                        // Remove any other die processes to ensure only one is ticked
+                        const filtered = prev.filter(
+                          (pId) => !dieProcessList.some((dp) => dp.id === pId),
+                        );
+
+                        if (isAlreadySelected) {
+                          // Toggle off
+                          return filtered;
+                        } else {
+                          // Toggle on (replacing any previously selected die process)
+                          return [...filtered, item.id];
+                        }
+                      });
+                    }}
+                    readOnly={readOnly}
+                    disabled={
+                      isDisabledPermission || isProcessItemLocked(item.id)
+                    }
+                  />
+                ))}
+              </div>
+
+              <div className="grid grid-cols-3 gap-x-1 items-center">
+                <div className="col-span-1">
+                  <Field label="Die Method" required={true}>
+                    <DropdownInput
+                      name=""
+                      options={[
+                        { show: "Old Die", value: "Old Die" },
+                        { show: "New Die", value: "New Die" },
+                      ]}
+                      value={dieMethod}
+                      setValue={setDieMethod}
+                      readOnly={readOnly}
+                      disabled={isDisabledPermission || isCuttingLocked}
+                      required={true}
+                    />
+                  </Field>
+                </div>
+                <div className="col-span-2">
+                  <Field label="Description" required={true}>
+                    <TextInput
+                      name=""
+                      value={dieDescription}
+                      setValue={setDieDescription}
+                      readOnly={readOnly}
+                      type="text"
+                      className="w-full text-left"
+                      disabled={isDisabledPermission || routeFieldsLocked}
+                      required={true}
+                    />
+                  </Field>
+                </div>
+              </div>
+            </SectionCard>
+            {/* <SectionCard title="Machines">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-4 min-h-[132px]">
                 {machineList?.data
                   ?.filter((item) => (id ? true : item.active))
                   .map((item) => (
@@ -1746,8 +1815,325 @@ const JobCardForm = ({
                       value={selectedMachines.includes(item.id)}
                       setValue={() => toggleArr(setSelectedMachines, item.id)}
                       readOnly={readOnly}
+                      disabled={isDisabledPermission}
                     />
                   ))}
+              </div>
+            </SectionCard> */}
+          </div>
+        </div>
+      )}
+
+      {itemType === "LABEL" && (
+        <div className="grid grid-cols-3 gap-x-2 w-full h-full">
+          <div className="h-full">
+            <SectionCard title="Label Details" className=" h-full">
+              <div className="flex gap-16">
+                <div className="grid grid-cols-3 gap-y-2 gap-x-2 h-full">
+                  {" "}
+                  <div className="col-span-2">
+                    <DropdownWithModal
+                      name="Label Quality"
+                      options={dropDownListObject(
+                        id
+                          ? styleList?.data
+                          : styleList?.data?.filter(
+                              (item) =>
+                                item.active && item.ItemGroup.name === "LABEL",
+                            ),
+                        "name",
+                        "id",
+                      )}
+                      value={labelItemId}
+                      setValue={setLabelItemId}
+                      readOnly={readOnly}
+                      addNewLabel="+ Add Label"
+                      childComponent={StyleItemMaster}
+                      addNewModalWidth="w-[50%] h-[60%]"
+                      disabled={isDisabledPermission}
+                      required={true}
+                    />
+                  </div>
+                  <div>
+                    <DropdownWithModal
+                      name="Label Size"
+                      options={dropDownListObject(
+                        id
+                          ? sizeList?.data
+                          : sizeList?.data?.filter((i) => i?.active),
+                        "name",
+                        "id",
+                      )}
+                      value={labelSizeId}
+                      setValue={setLabelSizeId}
+                      readOnly={readOnly}
+                      addNewLabel="+ Add Size"
+                      childComponent={Size}
+                      addNewModalWidth="w-[30%] h-[45%]"
+                      disabled={isDisabledPermission}
+                      required={true}
+                    />
+                  </div>
+                  <div>
+                    <DropdownWithModal
+                      name="Label Color"
+                      options={dropDownListObject(
+                        id
+                          ? colorData?.data
+                          : colorData?.data?.filter((i) => i?.active),
+                        "name",
+                        "id",
+                      )}
+                      value={colorId}
+                      setValue={setColorId}
+                      readOnly={readOnly}
+                      addNewLabel="+ Add Color"
+                      childComponent={ColorMaster}
+                      addNewModalWidth="w-[30%] h-[45%]"
+                      disabled={isDisabledPermission}
+                      required={true}
+                    />
+                  </div>
+                  <div>
+                    <TextInput
+                      name="Stock Qty(Roll)"
+                      value={stockQty}
+                      setValue={setStockQty}
+                      readOnly={true}
+                      type="number"
+                      className="w-full text-right"
+                      disabled={isDisabledPermission}
+                    />
+                  </div>
+                  <div>
+                    <TextInput
+                      name="Roll Meter (Per Roll)"
+                      value={totalMeter}
+                      setValue={setTotalMeter}
+                      onBlur={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (!isNaN(val)) {
+                          setTotalMeter(val.toFixed(3));
+                        }
+                      }}
+                      readOnly={readOnly}
+                      type="number"
+                      className="w-full text-right"
+                      disabled={isDisabledPermission}
+                    />
+                  </div>
+                  {/* 
+                  <div>
+                    <TextInput
+                      name="Meter"
+                      value={meter}
+                      setValue={setMeter}
+                      readOnly={readOnly}
+                      type="number"
+                      className="w-full text-right"
+                      disabled={isDisabledPermission}
+                    />
+                  </div>
+                  */}
+                  <div>
+                    <TextInput
+                      name="Length (MM)"
+                      value={lenght}
+                      setValue={setLenght}
+                      readOnly={readOnly}
+                      type="number"
+                      className="w-full text-right"
+                      disabled={isDisabledPermission}
+                    />
+                  </div>
+                  <div>
+                    <TextInput
+                      name="Width (MM)"
+                      value={width}
+                      setValue={setWidth}
+                      readOnly={readOnly}
+                      type="number"
+                      className="w-full text-right"
+                      disabled={isDisabledPermission}
+                    />
+                  </div>
+                  <div>
+                    <TextInput
+                      name="Calculated Meter"
+                      value={(() => {
+                        if (lenght && orderQty) {
+                          const lengthVal = parseFloat(lenght);
+                          const qty = parseFloat(orderQty);
+                          if (!isNaN(lengthVal) && !isNaN(qty)) {
+                            return ((lengthVal * qty) / 1000).toFixed(3);
+                          }
+                        }
+                        return "";
+                      })()}
+                      setValue={() => {}}
+                      readOnly={true}
+                      type="text"
+                      className="w-full text-right"
+                      disabled={isDisabledPermission}
+                    />
+                  </div>
+                  <div>
+                    <TextInput
+                      name="Required Rolls"
+                      value={(() => {
+                        if (lenght && orderQty && totalMeter) {
+                          const lengthVal = parseFloat(lenght);
+                          const qty = parseFloat(orderQty);
+                          const rMeter = parseFloat(totalMeter);
+                          if (
+                            !isNaN(lengthVal) &&
+                            !isNaN(qty) &&
+                            !isNaN(rMeter) &&
+                            rMeter > 0
+                          ) {
+                            const calcMeter = (lengthVal * qty) / 1000;
+                            if (calcMeter > 0) {
+                              return Math.ceil(calcMeter / rMeter);
+                            }
+                          }
+                        }
+                        return "";
+                      })()}
+                      setValue={() => {}}
+                      readOnly={true}
+                      type="text"
+                      className="w-full text-right"
+                      disabled={isDisabledPermission}
+                    />
+                  </div>
+                  <div>
+                    <TextInput
+                      name="Roll Qty"
+                      value={rollQty}
+                      setValue={setRollQty}
+                      readOnly={readOnly}
+                      max={stockQty}
+                      type="number"
+                      className="w-full text-right"
+                      disabled={isDisabledPermission}
+                      required={true}
+                    />
+                  </div>
+                  <div>
+                    <DropdownInput
+                      name="Block"
+                      options={blockTypes}
+                      value={block}
+                      setValue={(value) => setBlock(value)}
+                      required={true}
+                      readOnly={readOnly}
+                      disabled={
+                        childRecord.current > 0 ||
+                        readOnly ||
+                        isDisabledPermission
+                      }
+                      beforeChange={() => setBlockDate(null)}
+                    />
+                  </div>
+                  {/* {block === "OLD" && ( */}
+                  <div>
+                    <DateInputNew
+                      name="Block Date"
+                      value={blockDate}
+                      setValue={setBlockDate}
+                      disabled={readOnly || isDisabledPermission}
+                      required={false}
+                      type="date"
+                    />
+                  </div>
+                  {/* )} */}
+                </div>
+              </div>
+            </SectionCard>
+          </div>
+          <div className="flex flex-col gap-y-2 h-full">
+            <SectionCard title="Printing Details" className="h-full">
+              <div className="grid grid-cols-2 gap-y-4 h-auto">
+                {labelPrintingList?.map((item) => (
+                  <CheckBox
+                    key={item.id}
+                    name={item.name}
+                    value={selectedLabelPrinting.includes(item.id)}
+                    setValue={() =>
+                      toggleArr(setSelectedLabelPrinting, item.id)
+                    }
+                    readOnly={readOnly}
+                    disabled={
+                      isDisabledPermission || isFinishingItemLocked(item.id)
+                    }
+                  />
+                ))}
+              </div>
+            </SectionCard>
+            <SectionCard title="Finishing Details" className="h-full">
+              <div className="grid grid-cols-3 h-full">
+                {finishingList?.map((item) => (
+                  <CheckBox
+                    key={item.id}
+                    name={item.name}
+                    value={selectedFinishing.includes(item.id)}
+                    setValue={() => toggleArr(setSelectedFinishing, item.id)}
+                    readOnly={readOnly}
+                    disabled={
+                      isDisabledPermission || isFinishingItemLocked(item.id)
+                    }
+                  />
+                ))}
+              </div>
+            </SectionCard>
+          </div>
+          <div className="flex h-full w-full">
+            <SectionCard title="Size Wise Qty Details" className="w-full">
+              <div className="bg-white px-4 py-1 shadow-sm overflow-y-auto w-full">
+                <table className=" border-separate border-spacing-0 border-t border-l border-slate-200">
+                  <thead>
+                    <tr>
+                      <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-slate-700 uppercase w-6">
+                        S.No
+                      </th>
+                      <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 w-48 px-1 py-1 text-center text-[11px] font-bold text-slate-700 uppercase">
+                        Size
+                      </th>
+                      <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 w-20 px-1 py-1 text-center text-[11px] font-bold text-slate-700 uppercase">
+                        Qty
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {jobCardSizeDetails?.map((item, idx) => (
+                      <tr
+                        key={idx}
+                        className="h-8 hover:bg-slate-50 transition-colors"
+                      >
+                        <td className="border-b border-r border-slate-200 px-1 py-0 text-center text-[11px] text-black">
+                          {idx + 1}
+                        </td>
+                        <td className="border-b border-r border-slate-200 px-3 py-0 text-[11px] text-black">
+                          {sizeList?.data?.find((s) => s.id === item.sizeId)
+                            ?.name || "All Items"}
+                        </td>
+                        <td className="border-b border-r border-slate-200 px-1 py-0">
+                          <input
+                            type="number"
+                            className="w-full h-7 border-none text-right pr-2 bg-transparent text-[11px] text-black outline-none focus:bg-white"
+                            value={item.qty}
+                            disabled
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {(!jobCardSizeDetails || jobCardSizeDetails.length === 0) && (
+                  <div className="text-center p-8 text-slate-400 text-sm font-medium italic">
+                    No items found for this tracking mode.
+                  </div>
+                )}
               </div>
             </SectionCard>
           </div>
@@ -1756,140 +2142,275 @@ const JobCardForm = ({
     </div>
   );
 
-  const actionButtonClass =
-    "px-3 py-2 rounded-md flex items-center justify-center text-sm text-white transition";
-
-  const leftActions = [
-    ...(!readOnly
-      ? [
-          {
-            key: "saveAndClose",
-            icon: (
-              <span className="flex items-center gap-1">
-                <FiSave className="h-4 w-4" />
-                <HiX className="h-4 w-4" />
-              </span>
-            ),
-            hoverLabel: "Save & Close",
-            iconOnly: true,
-            onClick: () => saveData("close"),
-            className: `bg-indigo-500 hover:bg-indigo-600 ${actionButtonClass}`,
-          },
-          {
-            key: "saveAndNew",
-            icon: (
-              <span className="flex items-center gap-1">
-                <FiSave className="h-4 w-4" />
-                <HiOutlineRefresh className="h-4 w-4" />
-              </span>
-            ),
-            hoverLabel: "Save & New",
-            iconOnly: true,
-            onClick: () => saveData("new"),
-            className: `bg-indigo-600 hover:bg-indigo-700 ${actionButtonClass}`,
-          },
-        ]
-      : []),
-    ...(status === "REJECTED" && !readOnly
-      ? [
-          {
-            key: "submitApproval",
-            icon: <FiSend className="h-4 w-4" />,
-            hoverLabel: "Submit Approval",
-            iconOnly: true,
-            onClick: () => saveData("close", { submitApproval: true }),
-            className: `bg-green-700 hover:bg-green-800 ${actionButtonClass}`,
-          },
-        ]
-      : []),
-    ...(id && status === "PENDING" && canApprove && !readOnly
-      ? [
-          {
-            key: "reject",
-            icon: <MdKeyboardDoubleArrowLeft className="h-4 w-4" />,
-            hoverLabel: "Send Back for Review",
-            iconOnly: true,
-            onClick: () => handleApprovalAction("REJECT"),
-            className: `bg-blue-600 hover:bg-blue-700 ${actionButtonClass}`,
-          },
-          {
-            key: "approve",
-            icon: <FiCheck className="h-4 w-4" />,
-            hoverLabel: "Approve",
-            iconOnly: true,
-            onClick: () => handleApprovalAction("APPROVE"),
-            className: `bg-green-600 hover:bg-green-700 ${actionButtonClass}`,
-          },
-        ]
-      : []),
-  ];
-
-  const rightActions = [
-    {
-      key: "edit",
-      icon: <FiEdit2 className="h-4 w-4" />,
-      hoverLabel: "Edit",
-      iconOnly: true,
-      onClick: () => setReadOnly(false),
-      className: `bg-yellow-600 hover:bg-yellow-700 ${actionButtonClass}`,
-      hidden: !readOnly || !id,
-    },
-    {
-      key: "print",
-      icon: <FiPrinter className="h-4 w-4" />,
-      hoverLabel: "Print",
-      iconOnly: true,
-      onClick: () => setPrintModalOpen(true),
-      className: `bg-slate-600 hover:bg-slate-700 ${actionButtonClass}`,
-    },
-  ].filter((a) => !a.hidden);
-
+  // ── FOOTER ────────────────────────────────────────────────────────────────
   const footerContent = (
-    <div className="flex flex-col gap-3 bg-[#f1f3f9] p-2 rounded-md border border-slate-200 shadow-sm">
-      {/* PROCESS ROUTE & REMARKS */}
-      <div
-        className={`grid ${isLabel ? "grid-cols-1" : "grid-cols-[3.5fr_1fr]"} gap-3`}
-      >
-        <ProcessRoutePanel
-          selectedProcesses={selectedProcesses}
-          laminations={laminations}
-          varnishes={varnishes}
-          boardItems={boardItems}
-          boardId={boardId}
-          defaultList={defaultList}
-          laminationList={laminationList}
-          varnishList={varnishList}
-          boardList={boardList}
-          selectedPrinting={selectedPrinting}
-          printingList={printingList}
-          selectedFinishing={selectedFinishing}
-          finishingList={finishingList}
-          processRoute={processRoute}
-          setProcessRoute={setProcessRoute}
-          readOnly={readOnly}
-        />
-
-        {!isLabel && (
-          <SectionCard title="Remarks" className="h-full">
-            <textarea
-              className="w-full h-[30px] border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-blue-500 outline-none resize-none bg-white font-normal"
-              value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
-              placeholder="Additional Remarks..."
-              readOnly={readOnly}
-            />
-          </SectionCard>
-        )}
+    <>
+      <div className="flex gap-2">
+        <div className="w-3/4">
+          <ProcessRoutePanel
+            selectedProcesses={selectedProcesses}
+            laminations={laminations}
+            varnishes={varnishes}
+            defaultList={[...(defaultList || []), ...(dieProcessList || [])]}
+            laminationList={laminationList}
+            varnishList={varnishList}
+            processRoute={processRoute}
+            setProcessRoute={setProcessRoute}
+            readOnly={readOnly}
+            boardItems={boardProcessIds}
+            otherBoardId={otherBoardId}
+            printingList={printingList}
+            boardList={boardList}
+            selectedPrinting={selectedPrinting}
+            selectedFinishing={selectedFinishing}
+            selectedLabelPrinting={selectedLabelPrinting}
+            labelPrintingList={labelPrintingList}
+            finishingList={finishingList}
+            isAmendment={isAmendment}
+            setIsAmendment={setIsAmendment}
+            dbProcessRoute={dbProcessRoute}
+            dieId={dieId}
+            dieList={dieList?.data || []}
+          />
+        </div>
+        <div className="border border-slate-200 p-1 bg-white rounded-md shadow-sm w-1/4">
+          <h2 className="font-medium text-indigo-600 text-[11px]">REMARKS</h2>
+          <textarea
+            readOnly={readOnly}
+            value={remarks}
+            onChange={(e) => setRemarks(e.target.value)}
+            disabled={isDisabledPermission}
+            className="w-full h-11 overflow-auto px-2.5 py-2 text-xs border border-slate-300 rounded-md outline-none focus:ring-1 focus:ring-indigo-200 focus:border-indigo-500"
+            placeholder="Additional Remarks..."
+            onKeyDown={(e) => {
+              if (e.ctrlKey && e.key === "Enter") {
+                e.preventDefault();
+                const textarea = e.target;
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const newValue =
+                  remarks.substring(0, start) + "\n" + remarks.substring(end);
+                setRemarks(newValue);
+                requestAnimationFrame(() => {
+                  textarea.focus();
+                  textarea.setSelectionRange(start + 1, start + 1);
+                });
+              }
+            }}
+          />
+        </div>
       </div>
-      <TransactionActions
-        leftActions={leftActions}
-        rightActions={rightActions}
-      />
-    </div>
+
+      <div className="flex justify-between items-center mt-2">
+        <div className="flex gap-2 flex-wrap">
+          {!readOnly && (
+            <button
+              onClick={() => saveData("close")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  saveData("close");
+                }
+              }}
+              disabled={readOnly || isDisabledPermission}
+              className="bg-indigo-500 disabled:opacity-50 text-white px-2 py-1 rounded hover:bg-indigo-600 flex items-center gap-1.5 text-xs font-medium"
+            >
+              <HiOutlineRefresh className="w-3.5 h-3.5" />{" "}
+              {id ? "Update & Close" : "Save & Close"}
+            </button>
+          )}
+          {!readOnly && (
+            <button
+              onClick={() => saveData("new")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  saveData("new");
+                }
+              }}
+              disabled={readOnly || isDisabledPermission}
+              className="bg-indigo-500 disabled:opacity-50 text-white px-2 py-1 rounded hover:bg-indigo-600 flex items-center gap-1.5 text-xs font-medium"
+            >
+              <FiSave className="w-3.5 h-3.5" />{" "}
+              {id ? "Update & New" : "Save & New"}
+            </button>
+          )}
+          {status === "REJECTED" && (
+            <button
+              onClick={() => saveData("close", { submitApproval: true })}
+              disabled={readOnly}
+              title="Submit Approval"
+              className="bg-green-700 text-white px-2 py-1 rounded hover:bg-green-800 flex items-center text-xs"
+            >
+              <FiSend className="w-4 h-4" />
+            </button>
+          )}
+          {id && status === "PENDING" && canApprove && (
+            <button
+              onClick={() => handleApprovalAction("REJECT")}
+              disabled={readOnly}
+              title="Send Back for Review"
+              className="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 flex items-center text-xs"
+            >
+              <MdKeyboardDoubleArrowLeft className="w-4 h-4" />
+            </button>
+          )}
+          {id && status === "PENDING" && canApprove && (
+            <button
+              onClick={() => handleApprovalAction("APPROVE")}
+              disabled={readOnly}
+              title="Approve"
+              className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 flex items-center text-xs"
+            >
+              <FiCheck className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        <div className="flex gap-2">
+          {id && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  const newIsHold = !isHold;
+                  if (
+                    !window.confirm(
+                      `Are you sure you want to ${newIsHold ? "Hold" : "Unhold"} this Job Card?`,
+                    )
+                  )
+                    return;
+                  setIsHold(newIsHold);
+                  const payload = { ...formData, isHold: newIsHold };
+                  handleSubmitCustom(updateData, payload, "Updated", "");
+                }}
+                className="bg-orange-600 text-white px-2 py-1 rounded hover:bg-orange-700 flex items-center text-xs"
+              >
+                {isHold ? "Unhold" : "Hold"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const newIsCancelled = !isCancelled;
+                  if (
+                    !window.confirm(
+                      `Are you sure you want to ${newIsCancelled ? "Cancel" : "Uncancel"} this Job Card?`,
+                    )
+                  )
+                    return;
+                  setIsCancelled(newIsCancelled);
+                  const payload = { ...formData, isCancelled: newIsCancelled };
+                  handleSubmitCustom(updateData, payload, "Updated", "");
+                }}
+                className="bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 flex items-center text-xs"
+              >
+                {isCancelled ? "Uncancel" : "Cancel"}
+              </button>
+            </>
+          )}
+          {id && readOnly && (
+            <button
+              disabled={status === "PENDING" && !canApprove}
+              onClick={() => hasPermission(() => setReadOnly(false), "edit")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  hasPermission(() => setReadOnly(false), "edit");
+                }
+              }}
+              className="bg-slate-600 text-white px-2 py-1 rounded hover:bg-slate-700 flex items-center text-xs"
+            >
+              <FiEdit2 className="w-3.5 h-3.5" /> Edit
+            </button>
+          )}
+          <button
+            onClick={() => openPrintModal()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                openPrintModal();
+              }
+            }}
+            className="bg-slate-600 text-white px-2 py-1 rounded hover:bg-slate-700 flex items-center text-xs"
+          >
+            <FiPrinter className="w-4 h-4 mr-2" /> Print
+          </button>
+        </div>
+      </div>
+    </>
   );
 
   return (
     <>
+      {/* Size Modal */}
+      <Modal
+        isOpen={sizeModalOpen}
+        onClose={() => setSizeModalOpen(false)}
+        widthClass="w-[550px]"
+      >
+        <div className="bg-slate-100 p-3 rounded-lg">
+          <div className="bg-white p-3 rounded-lg flex justify-between items-center mb-3 shadow-sm">
+            <h3 className="text-[16px] font-bold text-slate-800">
+              Size Wise Details
+            </h3>
+            <button
+              className="bg-white text-indigo-600 border border-indigo-600 px-4 py-0.5 rounded text-[12px] hover:bg-indigo-50 font-semibold"
+              onClick={() => setSizeModalOpen(false)}
+            >
+              Done
+            </button>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+            <div className="h-[220px] overflow-y-auto">
+              <table className="w-[420px] border-separate border-spacing-0 border-t border-l border-slate-200">
+                <thead>
+                  <tr>
+                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-6">
+                      S.No
+                    </th>
+                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 w-40 px-1 py-1 text-center text-[11px] font-bold text-black uppercase">
+                      Size
+                    </th>
+                    <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 w-16 px-1 py-1 text-center text-[11px] font-bold text-black uppercase">
+                      Qty
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {jobCardSizeDetails?.map((item, idx) => (
+                    <tr
+                      key={idx}
+                      className="h-8 hover:bg-slate-50 transition-colors"
+                    >
+                      <td className="border-b border-r border-slate-200 px-1 py-0 text-center text-[11px] text-black">
+                        {idx + 1}
+                      </td>
+                      <td className="border-b border-r border-slate-200 px-3 py-0 text-[11px] text-black">
+                        {sizeList?.data?.find((s) => s.id === item.sizeId)
+                          ?.name || "All Items"}
+                      </td>
+                      <td className="border-b border-r border-slate-200 px-1 py-0">
+                        <input
+                          type="number"
+                          className="w-full h-7 border-none text-right pr-2 bg-transparent text-[11px] text-black outline-none focus:bg-white"
+                          value={item.qty}
+                          disabled
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {!jobCardSizeDetails && (
+                <div className="text-center p-8 text-slate-400 text-sm font-medium italic">
+                  No size Details found.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Approval Modal */}
       <Modal
         isOpen={approvalModal}
         onClose={() => setApprovalModal(false)}
@@ -1897,15 +2418,12 @@ const JobCardForm = ({
       >
         <div className="space-y-4">
           <h2
-            className={`text-base font-semibold ${
-              actionType === "APPROVE" ? "text-green-700" : "text-blue-700"
-            }`}
+            className={`text-base font-semibold ${actionType === "APPROVE" ? "text-green-700" : "text-blue-700"}`}
           >
             {actionType === "APPROVE"
               ? "✅ Approve Job Card"
               : "↩️ Send Back for Review"}
           </h2>
-
           <div className="bg-gray-50 border border-gray-200 rounded-md px-3 py-2 text-xs space-y-1.5">
             <div className="flex justify-between items-center">
               <span className="text-gray-500">Job Card No</span>
@@ -1920,13 +2438,7 @@ const JobCardForm = ({
             <div className="flex justify-between items-center">
               <span className="text-gray-500">Current Approval</span>
               <span
-                className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                  status === "APPROVED"
-                    ? "bg-green-100 text-green-700"
-                    : status === "REJECTED"
-                      ? "bg-red-100 text-red-700"
-                      : "bg-orange-100 text-orange-700"
-                }`}
+                className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${status === "APPROVED" ? "bg-green-100 text-green-700" : status === "REJECTED" ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"}`}
               >
                 {status === "PENDING"
                   ? "Waiting For Approval"
@@ -1936,7 +2448,6 @@ const JobCardForm = ({
               </span>
             </div>
           </div>
-
           <div>
             <label className="text-xs font-medium text-gray-600 mb-1 block">
               Remarks{" "}
@@ -1957,7 +2468,6 @@ const JobCardForm = ({
               autoFocus
             />
           </div>
-
           <div className="flex justify-end gap-2">
             <button
               onClick={() => setApprovalModal(false)}
@@ -1968,273 +2478,83 @@ const JobCardForm = ({
             <button
               disabled={actionLoading}
               onClick={handleConfirmAction}
-              className={`px-4 py-1.5 text-xs rounded text-white font-semibold transition ${
-                actionType === "APPROVE"
-                  ? "bg-green-600 hover:bg-green-700"
-                  : "bg-blue-600 hover:bg-blue-700"
-              } disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1`}
+              className={`px-4 py-1.5 text-xs rounded text-white font-semibold ${actionType === "APPROVE" ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700"} disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1`}
             >
-              {actionLoading ? "Processing..." : "Confirm"}
+              {actionLoading ? (
+                <>
+                  <svg
+                    className="animate-spin h-3 w-3"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8z"
+                    />
+                  </svg>
+                  Processing...
+                </>
+              ) : actionType === "APPROVE" ? (
+                "Confirm Approve"
+              ) : (
+                "Send Back"
+              )}
             </button>
           </div>
         </div>
       </Modal>
 
-      {printModalOpen && (
-        <Modal
-          isOpen={printModalOpen}
-          onClose={() => setPrintModalOpen(false)}
-          widthClass="w-[90%] h-[90%]"
-        >
-          <PDFViewer className="w-full h-full border-none">
-            <JobCardPrintFormat
-              singleData={singleData?.data || data}
-              customerList={customerList}
-              gsmList={gsmList}
-              boardList={boardList}
-              plateList={plateList}
-              dieList={dieList}
-              defaultList={defaultList}
-              laminationList={laminationList}
-              varnishList={varnishList}
-              machineList={machineList}
-              branchData={branchData?.data}
-              orderList={orderList}
-              sizeList={sizeList}
-              qrCodeDataUrl={qrCodeDataUrl}
-              employeeList={employeeList}
-              styleItemList={styleItemList}
-            />
-          </PDFViewer>
-        </Modal>
-      )}
-
-      {sizeModal && (
-        <Modal
-          isOpen={sizeModal}
-          onClose={() => setSizeModal(false)}
-          widthClass="w-[650px] h-[460px]"
-        >
-          <div className="bg-slate-100 p-3 rounded-lg">
-            {/* Header section */}
-            <div className="bg-white p-3 rounded-lg flex justify-between items-center mb-3 shadow-sm">
-              <h3 className="text-[16px] font-bold text-slate-800">
-                {selectedItem?.trackingType === "Barcode"
-                  ? "Barcode Wise Breakup"
-                  : selectedItem?.trackingType === "Size Template + Barcode"
-                    ? "Size + Barcode Wise Breakup"
-                    : "Size Wise Breakup"}
-              </h3>
-              <div className="flex gap-2">
-                <button
-                  className="bg-white text-indigo-600 border border-indigo-600 px-4 py-0.5 rounded text-[12px] hover:bg-indigo-50 font-semibold transition-colors flex items-center gap-1 shadow-sm"
-                  onClick={() => setSizeModal(false)}
-                >
-                  Done
-                </button>
-              </div>
-            </div>
-
-            {/* Main content area */}
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-              {selectedItem?.trackingType !== "Barcode" && (
-                <div className="mb-3 bg-slate-50 p-2 border border-slate-200 rounded flex items-center gap-3">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    Size Template
-                  </span>
-                  <span className="text-[12px] font-bold text-slate-700">
-                    {selectedItem?.SizeTemplate?.name || "No Template Selected"}
-                  </span>
-                </div>
-              )}
-              <div className="h-[250px] overflow-y-auto">
-                {/* --- BARCODE TYPE TABLE --- */}
-                {selectedItem?.trackingType === "Barcode" && (
-                  <table className="w-full border-separate border-spacing-0 border-t border-l border-slate-200">
-                    <thead>
-                      <tr>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-11">
-                          S.No
-                        </th>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase">
-                          Barcode From
-                        </th>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase">
-                          Barcode To
-                        </th>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-24">
-                          Qty
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedItem?.sizeBreakup
-                        ?.filter((item) => (Number(item.qty) || 0) > 0)
-                        ?.map((item, idx) => (
-                          <tr
-                            key={idx}
-                            className="hover:bg-slate-50 transition-colors"
-                          >
-                            <td className="border-b border-r border-slate-200 px-1 py-0.5 text-center text-[11px] text-slate-500 font-medium">
-                              {idx + 1}
-                            </td>
-                            <td className="border-b border-r border-slate-200 px-3 py-1.5 text-left text-[11px] text-black font-mono">
-                              {item.barcodeFrom}
-                            </td>
-                            <td className="border-b border-r border-slate-200 px-3 py-1.5 text-left text-[11px] text-black font-mono">
-                              {item.barcodeTo}
-                            </td>
-                            <td className="border-b border-r border-slate-200 px-3 py-1.5 text-right text-[11px] text-black font-bold">
-                              {item.qty}
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                    <tfoot className="sticky bottom-0 z-20">
-                      <tr className="bg-slate-50 font-bold">
-                        <td
-                          colSpan={3}
-                          className="border-b border-r border-slate-200 px-3 py-1.5 text-right text-[11px] text-slate-700 uppercase"
-                        >
-                          Total Quantity
-                        </td>
-                        <td className="border-b border-r border-slate-200 px-3 py-1.5 text-right text-[12px] text-indigo-700">
-                          {selectedItem?.sizeBreakup?.reduce(
-                            (sum, r) => sum + (Number(r.qty) || 0),
-                            0,
-                          )}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                )}
-
-                {/* --- SIZE TEMPLATE TYPE TABLE --- */}
-                {selectedItem?.trackingType === "Size Template" && (
-                  <table className="w-[450px] border-separate border-spacing-0 border-t border-l border-slate-200 ml-0">
-                    <thead>
-                      <tr>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-10">
-                          S.No
-                        </th>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase">
-                          Size
-                        </th>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-24">
-                          Qty
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedItem?.sizeBreakup
-                        ?.filter((item) => (Number(item.qty) || 0) > 0)
-                        ?.map((item, idx) => (
-                          <tr
-                            key={idx}
-                            className="h-8 hover:bg-slate-50 transition-colors"
-                          >
-                            <td className="border-b border-r border-slate-200 px-1 py-0 text-center text-[11px] text-black">
-                              {idx + 1}
-                            </td>
-                            <td className="border-b border-r border-slate-200 px-3 py-0 text-[11px] text-black">
-                              {item.Size?.name || "All Items"}
-                            </td>
-                            <td className="border-b border-r border-slate-200 px-3 py-0 text-right text-[11px] text-black font-bold">
-                              {item.qty}
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                    <tfoot className="sticky bottom-0 z-20">
-                      <tr className="bg-slate-50 font-bold">
-                        <td
-                          colSpan={2}
-                          className="border-b border-r border-slate-200 px-3 py-1.5 text-right text-[11px] text-slate-700 uppercase"
-                        >
-                          Total Quantity
-                        </td>
-                        <td className="border-b border-r border-slate-200 px-3 py-1.5 text-right text-[12px] text-indigo-700">
-                          {selectedItem?.sizeBreakup?.reduce(
-                            (sum, r) => sum + (Number(r.qty) || 0),
-                            0,
-                          )}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                )}
-
-                {/* --- SIZE TEMPLATE + BARCODE TYPE TABLE --- */}
-                {selectedItem?.trackingType === "Size Template + Barcode" && (
-                  <table className="w-full border-separate border-spacing-0 border-t border-l border-slate-200">
-                    <thead>
-                      <tr>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-11">
-                          S.No
-                        </th>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase">
-                          Size
-                        </th>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase">
-                          From
-                        </th>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase">
-                          To
-                        </th>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-24">
-                          Qty
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedItem?.sizeBreakup
-                        ?.filter((item) => (Number(item.qty) || 0) > 0)
-                        ?.map((item, idx) => (
-                          <tr
-                            key={idx}
-                            className="h-8 hover:bg-slate-50 transition-colors"
-                          >
-                            <td className="border-b border-r border-slate-200 px-1 py-0 text-center text-[11px] text-black">
-                              {idx + 1}
-                            </td>
-                            <td className="border-b border-r border-slate-200 px-3 py-0 text-[11px] text-black">
-                              {item.Size?.name || "All Items"}
-                            </td>
-                            <td className="border-b border-r border-slate-200 px-3 py-0 text-left text-[11px] text-black font-mono">
-                              {item.barcodeFrom}
-                            </td>
-                            <td className="border-b border-r border-slate-200 px-3 py-0 text-left text-[11px] text-black font-mono">
-                              {item.barcodeTo}
-                            </td>
-                            <td className="border-b border-r border-slate-200 px-3 py-0 text-right text-[11px] text-black font-bold">
-                              {item.qty}
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                    <tfoot className="sticky bottom-0 z-20">
-                      <tr className="bg-slate-50 font-bold">
-                        <td
-                          colSpan={4}
-                          className="border-b border-r border-slate-200 px-3 py-1.5 text-right text-[11px] text-slate-700 uppercase"
-                        >
-                          Total Quantity
-                        </td>
-                        <td className="border-b border-r border-slate-200 px-3 py-1.5 text-right text-[12px] text-indigo-700">
-                          {selectedItem?.sizeBreakup?.reduce(
-                            (sum, r) => sum + (Number(r.qty) || 0),
-                            0,
-                          )}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                )}
-              </div>
-            </div>
-          </div>
-        </Modal>
-      )}
+      {/* Print Modal */}
+      <Modal
+        isOpen={printModalOpen}
+        onClose={() => {
+          setPrintModalOpen(false);
+          if (pendingAction === "new") {
+            setId("");
+            setDocId("New");
+            syncFormWithDb(undefined);
+            setTimeout(() => customerRef.current?.focus(), 100);
+          }
+          if (pendingAction === "close") onClose();
+          setPendingAction(null);
+        }}
+        widthClass="w-[90%] h-[90%]"
+      >
+        <PDFViewer style={tw("w-full h-full")}>
+          <JobCardPrintFormat
+            singleData={singleData?.data}
+            customerList={customerList}
+            boardList={boardList}
+            gsmList={gsmList}
+            machineList={machineList}
+            plateList={plateList}
+            dieList={dieList}
+            defaultList={[...(defaultList || []), ...(dieProcessList || [])]}
+            laminationList={laminationList}
+            varnishList={varnishList}
+            branchData={branchData?.data}
+            orderList={orderList}
+            sizeList={sizeList}
+            styleItemList={styleItemList}
+            qrCodeDataUrl={qrCodeDataUrl}
+            employeeList={employeeList}
+            colorList={colorData}
+            styleList={styleList}
+            labelPrintingList={labelPrintingList}
+            finishingList={finishingList}
+            printingList={printingList}
+          />
+        </PDFViewer>
+      </Modal>
 
       <TransactionLayout
         title="Job Card"
@@ -2243,137 +2563,9 @@ const JobCardForm = ({
         onClose={onClose}
         onKeyDown={handleKeyDown}
         header={headerContent}
-        detailsLayout="default"
-        detailsLayouts={["default"]}
         gridItems={gridItemsContent}
         footer={footerContent}
       />
-
-      {contextMenu && (
-        <div
-          style={{
-            position: "fixed",
-            top: `${contextMenu.mouseY}px`,
-            left: `${contextMenu.mouseX}px`,
-            boxShadow: "0px 0px 5px rgba(0,0,0,0.3)",
-            padding: "4px",
-            borderRadius: "4px",
-            zIndex: 10000,
-          }}
-          className="bg-white border border-gray-200 shadow-xl"
-          onMouseLeave={handleCloseContextMenu}
-        >
-          <div className="flex flex-col min-w-[100px]">
-            <button
-              className="text-[12px] text-left px-3 py-1.5 hover:bg-red-50 text-red-600 font-medium rounded transition-colors"
-              onClick={() => deletePlateRow(contextMenu.rowId)}
-            >
-              Delete
-            </button>
-            <button
-              className="text-[12px] text-left px-3 py-1.5 hover:bg-gray-100 text-gray-700 font-medium rounded transition-colors"
-              onClick={deleteAllPlateRows}
-            >
-              Delete All
-            </button>
-          </div>
-        </div>
-      )}
-
-      {plateDetailsModal && (
-        <Modal
-          isOpen={plateDetailsModal}
-          onClose={handleClosePlateModal}
-          widthClass="w-[600px]"
-        >
-          <div className="bg-slate-100 p-3 rounded-lg">
-            {/* Header section matching reference */}
-            <div className="bg-white p-3 rounded-lg flex justify-between items-center mb-3 shadow-sm">
-              <h3 className="text-[16px] font-bold text-slate-800">
-                Plate Details
-              </h3>
-              <div className="flex gap-2">
-                <button
-                  className="bg-white text-indigo-600 border border-indigo-600 px-4 py-0.5 rounded text-[12px] hover:bg-indigo-50 font-semibold transition-colors flex items-center gap-1 shadow-sm"
-                  onClick={handleClosePlateModal}
-                >
-                  Done
-                </button>
-              </div>
-            </div>
-
-            {/* Main content area matching reference */}
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-              <div className="h-[250px] overflow-y-auto custom-scrollbar">
-                <table className="w-full border-separate border-spacing-0 border-t border-l border-slate-200">
-                  <thead>
-                    <tr>
-                      <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-12">
-                        S.No
-                      </th>
-                      <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase">
-                        Plate Name
-                      </th>
-                      <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-24">
-                        Qty
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {plateDetails.map((row, idx) => (
-                      <tr
-                        key={idx}
-                        onContextMenu={(e) =>
-                          handlePlateDetailsContextMenu(e, idx)
-                        }
-                        className="hover:bg-slate-50 transition-colors group"
-                      >
-                        <td className="border-b border-r border-slate-200 px-1 py-0.5 text-center text-[11px] text-slate-500 font-medium">
-                          {idx + 1}
-                        </td>
-                        <td className="border-b border-r border-slate-200 p-0">
-                          <input
-                            type="text"
-                            className="w-full h-7 border-none bg-transparent px-2 text-[11px] outline-none focus:bg-white"
-                            value={row.plateName}
-                            onChange={(e) =>
-                              handlePlateDetailsChange(
-                                idx,
-                                "plateName",
-                                e.target.value,
-                              )
-                            }
-                            placeholder="Enter Plate Name"
-                          />
-                        </td>
-                        <td className="border-b border-r border-slate-200 p-0">
-                          <input
-                            type="number"
-                            className="w-full h-7 border-none text-right pr-2 bg-transparent text-[11px] text-black outline-none focus:bg-white"
-                            value={row.qty}
-                            onChange={(e) =>
-                              handlePlateDetailsChange(
-                                idx,
-                                "qty",
-                                e.target.value,
-                              )
-                            }
-                            onKeyDown={(e) => handlePlateDetailsKeyDown(e, idx)}
-                            placeholder="0"
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="mt-2 text-[10px] text-slate-400 italic">
-                * Right-click to delete row | Press Enter on last row for new
-              </div>
-            </div>
-          </div>
-        </Modal>
-      )}
     </>
   );
 };

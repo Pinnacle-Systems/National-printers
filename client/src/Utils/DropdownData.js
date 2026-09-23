@@ -191,3 +191,7 @@ export const departmentTypes = [
     value: "offset",
   },
 ];
+export const blockTypes = [
+  { show: "NEW", value: "NEW" },
+  { show: "OLD", value: "OLD" },
+];

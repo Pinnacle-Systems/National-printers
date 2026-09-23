@@ -294,6 +294,191 @@ async function get(req) {
   };
 }
 
+async function getRefList(req) {
+  const { branchId, companyId, isRefDistinct } = req.query;
+
+  let data = await prisma.orderEntry.findMany({
+    where: {
+      branchId: branchId ? parseInt(branchId) : undefined,
+    },
+    select: {
+      id: true,
+      refNo: true,
+      docId: true,
+      customerId: true,
+      orderItems: {
+        select: {
+          id: true,
+          styleItemId: true,
+          jobCards: {
+            select: {
+              id: true,
+            },
+          },
+          _count: {
+            select: {
+              jobCards: true,
+            },
+          },
+        },
+      },
+    },
+    distinct: isRefDistinct === "true" ? ["refNo"] : ["docId"],
+    orderBy: {
+      refNo: "asc",
+    },
+  });
+
+  // ── only for non-distinct ref mode ─────────────────────────
+  if (isRefDistinct !== "true") {
+    const { module, hasApproval } = await getModuleApprovalSetup(
+      REFERENCE_PAGE,
+      branchId,
+    );
+
+    const orderIds = data.map((o) => o.id);
+
+    const approvalLogs = await prisma.approvalLog.findMany({
+      where: {
+        referencePage: REFERENCE_PAGE,
+        referenceId: { in: orderIds },
+      },
+      select: {
+        id: true,
+        referenceId: true,
+        status: true,
+        remarks: true,
+        currentLevel: true,
+        LevelLogs: {
+          select: {
+            action: true,
+            levelNo: true,
+            userId: true,
+            createdAt: true,
+            User: {
+              select: {
+                id: true,
+                username: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "asc",
+          },
+        },
+      },
+    });
+
+    const approvalLogMap = approvalLogs.reduce((acc, log) => {
+      acc[log.referenceId] = log;
+      return acc;
+    }, {});
+
+    const activeConfigs =
+      hasApproval && module
+        ? await prisma.approvalConfig.findMany({
+            where: {
+              moduleId: module.id,
+              branchId: parseInt(branchId),
+              active: true,
+            },
+            include: {
+              ConfigConditions: {
+                include: {
+                  Field: true,
+                  Operator: true,
+                  CompareField: true,
+                },
+              },
+              approvalLevels: {
+                include: {
+                  LevelUsers: true,
+                },
+                orderBy: {
+                  levelNo: "asc",
+                },
+              },
+            },
+          })
+        : [];
+
+    data = data.map((order) => {
+      const totalItems = order.orderItems.length;
+
+      const createdItems = order.orderItems.filter(
+        (item) => item._count.jobCards > 0,
+      ).length;
+
+      let creationStatus = "NOT_CREATED";
+
+      if (totalItems > 0 && createdItems === totalItems) {
+        creationStatus = "FULLY_CREATED";
+      } else if (createdItems > 0) {
+        creationStatus = "PARTIALLY_CREATED";
+      }
+      const log = approvalLogMap[order.id] ?? null;
+
+      let shouldTrigger = false;
+
+      if (!log && hasApproval && activeConfigs.length > 0) {
+        shouldTrigger = evaluateConfigs(activeConfigs, order);
+      }
+
+      return {
+        ...order,
+        creationStatus,
+        approvalStatus: getApprovalStatus(log, !!log || shouldTrigger),
+        orderItems: order.orderItems.map((item) => ({
+          ...item,
+          childRecordCount: item._count.jobCards,
+        })),
+      };
+    });
+  }
+
+  return { statusCode: 0, data };
+}
+
+async function geOrderItemsList(req) {
+  const { orderEntryId } = req.query;
+
+  let data = await prisma.orderItems.findMany({
+    where: {
+      orderEntryId: parseInt(orderEntryId),
+    },
+    select: {
+      id: true,
+      styleItemId: true,
+      itemGroupId: true,
+      ItemGroup: {
+        select: {
+          name: true,
+        },
+      },
+      StyleItem: {
+        select: {
+          name: true,
+        },
+      },
+      _count: {
+        select: {
+          jobCards: true,
+        },
+      },
+    },
+  });
+
+  const result = data.map((item) => ({
+    id: item.styleItemId,
+    childRecord: item._count.jobCards,
+    name: item.StyleItem?.name || "",
+    itemGroupId: item.itemGroupId,
+    itemGroupName: item.ItemGroup?.name,
+  }));
+
+  return { statusCode: 0, data: result };
+}
+
 async function getOne(id) {
   const data = await prisma.orderEntry.findUnique({
     where: {
@@ -804,4 +989,4 @@ async function remove(id) {
   return { statusCode: 0, data };
 }
 
-export { get, getOne, create, update, remove };
+export { get, getOne, create, update, remove, getRefList, geOrderItemsList };

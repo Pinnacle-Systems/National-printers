@@ -9,6 +9,7 @@ import {
   remove as _remove,
   getPcsStock as _getPcsStock,
   getStock as _getStock,
+  getBoardQty as _getBoardQty,
 } from "../services/stock.service.js";
 
 async function get(req, res, next) {
@@ -35,7 +36,14 @@ export async function getPcsStock(req, res, next) {
     console.error(`Error`, err.message);
   }
 }
-
+async function getBoardQty(req, res, next) {
+  try {
+    res.json(await _getBoardQty(req));
+    console.log(res.statusCode);
+  } catch (err) {
+    console.error(`Error`, err.message);
+  }
+}
 async function getOne(req, res, next) {
   try {
     res.json(await _getOne(req.params.id, req.query));
@@ -113,4 +121,13 @@ async function remove(req, res, next) {
   }
 }
 
-export { get, getOne, getSearch, create, update, remove, getStock };
+export {
+  get,
+  getOne,
+  getSearch,
+  create,
+  update,
+  remove,
+  getStock,
+  getBoardQty,
+};
