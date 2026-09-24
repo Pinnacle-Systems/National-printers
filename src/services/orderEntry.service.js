@@ -295,37 +295,64 @@ async function get(req) {
 }
 
 async function getRefList(req) {
-  const { branchId, companyId, isRefDistinct } = req.query;
+  const {
+    branchId,
+    companyId,
+    isRefDistinct,
+    jobCardType,
+    customerId,
+    orderBranchId,
+  } = req.query;
+
+  let whereClause = {
+    branchId: branchId ? parseInt(branchId) : undefined,
+    orderType: jobCardType || undefined,
+  };
+
+  if (jobCardType === "GENERAL") {
+    if (orderBranchId) {
+      whereClause.branchId = parseInt(orderBranchId);
+    }
+  } else if (jobCardType === "ORDER") {
+    if (customerId) {
+      whereClause.customerId = parseInt(customerId);
+    }
+    whereClause.ProformaInvoices = {
+      some: {},
+    };
+  }
 
   let data = await prisma.orderEntry.findMany({
-    where: {
-      branchId: branchId ? parseInt(branchId) : undefined,
-    },
+    where: whereClause,
     select: {
       id: true,
-      refNo: true,
       docId: true,
       customerId: true,
+      ProformaInvoices: {
+        select: {
+          id: true,
+        },
+      },
       orderItems: {
         select: {
           id: true,
           styleItemId: true,
-          jobCards: {
+          JobCard: {
             select: {
               id: true,
             },
           },
           _count: {
             select: {
-              jobCards: true,
+              JobCard: true,
             },
           },
         },
       },
     },
-    distinct: isRefDistinct === "true" ? ["refNo"] : ["docId"],
+    distinct: ["docId"],
     orderBy: {
-      refNo: "asc",
+      docId: "asc",
     },
   });
 
@@ -406,7 +433,7 @@ async function getRefList(req) {
       const totalItems = order.orderItems.length;
 
       const createdItems = order.orderItems.filter(
-        (item) => item._count.jobCards > 0,
+        (item) => item._count.JobCard > 0,
       ).length;
 
       let creationStatus = "NOT_CREATED";
@@ -430,7 +457,7 @@ async function getRefList(req) {
         approvalStatus: getApprovalStatus(log, !!log || shouldTrigger),
         orderItems: order.orderItems.map((item) => ({
           ...item,
-          childRecordCount: item._count.jobCards,
+          childRecordCount: item._count.JobCard,
         })),
       };
     });
@@ -450,6 +477,7 @@ async function geOrderItemsList(req) {
       id: true,
       styleItemId: true,
       itemGroupId: true,
+      orderQty: true,
       ItemGroup: {
         select: {
           name: true,
@@ -462,7 +490,7 @@ async function geOrderItemsList(req) {
       },
       _count: {
         select: {
-          jobCards: true,
+          JobCard: true,
         },
       },
     },
@@ -470,10 +498,11 @@ async function geOrderItemsList(req) {
 
   const result = data.map((item) => ({
     id: item.styleItemId,
-    childRecord: item._count.jobCards,
+    childRecord: item._count.JobCard,
     name: item.StyleItem?.name || "",
     itemGroupId: item.itemGroupId,
     itemGroupName: item.ItemGroup?.name,
+    orderQty: item.orderQty,
   }));
 
   return { statusCode: 0, data: result };

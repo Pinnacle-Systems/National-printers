@@ -19,6 +19,7 @@ import OrderEntryApi from "../../../redux/uniformService/OrderEntryService.js";
 import { invalidateOrderEntryModule } from "../../../redux/Dispatch/OrderInvalidateTags.js";
 import { useIsApprover } from "../../../CustomHooks/userIsApprover.js";
 import { UserPermissions } from "../../../Utils/UserPermissions.js";
+import { useGetEmployeeQuery } from "../../../redux/services/EmployeeMasterService.js";
 
 const index = () => {
   const [showForm, setShowForm] = useState(false);
@@ -48,6 +49,8 @@ const index = () => {
   const { data: branchData } = useGetBranchByIdQuery(branchId, {
     skip: !branchId,
   });
+  const { data: employeeList } = useGetEmployeeQuery({ params });
+
   const { data: userData } = useGetUserByIdQuery(userId);
   const { canApprove } = useIsApprover("JOB CARD", userData?.data?.id);
 
@@ -189,6 +192,7 @@ const index = () => {
             customerList={customerList}
             branchList={branchList}
             userData={userData?.data}
+            employeeList={employeeList}
             gsmList={gsmList}
             plateList={plateList}
             dieList={dieList}

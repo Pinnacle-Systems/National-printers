@@ -8,7 +8,12 @@ import {
   ReusableInput,
   TextInput,
 } from "../../../Inputs";
-import { blockTypes, productionTypes } from "../../../Utils/DropdownData";
+import {
+  blockTypes,
+  productionTypes,
+  departmentTypes,
+  poTypes,
+} from "../../../Utils/DropdownData";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import moment from "moment";
 import { findFromList, getCommonParams, ModeChip } from "../../../Utils/helper";
@@ -17,13 +22,7 @@ import { FiCheck, FiEdit2, FiPrinter, FiSave, FiSend } from "react-icons/fi";
 import { HiOutlineRefresh } from "react-icons/hi";
 import Swal from "sweetalert2";
 import { dropDownListObject } from "../../../Utils/contructObject";
-import {
-  ColorMaster,
-  DieMaster,
-  PlateMaster,
-  Size,
-  StyleItemMaster,
-} from "../index.js";
+import { ColorMaster, Size, StyleItemMaster } from "../index.js";
 import { DropdownWithModal } from "../../../Inputs/Reuseable.js";
 import {
   useAddJobCardMutation,
@@ -98,17 +97,24 @@ const JobCardForm = ({
   userData,
   employeeList,
   hasPermission,
+  branchList,
 }) => {
   const today = new Date();
   const [docDate, setDocDate] = useState(
     moment.utc(today).format("YYYY-MM-DD"),
   );
   const [customerId, setCustomerId] = useState("");
+  console.log(customerId, "customerId");
+
   const [plateSupplierId, setPlateSupplierId] = useState("");
+  console.log(plateSupplierId, "plateSupplierId");
+
   const [remarks, setRemarks] = useState("");
   const [orderType, setOrderType] = useState("ORDER");
   const [docId, setDocId] = useState("");
   const [orderQty, setOrderQty] = useState("");
+  console.log(orderQty, "orderQty");
+
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const [otherBoardId, setOtherBoardId] = useState("");
   const [totalPlatesets, setTotalPlatesets] = useState("");
@@ -119,7 +125,7 @@ const JobCardForm = ({
   const [boardItems, setBoardItems] = useState(
     Array.from({ length: DEFAULT_BOARD_ROWS }, emptyRow),
   );
-
+  const [department, setDepartment] = useState("Rotary");
   const [selectedPrinting, setSelectedPrinting] = useState([]);
   const [selectedProcesses, setSelectedProcesses] = useState([]);
   const [selectedMachines, setSelectedMachines] = useState([]);
@@ -150,7 +156,11 @@ const JobCardForm = ({
   const [rollQty, setRollQty] = useState("");
   const [cutAndSeal, setCutAndSeal] = useState("");
   const [jobCardSizeDetails, setJobCardSizeDetails] = useState([]);
+  console.log(jobCardSizeDetails, "jobCardSizeDetails");
+
   const [selectedOrderData, setSelectedOrderData] = useState(null);
+  console.log(selectedOrderData, "selectedOrderData");
+
   const [trackingType, setTrackingType] = useState("Barcode");
   const [sizeModalOpen, setSizeModalOpen] = useState(false);
 
@@ -192,12 +202,21 @@ const JobCardForm = ({
   const [colorId, setColorId] = useState("");
   const [isOldPlate, setIsOldPlate] = useState(false);
   const [isNewPlate, setIsNewPlate] = useState(false);
+  const [jobCardType, setJobCardType] = useState("ORDER");
+  const [orderBranchId, setOrderBranchId] = useState("");
+  const [proformaInvoiceId, setProformaInvoiceId] = useState("");
   const [triggerGetBoardQty] = useLazyGetBoardQtyQuery();
 
   const { data: processList } = useGetProcessMasterQuery({ params });
   const { data: processGroupList } = useGetProcessGroupMasterQuery({ params });
   const { data: orderList } = useGetRefListQuery({
-    params: { companyId, branchId },
+    params: {
+      companyId,
+      branchId,
+      jobCardType,
+      customerId: jobCardType === "ORDER" ? customerId : undefined,
+      orderBranchId: jobCardType === "GENERAL" ? orderBranchId : undefined,
+    },
   });
   console.log(orderList, "orderList");
 
@@ -207,6 +226,8 @@ const JobCardForm = ({
   const { data: styleList } = useGetStyleItemMasterQuery({
     params: { companyId, branchId },
   });
+  console.log(styleList, "styleList");
+
   const { data: machineList } = useGetMachineMasterQuery({
     params: { companyId, branchId },
   });
@@ -216,6 +237,8 @@ const JobCardForm = ({
   const { data: styleItemList } = useGetOrderItemsListQuery({
     params: { orderEntryId },
   });
+  console.log(styleItemList, "styleItemList");
+
   const { data: locationData } = useGetLocationMasterQuery({
     params: { branchId },
   });
@@ -248,6 +271,7 @@ const JobCardForm = ({
     isFetching: isSingleFetching,
     isLoading: isSingleLoading,
   } = useGetJobCardByIdQuery(id, { skip: !id });
+  console.log(singleData, "singleData");
 
   const status = singleData?.data?.approvalStatus?.status;
   const isDisabledPermission =
@@ -337,6 +361,7 @@ const JobCardForm = ({
     setSelectedFinishing(
       data?.finishingProcesses?.map((f) => f.processId) || [],
     );
+    setDepartment(data?.department || "Rotary");
     setSelectedLabelPrinting(
       data?.labelPrintingDetails?.map((p) => p.processId) || [],
     );
@@ -384,9 +409,9 @@ const JobCardForm = ({
     setLabelQty(data?.labelQty || "");
     setRollQty(data?.rollQty || "");
     setCutAndSeal(data?.cutAndSeal || "");
-    setJobCardSizeDetails(data?.jobCardSizeDetails || []);
+    setJobCardSizeDetails(data?.OrderEntryItem?.sizeBreakup || []);
     setTrackingType(data?.trackingType || "");
-    setOrderItemId(data?.orderItemId || "");
+    setOrderItemId(data?.orderEntryItemId || "");
     setLabelSizeId(data?.labelSizeId || "");
     setTotalMeter(data?.totalMeter?.toFixed(3) || "");
     setIsRepeatedJobCard(data?.isRepeatedJobCard || false);
@@ -409,6 +434,9 @@ const JobCardForm = ({
     setPlateDetails(paddedPlates);
     setIsNewPlate(data?.isNewPlate);
     setIsOldPlate(data?.isOldPlate);
+    setJobCardType(data?.jobCardType || "ORDER");
+    setOrderBranchId(data?.orderBranchId);
+    setProformaInvoiceId(data?.proformaInvoiceId);
     childRecord.current = data?.childRecord ? data?.childRecord : 0;
   }, []);
 
@@ -514,6 +542,9 @@ const JobCardForm = ({
     meter,
     isNewPlate,
     isOldPlate,
+    jobCardType,
+    orderBranchId,
+    proformaInvoiceId,
   };
 
   const openPrintModal = async (overrideId, overrideDocId) => {
@@ -787,6 +818,8 @@ const JobCardForm = ({
     try {
       const result = await getRefById(value?.id || value).unwrap();
       const data = result?.data;
+      console.log(data, "handleJobCardChange");
+
       if (!data) return;
       setOtherBoardId(data?.otherBoardId || "");
       setPlateId(data?.plateId || "");
@@ -929,6 +962,79 @@ const JobCardForm = ({
           </div>
         </div>
         <div className="flex gap-x-2">
+          <div className="w-32">
+            <DropdownInput
+              name="Job Card Type"
+              options={poTypes}
+              value={jobCardType}
+              setValue={setJobCardType}
+              required={true}
+              readOnly={readOnly}
+              disabled={readOnly}
+            />
+          </div>
+          <div className="w-32">
+            <DropdownInput
+              name="Department"
+              options={departmentTypes}
+              value={department}
+              setValue={setDepartment}
+              readOnly={readOnly}
+              disabled={readOnly}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="w-fit border border-slate-200 p-1.5 bg-white rounded-md shadow-sm">
+        <h2 className="text-[10px] font-bold text-gray-500 mb-1 uppercase border-b pb-0.5">
+          Customer Details
+        </h2>
+        <div className="w-72 px-1">
+          {jobCardType === "GENERAL" ? (
+            <Field label="Branch Name" required>
+              <DropdownInput
+                name=""
+                options={dropDownListObject(
+                  branchList ? branchList.data : [],
+                  "branchName",
+                  "id",
+                )}
+                value={orderBranchId}
+                setValue={(val) => {
+                  setOrderBranchId(val);
+                  setOrderEntryId("");
+                  setProformaInvoiceId("");
+                  setOrderType("");
+                  setOrderItemId("");
+                  // setItemGroup("");
+                  setOrderQty("");
+                }}
+                required={true}
+                readOnly={readOnly}
+                disabled={!!id}
+              />
+            </Field>
+          ) : (
+            <DropdownNew
+              name="Customer"
+              dataList={
+                id
+                  ? customerList?.data?.filter((i) => i?.isCustomer)
+                  : customerList?.data?.filter(
+                      (i) => i?.active && i?.isCustomer,
+                    )
+              }
+              value={customerId}
+              setValue={setCustomerId}
+              required
+              readOnly={readOnly}
+              disabled={readOnly || childRecord.current > 0}
+              ref={customerRef}
+            />
+          )}
+        </div>
+        <div className="flex gap-x-2">
           <div className="mt-5 mr-2">
             <CheckBoxNew
               name="Is Repeated"
@@ -957,28 +1063,6 @@ const JobCardForm = ({
         </div>
       </div>
 
-      <div className="w-fit border border-slate-200 p-1.5 bg-white rounded-md shadow-sm">
-        <h2 className="text-[10px] font-bold text-gray-500 mb-1 uppercase border-b pb-0.5">
-          Customer Details
-        </h2>
-        <div className="w-72 px-1">
-          <DropdownNew
-            name="Customer"
-            dataList={
-              id
-                ? customerList?.data?.filter((i) => i?.isCustomer)
-                : customerList?.data?.filter((i) => i?.active && i?.isCustomer)
-            }
-            value={customerId}
-            setValue={setCustomerId}
-            required
-            readOnly={readOnly}
-            disabled={readOnly || childRecord.current > 0}
-            ref={customerRef}
-          />
-        </div>
-      </div>
-
       <div className="flex-1 border border-slate-200 p-1.5 bg-white rounded-md shadow-sm">
         <h2 className="text-[10px] font-bold text-gray-500 mb-1 uppercase border-b pb-0.5">
           Order Details
@@ -992,7 +1076,12 @@ const JobCardForm = ({
                   ["APPROVED", "NOT_CONFIGURED"].includes(
                     item?.approvalStatus?.status,
                   ) &&
-                  item?.customerId === customerId &&
+                  (jobCardType === "ORDER"
+                    ? item?.customerId === customerId
+                    : true) &&
+                  (jobCardType === "ORDER"
+                    ? item?.ProformaInvoices?.length > 0
+                    : true) &&
                   (id || item?.creationStatus !== "FULLY_CREATED"),
               )}
               value={orderEntryId}
@@ -1002,6 +1091,11 @@ const JobCardForm = ({
               disabled={readOnly || childRecord.current > 0}
               otherField={"docId"}
               beforeChange={async (selectedValue) => {
+                if (selectedValue?.proformaInvoices?.[0]?.id) {
+                  setProformaInvoiceId(selectedValue.proformaInvoices[0].id);
+                } else {
+                  setProformaInvoiceId("");
+                }
                 if (isRepeatedJobCard && refJobCardId) {
                   const res = await getOrderById(selectedValue?.id).unwrap();
                   setSelectedOrderData(res?.data);
@@ -1018,6 +1112,8 @@ const JobCardForm = ({
                   return;
                 }
                 const res = await getOrderById(selectedValue?.id).unwrap();
+                console.log(res, "check");
+
                 setSelectedOrderData(res?.data);
                 setItemGroupId("");
                 setItemType("");
@@ -1046,6 +1142,7 @@ const JobCardForm = ({
               }}
             />
           </div>
+          {console.log(selectedOrderData, "selectedOrderItem")}
           <div className="w-64">
             <DropdownNew
               name="Item Description"
@@ -1057,19 +1154,25 @@ const JobCardForm = ({
               required
               disabled={readOnly || childRecord.current > 0}
               beforeChange={(selectedValue) => {
+                console.log(selectedValue, "selectedValue");
                 if (isRepeatedJobCard && refJobCardId) {
                   const selectedOrderItem = selectedOrderData?.orderItems?.find(
                     (item) => item.styleItemId === selectedValue?.id,
                   );
-                  setOrderQty(selectedOrderItem?.orderQty || "");
+                  setOrderQty(
+                    selectedOrderItem?.orderQty ||
+                      selectedValue?.orderQty ||
+                      "",
+                  );
                   return;
                 }
                 setItemGroupId(selectedValue?.itemGroupId);
                 setItemType(selectedValue?.itemGroupName);
+                setOrderQty(selectedValue?.orderQty);
                 const selectedOrderItem = selectedOrderData?.orderItems?.find(
                   (item) => item.styleItemId === selectedValue?.id,
                 );
-                setOrderQty(selectedOrderItem?.orderQty || "");
+
                 setTrackingType(selectedOrderItem?.trackingType || "");
                 setOrderItemId(selectedOrderItem?.id);
                 setJobCardSizeDetails(
@@ -1839,7 +1942,8 @@ const JobCardForm = ({
                           ? styleList?.data
                           : styleList?.data?.filter(
                               (item) =>
-                                item.active && item.ItemGroup.name === "LABEL",
+                                item.active &&
+                                item?.ItemGroup?.name === "LABEL",
                             ),
                         "name",
                         "id",
@@ -2099,6 +2203,12 @@ const JobCardForm = ({
                       <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 w-48 px-1 py-1 text-center text-[11px] font-bold text-slate-700 uppercase">
                         Size
                       </th>
+                      <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 w-48 px-1 py-1 text-center text-[11px] font-bold text-slate-700 uppercase">
+                        Barcode From
+                      </th>
+                      <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 w-48 px-1 py-1 text-center text-[11px] font-bold text-slate-700 uppercase">
+                        Barcode To
+                      </th>
                       <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 w-20 px-1 py-1 text-center text-[11px] font-bold text-slate-700 uppercase">
                         Qty
                       </th>
@@ -2115,7 +2225,23 @@ const JobCardForm = ({
                         </td>
                         <td className="border-b border-r border-slate-200 px-3 py-0 text-[11px] text-black">
                           {sizeList?.data?.find((s) => s.id === item.sizeId)
-                            ?.name || "All Items"}
+                            ?.name || "No Size"}
+                        </td>
+                        <td className="border-b border-r border-slate-200 px-1 py-0">
+                          <input
+                            type="text"
+                            className="w-full h-7 border-none text-right pr-2 bg-transparent text-[11px] text-black outline-none focus:bg-white"
+                            value={item.barcodeFrom}
+                            disabled
+                          />
+                        </td>
+                        <td className="border-b border-r border-slate-200 px-1 py-0">
+                          <input
+                            type="text"
+                            className="w-full h-7 border-none text-right pr-2 bg-transparent text-[11px] text-black outline-none focus:bg-white"
+                            value={item.barcodeTo}
+                            disabled
+                          />
                         </td>
                         <td className="border-b border-r border-slate-200 px-1 py-0">
                           <input

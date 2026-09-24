@@ -128,6 +128,7 @@ model Branch {
   jobCards                       JobCard[]
   orderBranchJobCards            JobCard[]              @relation("orderBranch")
   proformaInvoices               ProformaInvoice[]
+  productionAllocations          ProductionAllocation[]
 }
 
 model UserOnBranch {
@@ -438,50 +439,51 @@ model Party {
   isSupplier        Boolean?  @default(false)
   isCustomer        Boolean?  @default(false)
 
-  isBranch              Boolean?               @default(false)
-  landMark              String?
-  contact               String?
-  designation           String?
-  department            String?
-  contactPersonEmail    String?
-  contactNumber         String?
-  alterContactNumber    String?
-  bankname              String?
-  bankBranchName        String?
-  accountNumber         String?
-  ifscCode              String?
-  PurchaseBillSupplier  PurchaseBill[]         @relation(name: "supplier")
-  SalesBillSupplier     SalesBill[]            @relation(name: "supplier")
-  PurchaseReturn        PurchaseReturn[]       @relation(name: "supplier")
-  SalesReturn           SalesReturn[]          @relation(name: "supplier")
-  coa                   BigInt?
-  soa                   BigInt?
-  msmeNo                String?
-  companyAlterNumber    String?
-  partyCode             String?
-  parentId              String?
-  BranchType            BranchType?            @relation(fields: [branchTypeId], references: [id])
-  branchTypeId          Int?
-  Payment               Payment[]
-  Supplier              DeliveryChallan[]      @relation(name: "supplier")
-  DeliveryTo            DeliveryChallan[]      @relation(name: "deliveryTo")
-  DeliveryInvoice       DeliveryInvoice[]
-  ledgers               Ledger[]
-  attachments           attachments[]
-  PartyBranch           PartyBranch[]
-  openingBalances       OpeningBalance[]
-  PoSupplier            Po[]                   @relation(name: "supplier")
-  PoDelivery            Po[]                   @relation(name: "deliveryTo")
-  purchaseInwards       PurchaseInward[]
-  purchaseInwardReturns PurchaseInwardReturn[]
-  purchaseCancels       PurchaseCancel[]
-  purchaseBillEntries   PurchaseBillEntry[]
-  purchaseLedgers       PurchaseLedger[]
-  orderEntries          OrderEntry[]
-  JobCard               JobCard[]
-  PlateSupplier         JobCard[]              @relation(name: "PlateSupplier")
-  proformaInvoices      ProformaInvoice[]      @relation("customer")
-  proformaInvoices2     ProformaInvoice[]      @relation("deliveryCustomer")
+  isBranch                 Boolean?                  @default(false)
+  landMark                 String?
+  contact                  String?
+  designation              String?
+  department               String?
+  contactPersonEmail       String?
+  contactNumber            String?
+  alterContactNumber       String?
+  bankname                 String?
+  bankBranchName           String?
+  accountNumber            String?
+  ifscCode                 String?
+  PurchaseBillSupplier     PurchaseBill[]            @relation(name: "supplier")
+  SalesBillSupplier        SalesBill[]               @relation(name: "supplier")
+  PurchaseReturn           PurchaseReturn[]          @relation(name: "supplier")
+  SalesReturn              SalesReturn[]             @relation(name: "supplier")
+  coa                      BigInt?
+  soa                      BigInt?
+  msmeNo                   String?
+  companyAlterNumber       String?
+  partyCode                String?
+  parentId                 String?
+  BranchType               BranchType?               @relation(fields: [branchTypeId], references: [id])
+  branchTypeId             Int?
+  Payment                  Payment[]
+  Supplier                 DeliveryChallan[]         @relation(name: "supplier")
+  DeliveryTo               DeliveryChallan[]         @relation(name: "deliveryTo")
+  DeliveryInvoice          DeliveryInvoice[]
+  ledgers                  Ledger[]
+  attachments              attachments[]
+  PartyBranch              PartyBranch[]
+  openingBalances          OpeningBalance[]
+  PoSupplier               Po[]                      @relation(name: "supplier")
+  PoDelivery               Po[]                      @relation(name: "deliveryTo")
+  purchaseInwards          PurchaseInward[]
+  purchaseInwardReturns    PurchaseInwardReturn[]
+  purchaseCancels          PurchaseCancel[]
+  purchaseBillEntries      PurchaseBillEntry[]
+  purchaseLedgers          PurchaseLedger[]
+  orderEntries             OrderEntry[]
+  JobCard                  JobCard[]
+  PlateSupplier            JobCard[]                 @relation(name: "PlateSupplier")
+  proformaInvoices         ProformaInvoice[]         @relation("customer")
+  proformaInvoices2        ProformaInvoice[]         @relation("deliveryCustomer")
+  productionAllocationDtls ProductionAllocationDtl[]
 }
 
 model PartyBranch {
@@ -2165,6 +2167,7 @@ model JobCard {
   finishingProcesses   FinishingProcess[]
   stocks               Stock[]
   labelPrintingDetails LabelPrintingDetails[]
+  JobCards             JobCard[]              @relation("RepeatedJobCard")
   isOldPlate           Boolean?               @default(false)
   isNewPlate           Boolean?               @default(false)
   Store                Location?              @relation(fields: [storeId], references: [id])
@@ -2182,18 +2185,28 @@ model JobCard {
   jobCardType          String?
   orderBranchId        Int?
   OrderBranch          Branch?                @relation("orderBranch", fields: [orderBranchId], references: [id])
+  blockDate            DateTime?
+  dieDescription       String?
+  dieMethod            String?
+  status               String?
+  rollQty              Int?
+  isRepeatedJobCard    Boolean?               @default(false)
+  refJobCardId         Int?
+  RefJobCard           JobCard?               @relation("RepeatedJobCard", fields: [refJobCardId], references: [id])
 }
 
 model ProcessRoute {
-  id             Int      @id @default(autoincrement())
-  jobCardId      Int?
-  JobCard        JobCard? @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
-  processId      Int?
-  Process        Process? @relation(fields: [processId], references: [id])
-  type           String // "process" | "lamination" | "varnish"
-  sequence       Int
-  isFront        Boolean  @default(false)
-  isFrontAndBack Boolean  @default(false)
+  id                       Int                       @id @default(autoincrement())
+  jobCardId                Int?
+  JobCard                  JobCard?                  @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
+  processId                Int?
+  Process                  Process?                  @relation(fields: [processId], references: [id])
+  type                     String // "process" | "lamination" | "varnish"
+  sequence                 Int
+  isFront                  Boolean                   @default(false)
+  isFrontAndBack           Boolean                   @default(false)
+  status                   String?                   @default("NOT_STARTED")
+  productionAllocationDtls ProductionAllocationDtl[]
 }
 
 model BoardQuality {
@@ -2289,21 +2302,22 @@ model MachineDetails {
 }
 
 model ProductionAllocation {
-  id          Int        @id @default(autoincrement())
-  docId       String
-  docDate     DateTime?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  createdById Int?
-  createdBy   User?      @relation("AllocationCreatedBy", fields: [createdById], references: [id])
-  updatedById Int?
-  updatedBy   User?      @relation("AllocationUpdatedBy", fields: [updatedById], references: [id])
-  jobCardId   Int
-  JobCard     JobCard    @relation(fields: [jobCardId], references: [id])
-  remarks     String?
-  styleItemId Int?
-  StyleItem   StyleItem? @relation(fields: [styleItemId], references: [id])
-
+  id                Int                       @id @default(autoincrement())
+  docId             String
+  docDate           DateTime?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  createdById       Int?
+  createdBy         User?                     @relation("AllocationCreatedBy", fields: [createdById], references: [id])
+  updatedById       Int?
+  updatedBy         User?                     @relation("AllocationUpdatedBy", fields: [updatedById], references: [id])
+  jobCardId         Int
+  JobCard           JobCard                   @relation(fields: [jobCardId], references: [id])
+  remarks           String?
+  styleItemId       Int?
+  StyleItem         StyleItem?                @relation(fields: [styleItemId], references: [id])
+  Branch            Branch?                   @relation(fields: [branchId], references: [id])
+  branchId          Int?
   allocationDetails ProductionAllocationDtl[]
 }
 
@@ -2317,6 +2331,12 @@ model ProductionAllocationDtl {
   Process                Process?             @relation(fields: [processId], references: [id])
   type                   String?
   sequence               Int?
+  Supplier               Party?               @relation(fields: [supplierId], references: [id])
+  supplierId             Int?
+  processRouteId         Int?
+  ProcessRoute           ProcessRoute?        @relation(fields: [processRouteId], references: [id])
+  isFront                Boolean              @default(false)
+  isFrontAndBack         Boolean              @default(false)
 }
 
 model Machine {
