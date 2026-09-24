@@ -275,7 +275,8 @@ const JobCardForm = ({
 
   const status = singleData?.data?.approvalStatus?.status;
   const isDisabledPermission =
-    (status === "APPROVED" || status === "PENDING") && !canApprove;
+    ((status === "APPROVED" || status === "PENDING") && !canApprove) ||
+    childRecord.current > 0;
 
   const dbProcessRoute = singleData?.data?.processRoute || [];
   const anyCompleted = dbProcessRoute.some((r) => r.status === "COMPLETED");
@@ -971,7 +972,7 @@ const JobCardForm = ({
               setValue={setJobCardType}
               required={true}
               readOnly={readOnly}
-              disabled={readOnly}
+              disabled={isDisabledPermission}
             />
           </div>
           <div className="w-32">
@@ -981,7 +982,7 @@ const JobCardForm = ({
               value={department}
               setValue={setDepartment}
               readOnly={readOnly}
-              disabled={readOnly}
+              disabled={isDisabledPermission}
             />
           </div>
         </div>
@@ -1013,7 +1014,7 @@ const JobCardForm = ({
                 }}
                 required={true}
                 readOnly={readOnly}
-                disabled={!!id}
+                disabled={isDisabledPermission}
               />
             </Field>
           ) : (
@@ -1030,7 +1031,7 @@ const JobCardForm = ({
               setValue={setCustomerId}
               required
               readOnly={readOnly}
-              disabled={readOnly || childRecord.current > 0}
+              disabled={isDisabledPermission}
               ref={customerRef}
             />
           )}
@@ -1042,7 +1043,7 @@ const JobCardForm = ({
               readOnly={readOnly}
               value={isRepeatedJobCard}
               setValue={setIsRepeatedJobCard}
-              disabled={readOnly || childRecord.current > 0}
+              disabled={isDisabledPermission}
               className="text-[11px] font-medium"
             />
           </div>
@@ -1055,7 +1056,7 @@ const JobCardForm = ({
                 setValue={setRefJobCardId}
                 required
                 readOnly={readOnly}
-                disabled={readOnly || childRecord.current > 0}
+                disabled={isDisabledPermission}
                 otherField={"docId"}
                 beforeChange={handleJobCardChange}
               />
@@ -1089,7 +1090,7 @@ const JobCardForm = ({
               setValue={setOrderEntryId}
               required
               readOnly={readOnly}
-              disabled={readOnly || childRecord.current > 0}
+              disabled={isDisabledPermission}
               otherField={"docId"}
               beforeChange={async (selectedValue) => {
                 if (selectedValue?.proformaInvoices?.[0]?.id) {
@@ -1153,7 +1154,7 @@ const JobCardForm = ({
               value={styleItemId}
               setValue={setStyleItemId}
               required
-              disabled={readOnly || childRecord.current > 0}
+              disabled={isDisabledPermission}
               beforeChange={(selectedValue) => {
                 console.log(selectedValue, "selectedValue");
                 if (isRepeatedJobCard && refJobCardId) {
@@ -1249,9 +1250,7 @@ const JobCardForm = ({
               setValue={setFollowUpId}
               required
               readOnly={readOnly}
-              disabled={
-                isDisabledPermission || readOnly || childRecord.current > 0
-              }
+              disabled={isDisabledPermission}
             />
           </div>
           <div className="w-40">
@@ -1266,9 +1265,7 @@ const JobCardForm = ({
               setValue={setDesignerId}
               required
               readOnly={readOnly}
-              disabled={
-                isDisabledPermission || readOnly || childRecord.current > 0
-              }
+              disabled={isDisabledPermission}
             />
           </div>
         </div>
@@ -1287,7 +1284,7 @@ const JobCardForm = ({
               readOnly={readOnly}
               className="w-full text-right"
               onFocus={(e) => e.target.select()}
-              disabled={isDisabledPermission || childRecord.current > 0}
+              disabled={isDisabledPermission}
             />
           </div>
           <div className="w-28">
@@ -1299,7 +1296,7 @@ const JobCardForm = ({
               className="w-full text-right"
               type="number"
               onFocus={(e) => e.target.select()}
-              disabled={isDisabledPermission || childRecord.current > 0}
+              disabled={isDisabledPermission}
             />
           </div>
         </div>
@@ -1440,51 +1437,12 @@ const JobCardForm = ({
                     setValue={setPlateSupplierId}
                     required
                     readOnly={readOnly}
-                    disabled={readOnly || childRecord.current > 0}
+                    disabled={isDisabledPermission}
                     // ref={customerRef}
                   />
                 </div>
                 <Field></Field>
-                {/* <Field label="Plate Details">
-                  <DropdownWithModal
-                    name=""
-                    options={dropDownListObject(
-                      id
-                        ? plateList?.data
-                        : plateList?.data?.filter((i) => i?.active),
-                      "name",
-                      "id",
-                    )}
-                    value={plateId}
-                    setValue={setPlateId}
-                    readOnly={readOnly}
-                    addNewLabel="+ Add Plate"
-                    childComponent={PlateMaster}
-                    addNewModalWidth="w-[30%] h-[45%]"
-                    disabled={isDisabledPermission}
-                  />
-                </Field>
 
-                <Field label="Total Plate Sets">
-                  <TextInput
-                    name=""
-                    value={totalPlatesets}
-                    setValue={setTotalPlatesets}
-                    type="number"
-                    readOnly={readOnly}
-                    className="w-full text-right"
-                    disabled={isDisabledPermission}
-                  />
-                </Field> */}
-
-                {/* <div className="justify-center items-center">
-                  <button
-                    onClick={() => setSizeModalOpen(true)}
-                    className="border w-auto rounded-md text-[10px] bg-blue-700 font-semibold uppercase tracking-wider text-white p-1"
-                  >
-                    View Size Details
-                  </button>
-                </div> */}
                 <CheckBox
                   name="Old Plate"
                   value={isOldPlate}
@@ -1567,7 +1525,7 @@ const JobCardForm = ({
                                   label: item.name,
                                   value: item.id,
                                 }))}
-                              readOnly={readOnly}
+                              readOnly={readOnly || isDisabledPermission}
                               placeholder=""
                               addNew={true}
                               // childComponent={StyleItemMaster}
@@ -1595,7 +1553,7 @@ const JobCardForm = ({
                                   label: item.name,
                                   value: item.id,
                                 }))}
-                              readOnly={readOnly}
+                              readOnly={readOnly || isDisabledPermission}
                               placeholder=""
                               addNew={true}
                               // childComponent={StyleItemMaster}

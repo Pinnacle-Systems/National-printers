@@ -749,7 +749,7 @@ async function create(body) {
           },
         });
       }
-      if (submitApproval && hasApproval && module) {
+      if (hasApproval && module) {
         const includeClause = await buildIncludeForModule(module.id);
         const fullRecord = await tx.jobCard.findUnique({
           where: { id: data.id },
