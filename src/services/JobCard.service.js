@@ -225,6 +225,8 @@ async function getOne(id) {
       processRoute: {
         include: { Process: { select: { id: true, name: true } } },
       },
+      labelPrintingDetails: true,
+
       LabelSize: { select: { id: true, name: true } },
       FullBoardSize: { select: { id: true, name: true } },
       CuttingSizeDtl: { select: { id: true, name: true } },
@@ -364,28 +366,61 @@ async function create(body) {
       labelRollQty,
       labelCutAndSeal,
       boardItems,
+
+      submitApproval,
+      // arrays
+
+      boardQualities,
       selectedProcesses,
       laminations,
       varnishes,
       selectedMachines,
       processRoute,
+      trackingType,
+      jobCardSizeDetails,
       selectedPrinting,
       selectedFinishing,
+      orderItemId,
       plateDetails,
       labelSizeId,
       totalMeter,
-      submitApproval,
+      blockDate,
+      isRepeatedJobCard,
+      refJobCardId,
+      splitType,
+      storeId,
+      selectedLabelPrinting,
+      labelItemId,
+      colorId,
+      isHold,
+      isCancelled,
+      isNewPlate,
+      isOldPlate,
+
+      jobCardType,
+      orderBranchId,
+      dieDescription,
+      dieMethod,
+      lenght,
+      width,
+      meter,
+      plateSupplierId,
+      itemType,
+      rollQty,
+      itemGroupId,
     } = body;
 
-    const safeBoardItems = safeArray(boardItems);
+    const safeBoardItems = safeArray(boardQualities);
     const safeProcesses = safeArray(selectedProcesses);
     const safeLaminations = safeArray(laminations);
     const safeVarnishes = safeArray(varnishes);
     const safeMachines = safeArray(selectedMachines);
     const safeProcessRoute = safeArray(processRoute);
-    const safePrinting = safeArray(selectedPrinting);
-    const safeFinishing = safeArray(selectedFinishing);
+    const safeJobCardSizeDetails = safeArray(jobCardSizeDetails);
+    const safeSelectedPrinting = safeArray(selectedPrinting);
     const safePlateDetails = safeArray(plateDetails);
+    const safeLabelPrintingDetails = safeArray(selectedLabelPrinting);
+    const safeFinishingDetails = safeArray(selectedFinishing);
 
     let finYearDate = await getFinYearStartTimeEndTime(finYearId);
     const shortCode = finYearDate
@@ -416,17 +451,33 @@ async function create(body) {
           docDate: docDate ? new Date(docDate) : null,
           createdBy: userId ? { connect: { id: Number(userId) } } : undefined,
           Branch: branchId ? { connect: { id: Number(branchId) } } : undefined,
-          OrderEntry: orderEntryId ? { connect: { id: Number(orderEntryId) } } : undefined,
-          ProformaInvoice: proformaInvoiceId ? { connect: { id: Number(proformaInvoiceId) } } : undefined,
+          OrderEntry: orderEntryId
+            ? { connect: { id: Number(orderEntryId) } }
+            : undefined,
+          ProformaInvoice: proformaInvoiceId
+            ? { connect: { id: Number(proformaInvoiceId) } }
+            : undefined,
           orderType: orderType || null,
+          jobCardType: jobCardType,
+          OrderBranch: orderBranchId
+            ? { connect: { id: Number(orderBranchId) } }
+            : undefined,
           orderQty: orderQty ? Number(orderQty) : null,
-          customer: customerId ? { connect: { id: Number(customerId) } } : undefined,
+          customer: customerId
+            ? { connect: { id: Number(customerId) } }
+            : undefined,
           gsm: gsmId ? { connect: { id: Number(gsmId) } } : undefined,
           Board: boardId ? { connect: { id: Number(boardId) } } : undefined,
-          FullBoardSize: fullBoardId ? { connect: { id: Number(fullBoardId) } } : undefined,
+          FullBoardSize: fullBoardId
+            ? { connect: { id: Number(fullBoardId) } }
+            : undefined,
           noOfPockets: noOfPockets ? Number(noOfPockets) : null,
-          CuttingSizeDtl: cuttingSizeId ? { connect: { id: Number(cuttingSizeId) } } : undefined,
-          LabelSize: labelSizeId ? { connect: { id: Number(labelSizeId) } } : undefined,
+          CuttingSizeDtl: cuttingSizeId
+            ? { connect: { id: Number(cuttingSizeId) } }
+            : undefined,
+          LabelSize: labelSizeId
+            ? { connect: { id: Number(labelSizeId) } }
+            : undefined,
           totalMeter: totalMeter ? Number(totalMeter) : null,
           runningQty: runningQty ? Number(runningQty) : null,
           isFourColor: !!isFourColor,
@@ -441,75 +492,264 @@ async function create(body) {
           Die: dieId ? { connect: { id: Number(dieId) } } : undefined,
           totalPlateSet: totalPlateSet ? Number(totalPlateSet) : null,
           remarks: remarks || null,
-          Designer: designerId ? { connect: { id: Number(designerId) } } : undefined,
-          FollowUp: followUpId ? { connect: { id: Number(followUpId) } } : undefined,
+          trackingType: trackingType || null,
+          blockDate: blockDate ? new Date(blockDate) : null,
+          isRepeatedJobCard: !!isRepeatedJobCard,
+          RefJobCard: refJobCardId
+            ? { connect: { id: Number(refJobCardId) } }
+            : undefined,
+          Designer: designerId
+            ? { connect: { id: Number(designerId) } }
+            : undefined,
+          FollowUp: followUpId
+            ? { connect: { id: Number(followUpId) } }
+            : undefined,
           tagCardUps: tagCardUps || null,
           jobRunTime: jobRunTime ? Number(jobRunTime) : null,
           department: department || null,
           itemGroup: itemGroup || null,
-          OrderEntryItem: orderEntryItemId ? { connect: { id: Number(orderEntryItemId) } } : undefined,
-          StyleItem: styleItemId ? { connect: { id: Number(styleItemId) } } : undefined,
+          OrderEntryItem: orderItemId
+            ? { connect: { id: Number(orderItemId) } }
+            : { disconnect: true },
+          StyleItem: styleItemId
+            ? { connect: { id: Number(styleItemId) } }
+            : undefined,
           labelQuality: labelQuality || null,
           labelBlock: labelBlock || null,
           labelRollQty: labelRollQty || null,
           labelCutAndSeal: labelCutAndSeal || null,
+          splitType: splitType || null,
+          Store: storeId ? { connect: { id: Number(storeId) } } : undefined,
+          LabelItem: labelItemId
+            ? { connect: { id: Number(labelItemId) } }
+            : undefined,
+          Color: colorId ? { connect: { id: Number(colorId) } } : undefined,
+          dieDescription: dieDescription ?? null,
+          dieMethod: dieMethod ?? null,
+          isHold: isHold ?? false,
+          isCancelled: isCancelled ?? false,
+          lenght: lenght ? parseInt(lenght) : 0,
+          width: width ? parseInt(width) : 0,
+          meter: meter ? parseInt(meter) : 0,
+          isNewPlate: !!isNewPlate,
+          isOldPlate: !!isOldPlate,
+          PlateSupplier: plateSupplierId
+            ? { connect: { id: Number(plateSupplierId) } }
+            : undefined,
+          itemType: itemType || null,
+          rollQty: rollQty ? parseInt(rollQty) : 0,
+          boardQualities: safeBoardItems.length
+            ? {
+                createMany: {
+                  data: safeBoardItems.map((item) => ({
+                    processId: Number(item.processId),
+                    gsmId: Number(item.gsmId),
+                    fullBoardId: Number(item.fullBoardId),
+                    noOfSheets: Number(item.noOfSheets),
+                  })),
+                },
+              }
+            : undefined,
 
-          boardQualities: safeBoardItems.length ? {
-            create: safeBoardItems.map((id) => ({ boardId: Number(id) })),
-          } : undefined,
+          printingDetails: safeSelectedPrinting.length
+            ? {
+                createMany: {
+                  data: safeSelectedPrinting.map((p) => ({
+                    processId: Number(p.processId),
+                    isFront: !!p.isFront,
+                    isFrontAndBack: !!p.isFrontAndBack,
+                  })),
+                },
+              }
+            : undefined,
 
-          processDetails: safeProcesses.length ? {
-            create: safeProcesses.map((id) => ({ processId: Number(id) })),
-          } : undefined,
+          plateDetails: safePlateDetails.length
+            ? {
+                createMany: {
+                  data: safePlateDetails.map((p) => ({
+                    plateId: p.plateId ? parseInt(p.plateId) : null,
+                    machineId: p.machineId ? parseInt(p.machineId) : null,
+                    plateName: p.plateName ?? "",
+                    description: p.description ?? "",
+                    qty: p.qty ? Number(p.qty) : null,
+                  })),
+                },
+              }
+            : undefined,
 
-          laminationDetails: safeLaminations.length ? {
-            create: safeLaminations.map((l) => ({
-              laminationId: Number(l.processId),
-              isFront: !!l.isFront,
-              isFrontAndBack: !!l.isFrontAndBack,
-            })),
-          } : undefined,
+          processDetails: safeProcesses.length
+            ? {
+                createMany: {
+                  data: safeProcesses.map((id) => ({
+                    processId: Number(id),
+                  })),
+                },
+              }
+            : undefined,
 
-          varnishDetails: safeVarnishes.length ? {
-            create: safeVarnishes.map((v) => ({
-              varnishId: Number(v.processId),
-              isFront: !!v.isFront,
-              isFrontAndBack: !!v.isFrontAndBack,
-            })),
-          } : undefined,
+          laminationDetails: safeLaminations.length
+            ? {
+                createMany: {
+                  data: safeLaminations.map((l) => ({
+                    laminationId: Number(l.processId),
+                    isFront: !!l.isFront,
+                    isFrontAndBack: !!l.isFrontAndBack,
+                  })),
+                },
+              }
+            : undefined,
 
-          machineDetails: safeMachines.length ? {
-            create: safeMachines.map((id) => ({ macId: Number(id) })),
-          } : undefined,
+          varnishDetails: safeVarnishes.length
+            ? {
+                createMany: {
+                  data: safeVarnishes.map((v) => ({
+                    varnishId: Number(v.processId),
+                    isFront: !!v.isFront,
+                    isFrontAndBack: !!v.isFrontAndBack,
+                  })),
+                },
+              }
+            : undefined,
 
-          processRoute: safeProcessRoute.length ? {
-            create: safeProcessRoute.map((r, idx) => ({
-              processId: Number(r.processId),
-              type: r.type,
-              sequence: idx + 1,
-              isFront: !!r.isFront,
-              isFrontAndBack: !!r.isFrontAndBack,
-            })),
-          } : undefined,
+          machineDetails: safeMachines.length
+            ? {
+                createMany: {
+                  data: safeMachines.map((id) => ({
+                    macId: Number(id),
+                  })),
+                },
+              }
+            : undefined,
 
-          printingDetails: safePrinting.length ? {
-            create: safePrinting.map((id) => ({ processId: Number(id) })),
-          } : undefined,
+          processRoute: safeProcessRoute.length
+            ? {
+                createMany: {
+                  data: safeProcessRoute.map((r, idx) => ({
+                    processId: r.processId ? Number(r.processId) : null,
+                    type: r.type,
+                    sequence: idx + 1,
+                    isFront: !!r.isFront,
+                    isFrontAndBack: !!r.isFrontAndBack,
+                    status: "NOT_STARTED",
+                  })),
+                },
+              }
+            : undefined,
 
-          finishingProcesses: safeFinishing.length ? {
-            create: safeFinishing.map((id) => ({ processId: Number(id) })),
-          } : undefined,
+          // jobCardSizeDetails: safeJobCardSizeDetails.length
+          //   ? {
+          //       createMany: {
+          //         data: safeJobCardSizeDetails.map((s) => ({
+          //           sizeId: s.sizeId ? Number(s.sizeId) : null,
+          //           qty: s.qty ? Number(s.qty) : null,
+          //           barcodeFrom: s.barcodeFrom || null,
+          //           barcodeTo: s.barcodeTo || null,
+          //         })),
+          //       },
+          //     }
+          //   : undefined,
 
-          plateDetails: safePlateDetails.length ? {
-            create: safePlateDetails.map((p) => ({
-              plateName: p.plateName,
-              qty: Number(p.qty),
-            })),
-          } : undefined,
+          finishingProcesses: safeFinishingDetails.length
+            ? {
+                createMany: {
+                  data: safeFinishingDetails.map((id) => ({
+                    processId: Number(id),
+                  })),
+                },
+              }
+            : undefined,
+
+          labelPrintingDetails: safeLabelPrintingDetails.length
+            ? {
+                createMany: {
+                  data: safeLabelPrintingDetails.map((id) => ({
+                    processId: Number(id),
+                  })),
+                },
+              }
+            : undefined,
         },
       });
+      if (itemType !== "LABEL") {
+        for (const boardQuality of boardQualities) {
+          const process = await tx.process.findUnique({
+            where: {
+              id: Number(boardQuality.processId),
+            },
+            select: {
+              name: true,
+            },
+          });
 
-      if (submitApproval && hasApproval && module) {
+          if (!process) {
+            throw new Error("Board process not found");
+          }
+          const styleItem = await tx.styleItem.findFirst({
+            where: {
+              name: process.name,
+            },
+            select: {
+              id: true,
+              uomId: true,
+            },
+          });
+
+          if (!styleItem) {
+            throw new Error(`Style Item not found for process ${process.name}`);
+          }
+          await tx.stock.create({
+            data: {
+              branchId: branchId ? parseInt(branchId) : undefined,
+              storeId: parseInt(storeId),
+              styleItemId: parseInt(styleItem.id),
+              gsmId: parseInt(boardQuality.gsmId),
+              sizeId: parseInt(boardQuality.fullBoardId),
+              inOrOut: "Out",
+              qty:
+                boardQuality?.noOfSheets &&
+                !isNaN(parseFloat(boardQuality.noOfSheets))
+                  ? -Math.abs(parseInt(boardQuality.noOfSheets))
+                  : null,
+              uomId: parseInt(styleItem.uomId),
+              createdById: parseInt(userId),
+              itemGroupId: parseInt(itemGroupId),
+              jobCardId: parseInt(data.id),
+              processName: "Job Card",
+            },
+          });
+        }
+      } else {
+        const styleItem = await tx.styleItem.findUnique({
+          where: {
+            id: parseInt(labelItemId),
+          },
+          select: {
+            id: true,
+            uomId: true,
+          },
+        });
+
+        await tx.stock.create({
+          data: {
+            branchId: branchId ? parseInt(branchId) : undefined,
+            storeId: parseInt(storeId),
+            styleItemId: parseInt(labelItemId),
+            sizeId: parseInt(labelSizeId),
+            inOrOut: "Out",
+            qty:
+              rollQty && !isNaN(parseFloat(rollQty))
+                ? -Math.abs(parseFloat(rollQty))
+                : null,
+            uomId: parseInt(styleItem.uomId),
+            createdById: parseInt(userId),
+            itemGroupId: parseInt(itemGroupId),
+            jobCardId: parseInt(data.id),
+            processName: "Job Card",
+            colorId: parseInt(colorId),
+          },
+        });
+      }
+      if (hasApproval && module) {
         const includeClause = await buildIncludeForModule(module.id);
         const fullRecord = await tx.jobCard.findUnique({
           where: { id: data.id },
@@ -553,14 +793,6 @@ async function update(id, body) {
       noOfPockets,
       cuttingSizeId,
       runningQty,
-      isFourColor,
-      isCutColor,
-      isFront,
-      isFrontAndBack,
-      isCMYK,
-      isCutColMachine,
-      isFrontMachine,
-      isFrontBackMachine,
       plateId,
       dieId,
       totalPlateSet,
@@ -589,9 +821,36 @@ async function update(id, body) {
       labelSizeId,
       totalMeter,
       submitApproval,
+      orderItemId,
+      blockDate,
+      isRepeatedJobCard,
+      refJobCardId,
+      splitType,
+      storeId,
+      selectedLabelPrinting,
+      labelItemId,
+      colorId,
+      isHold,
+      isCancelled,
+      isNewPlate,
+      isOldPlate,
+      jobCardType,
+      orderBranchId,
+      dieDescription,
+      dieMethod,
+      lenght,
+      width,
+      meter,
+      plateSupplierId,
+      jobCardSizeDetails,
+      trackingType,
+      boardQualities,
+      itemType,
+      rollQty,
+      itemGroupId,
     } = body;
 
-    const safeBoardItems = safeArray(boardItems);
+    const safeBoardItems = safeArray(boardQualities);
     const safeProcesses = safeArray(selectedProcesses);
     const safeLaminations = safeArray(laminations);
     const safeVarnishes = safeArray(varnishes);
@@ -600,6 +859,8 @@ async function update(id, body) {
     const safePrinting = safeArray(selectedPrinting);
     const safeFinishing = safeArray(selectedFinishing);
     const safePlateDetails = safeArray(plateDetails);
+    const safeJobCardSizeDetails = safeArray(jobCardSizeDetails);
+    const safeLabelPrintingDetails = safeArray(selectedLabelPrinting);
 
     const { module, hasApproval } = await getModuleApprovalSetup(
       REFERENCE_PAGE,
@@ -617,109 +878,466 @@ async function update(id, body) {
       await tx.laminationDetails.deleteMany({ where: { jobCardId: jcId } });
       await tx.varnishDetails.deleteMany({ where: { jobCardId: jcId } });
       await tx.machineDetails.deleteMany({ where: { jobCardId: jcId } });
-      await tx.processRoute.deleteMany({ where: { jobCardId: jcId } });
       await tx.printingDetails.deleteMany({ where: { jobCardId: jcId } });
       await tx.finishingProcess.deleteMany({ where: { jobCardId: jcId } });
       await tx.plateDetails.deleteMany({ where: { jobCardId: jcId } });
+      await tx.labelPrintingDetails.deleteMany({ where: { jobCardId: jcId } });
+      if (itemType !== "LABEL") {
+        await tx.stock.deleteMany({
+          where: {
+            jobCardId: parseInt(id),
+          },
+        });
+      }
 
+      if (processRoute.length > 0) {
+        // Fetch current DB rows for this job card
+        const existingRouteRows = await tx.processRoute.findMany({
+          where: { jobCardId: parseInt(id) },
+          select: {
+            id: true,
+            processId: true,
+            type: true,
+            isFront: true,
+            isFrontAndBack: true,
+          },
+        });
+
+        // Build a lookup key identical to the frontend: "type:processId[:sub]"
+        const makeRouteKey = (type, processId, isFront, isFrontAndBack) => {
+          const sub = isFrontAndBack ? "frontback" : isFront ? "front" : "";
+          return `${type}:${processId}${sub ? `:${sub}` : ""}`;
+        };
+
+        const existingKeyToRow = {};
+        existingRouteRows.forEach((row) => {
+          existingKeyToRow[
+            makeRouteKey(
+              row.type,
+              row.processId,
+              row.isFront,
+              row.isFrontAndBack,
+            )
+          ] = row;
+        });
+
+        // Build desired key set from the incoming payload
+        const incomingKeyToRoute = {};
+        processRoute.forEach((r, idx) => {
+          const key = makeRouteKey(
+            r.type,
+            Number(r.processId),
+            Boolean(r.isFront),
+            Boolean(r.isFrontAndBack),
+          );
+          incomingKeyToRoute[key] = { ...r, sequence: idx + 1 };
+        });
+
+        // Delete rows that are no longer in the incoming payload
+        const keysToDelete = Object.keys(existingKeyToRow).filter(
+          (k) => !incomingKeyToRoute[k],
+        );
+        if (keysToDelete.length > 0) {
+          const idsToDelete = keysToDelete.map((k) => existingKeyToRow[k].id);
+          await tx.processRoute.deleteMany({
+            where: { id: { in: idsToDelete } },
+          });
+        }
+
+        // Update sequence on rows that already exist (keep status/completedQty untouched)
+        const keysToUpdate = Object.keys(incomingKeyToRoute).filter(
+          (k) => existingKeyToRow[k],
+        );
+        for (const key of keysToUpdate) {
+          await tx.processRoute.update({
+            where: { id: existingKeyToRow[key].id },
+            data: { sequence: incomingKeyToRoute[key].sequence },
+          });
+        }
+
+        // Insert rows that are new
+        const keysToInsert = Object.keys(incomingKeyToRoute).filter(
+          (k) => !existingKeyToRow[k],
+        );
+        if (keysToInsert.length > 0) {
+          await tx.processRoute.createMany({
+            data: keysToInsert.map((k) => {
+              const r = incomingKeyToRoute[k];
+              return {
+                jobCardId: parseInt(id),
+                processId: r.processId ? Number(r.processId) : null,
+                type: r.type,
+                sequence: r.sequence,
+                isFront: Boolean(r.isFront),
+                isFrontAndBack: Boolean(r.isFrontAndBack),
+                status: "NOT_STARTED",
+              };
+            }),
+          });
+        }
+      } else {
+        // Incoming payload has no routes — delete all existing rows
+        await tx.processRoute.deleteMany({
+          where: { jobCardId: parseInt(id) },
+        });
+      }
+      // if (isAmendment) {
+      //   const allocation = await tx.productionAllocation.findFirst({
+      //     where: { jobCardId: parseInt(id) },
+      //     select: {
+      //       id: true,
+      //       allocationDetails: {
+      //         select: { id: true, processId: true, type: true },
+      //       },
+      //     },
+      //   });
+
+      //   if (allocation) {
+      //     // Build a sequence lookup from the (now-synced) incoming processRoute
+      //     // key: "type:processId"  →  value: sequence (1-based)
+      //     const existingDtlMap = {};
+      //     allocation.allocationDetails.forEach((d) => {
+      //       existingDtlMap[`${d.type}:${d.processId}`] = d;
+      //     });
+
+      //     const incomingDtlMap = {};
+      //     processRoute.forEach((r, idx) => {
+      //       incomingDtlMap[`${r.type}:${r.processId}`] = {
+      //         ...r,
+      //         sequence: idx + 1,
+      //       };
+      //     });
+
+      //     // DELETE removed rows
+      //     const deleteIds = Object.keys(existingDtlMap)
+      //       .filter((k) => !incomingDtlMap[k])
+      //       .map((k) => existingDtlMap[k].id);
+
+      //     if (deleteIds.length) {
+      //       await tx.productionAllocationDtl.deleteMany({
+      //         where: { id: { in: deleteIds } },
+      //       });
+      //     }
+
+      //     // UPDATE existing
+      //     for (const key of Object.keys(incomingDtlMap)) {
+      //       if (existingDtlMap[key]) {
+      //         await tx.productionAllocationDtl.update({
+      //           where: { id: existingDtlMap[key].id },
+      //           data: {
+      //             sequence: incomingDtlMap[key].sequence,
+      //           },
+      //         });
+      //       }
+      //     }
+
+      //     // INSERT new
+      //     const insertRows = Object.keys(incomingDtlMap)
+      //       .filter((k) => !existingDtlMap[k])
+      //       .map((k) => ({
+      //         productionAllocationId: allocation.id,
+      //         processId: incomingDtlMap[k].processId,
+      //         type: incomingDtlMap[k].type,
+      //         sequence: incomingDtlMap[k].sequence,
+      //         isInHouse: true,
+      //         isOutSide: false,
+      //       }));
+
+      //     if (insertRows.length) {
+      //       await tx.productionAllocationDtl.createMany({
+      //         data: insertRows,
+      //       });
+      //     }
+      //   }
+      // }
       data = await tx.jobCard.update({
         where: { id: jcId },
         data: {
           docDate: docDate ? new Date(docDate) : null,
           updatedBy: userId ? { connect: { id: Number(userId) } } : undefined,
-          OrderEntry: orderEntryId ? { connect: { id: Number(orderEntryId) } } : { disconnect: true },
-          ProformaInvoice: proformaInvoiceId ? { connect: { id: Number(proformaInvoiceId) } } : { disconnect: true },
+          OrderEntry: orderEntryId
+            ? { connect: { id: Number(orderEntryId) } }
+            : { disconnect: true },
+          ProformaInvoice: proformaInvoiceId
+            ? { connect: { id: Number(proformaInvoiceId) } }
+            : { disconnect: true },
           orderType: orderType || null,
           orderQty: orderQty ? Number(orderQty) : null,
-          customer: customerId ? { connect: { id: Number(customerId) } } : { disconnect: true },
-          gsm: gsmId ? { connect: { id: Number(gsmId) } } : { disconnect: true },
-          Board: boardId ? { connect: { id: Number(boardId) } } : { disconnect: true },
-          FullBoardSize: fullBoardId ? { connect: { id: Number(fullBoardId) } } : { disconnect: true },
+          customer: customerId
+            ? { connect: { id: Number(customerId) } }
+            : { disconnect: true },
+          gsm: gsmId
+            ? { connect: { id: Number(gsmId) } }
+            : { disconnect: true },
+          Board: boardId
+            ? { connect: { id: Number(boardId) } }
+            : { disconnect: true },
+          FullBoardSize: fullBoardId
+            ? { connect: { id: Number(fullBoardId) } }
+            : { disconnect: true },
           noOfPockets: noOfPockets ? Number(noOfPockets) : null,
-          CuttingSizeDtl: cuttingSizeId ? { connect: { id: Number(cuttingSizeId) } } : { disconnect: true },
-          LabelSize: labelSizeId ? { connect: { id: Number(labelSizeId) } } : { disconnect: true },
+          CuttingSizeDtl: cuttingSizeId
+            ? { connect: { id: Number(cuttingSizeId) } }
+            : { disconnect: true },
+          LabelSize: labelSizeId
+            ? { connect: { id: Number(labelSizeId) } }
+            : { disconnect: true },
           totalMeter: totalMeter ? Number(totalMeter) : null,
           runningQty: runningQty ? Number(runningQty) : null,
-          isFourColor: !!isFourColor,
-          isCutColor: !!isCutColor,
-          isFront: !!isFront,
-          isFrontAndBack: !!isFrontAndBack,
-          isCMYK: !!isCMYK,
-          isCutColMachine: !!isCutColMachine,
-          isFrontMachine: !!isFrontMachine,
-          isFrontBackMachine: !!isFrontBackMachine,
-          Plate: plateId ? { connect: { id: Number(plateId) } } : { disconnect: true },
-          Die: dieId ? { connect: { id: Number(dieId) } } : { disconnect: true },
+          jobCardType: jobCardType,
+          OrderBranch: orderBranchId
+            ? { connect: { id: Number(orderBranchId) } }
+            : { disconnect: true },
+          Plate: plateId
+            ? { connect: { id: Number(plateId) } }
+            : { disconnect: true },
+          Die: dieId
+            ? { connect: { id: Number(dieId) } }
+            : { disconnect: true },
           totalPlateSet: totalPlateSet ? Number(totalPlateSet) : null,
           remarks: remarks || null,
-          Designer: designerId ? { connect: { id: Number(designerId) } } : { disconnect: true },
-          FollowUp: followUpId ? { connect: { id: Number(followUpId) } } : { disconnect: true },
+          Designer: designerId
+            ? { connect: { id: Number(designerId) } }
+            : { disconnect: true },
+          FollowUp: followUpId
+            ? { connect: { id: Number(followUpId) } }
+            : { disconnect: true },
           tagCardUps: tagCardUps || null,
           jobRunTime: jobRunTime ? Number(jobRunTime) : null,
           department: department || null,
           itemGroup: itemGroup || null,
-          OrderEntryItem: orderEntryItemId ? { connect: { id: Number(orderEntryItemId) } } : { disconnect: true },
-          StyleItem: styleItemId ? { connect: { id: Number(styleItemId) } } : { disconnect: true },
+          OrderEntryItem: orderItemId
+            ? { connect: { id: Number(orderItemId) } }
+            : { disconnect: true },
+          StyleItem: styleItemId
+            ? { connect: { id: Number(styleItemId) } }
+            : { disconnect: true },
           labelQuality: labelQuality || null,
           labelBlock: labelBlock || null,
           labelRollQty: labelRollQty || null,
           labelCutAndSeal: labelCutAndSeal || null,
+          isRepeatedJobCard: !!isRepeatedJobCard,
+          RefJobCard: refJobCardId
+            ? { connect: { id: Number(refJobCardId) } }
+            : undefined,
+          splitType: splitType || null,
+          Store: storeId
+            ? { connect: { id: Number(storeId) } }
+            : { disconnect: true },
+          LabelItem: labelItemId
+            ? { connect: { id: Number(labelItemId) } }
+            : { disconnect: true },
+          Color: colorId
+            ? { connect: { id: Number(colorId) } }
+            : { disconnect: true },
+          dieDescription: dieDescription ?? null,
+          dieMethod: dieMethod ?? null,
+          isHold: isHold ?? false,
+          isCancelled: isCancelled ?? false,
+          lenght: lenght ? parseInt(lenght) : 0,
+          width: width ? parseInt(width) : 0,
+          meter: meter ? parseInt(meter) : 0,
+          isNewPlate: !!isNewPlate,
+          isOldPlate: !!isOldPlate,
+          PlateSupplier: plateSupplierId
+            ? { connect: { id: Number(plateSupplierId) } }
+            : { disconnect: true },
+          blockDate: blockDate ? new Date(blockDate) : null,
+          trackingType: trackingType || null,
+          itemType: itemType || null,
+          rollQty: rollQty ? parseInt(rollQty) : 0,
+          boardQualities: safeBoardItems.length
+            ? {
+                createMany: {
+                  data: safeBoardItems.map((item) => ({
+                    processId: Number(item.processId),
+                    gsmId: Number(item.gsmId),
+                    fullBoardId: Number(item.fullBoardId),
+                    noOfSheets: Number(item.noOfSheets),
+                  })),
+                },
+              }
+            : undefined,
 
-          boardQualities: safeBoardItems.length ? {
-            create: safeBoardItems.map((id) => ({ boardId: Number(id) })),
-          } : undefined,
+          processDetails: safeProcesses.length
+            ? {
+                createMany: {
+                  data: safeProcesses.map((id) => ({ processId: Number(id) })),
+                },
+              }
+            : undefined,
 
-          processDetails: safeProcesses.length ? {
-            create: safeProcesses.map((id) => ({ processId: Number(id) })),
-          } : undefined,
+          laminationDetails: safeLaminations.length
+            ? {
+                createMany: {
+                  data: safeLaminations.map((l) => ({
+                    laminationId: Number(l.processId),
+                    isFront: !!l.isFront,
+                    isFrontAndBack: !!l.isFrontAndBack,
+                  })),
+                },
+              }
+            : undefined,
 
-          laminationDetails: safeLaminations.length ? {
-            create: safeLaminations.map((l) => ({
-              laminationId: Number(l.processId),
-              isFront: !!l.isFront,
-              isFrontAndBack: !!l.isFrontAndBack,
-            })),
-          } : undefined,
+          varnishDetails: safeVarnishes.length
+            ? {
+                createMany: {
+                  data: safeVarnishes.map((v) => ({
+                    varnishId: Number(v.processId),
+                    isFront: !!v.isFront,
+                    isFrontAndBack: !!v.isFrontAndBack,
+                  })),
+                },
+              }
+            : undefined,
 
-          varnishDetails: safeVarnishes.length ? {
-            create: safeVarnishes.map((v) => ({
-              varnishId: Number(v.processId),
-              isFront: !!v.isFront,
-              isFrontAndBack: !!v.isFrontAndBack,
-            })),
-          } : undefined,
+          machineDetails: safeMachines.length
+            ? {
+                createMany: {
+                  data: safeMachines.map((id) => ({ macId: Number(id) })),
+                },
+              }
+            : undefined,
 
-          machineDetails: safeMachines.length ? {
-            create: safeMachines.map((id) => ({ macId: Number(id) })),
-          } : undefined,
+          // jobCardSizeDetails: safeJobCardSizeDetails.length
+          //   ? {
+          //       createMany: {
+          //         data: safeJobCardSizeDetails.map((s) => ({
+          //           sizeId: s.sizeId ? Number(s.sizeId) : null,
+          //           qty: s.qty ? Number(s.qty) : null,
+          //           barcodeFrom: s.barcodeFrom || null,
+          //           barcodeTo: s.barcodeTo || null,
+          //         })),
+          //       },
+          //     }
+          //   : undefined,
 
-          processRoute: safeProcessRoute.length ? {
-            create: safeProcessRoute.map((r, idx) => ({
-              processId: Number(r.processId),
-              type: r.type,
-              sequence: idx + 1,
-              isFront: !!r.isFront,
-              isFrontAndBack: !!r.isFrontAndBack,
-            })),
-          } : undefined,
+          printingDetails: safePrinting.length
+            ? {
+                createMany: {
+                  data: safePrinting.map((p) => ({
+                    processId: Number(p.processId),
+                    isFront: !!p.isFront,
+                    isFrontAndBack: !!p.isFrontAndBack,
+                  })),
+                },
+              }
+            : undefined,
 
-          printingDetails: safePrinting.length ? {
-            create: safePrinting.map((id) => ({ processId: Number(id) })),
-          } : undefined,
+          finishingProcesses: safeFinishing.length
+            ? {
+                createMany: {
+                  data: safeFinishing.map((id) => ({ processId: Number(id) })),
+                },
+              }
+            : undefined,
 
-          finishingProcesses: safeFinishing.length ? {
-            create: safeFinishing.map((id) => ({ processId: Number(id) })),
-          } : undefined,
+          labelPrintingDetails: safeLabelPrintingDetails.length
+            ? {
+                createMany: {
+                  data: safeLabelPrintingDetails.map((id) => ({
+                    processId: Number(id),
+                  })),
+                },
+              }
+            : undefined,
 
-          plateDetails: safePlateDetails.length ? {
-            create: safePlateDetails.map((p) => ({
-              plateName: p.plateName,
-              qty: Number(p.qty),
-            })),
-          } : undefined,
+          plateDetails: safePlateDetails.length
+            ? {
+                createMany: {
+                  data: safePlateDetails.map((p) => ({
+                    plateId: p.plateId ? parseInt(p.plateId) : null,
+                    machineId: p.machineId ? parseInt(p.machineId) : null,
+                    plateName: p.plateName ?? "",
+                    description: p.description ?? "",
+                    qty: p.qty ? Number(p.qty) : null,
+                  })),
+                },
+              }
+            : undefined,
         },
       });
+      if (itemType !== "LABEL") {
+        for (const boardQuality of boardQualities) {
+          const process = await tx.process.findUnique({
+            where: {
+              id: Number(boardQuality.processId),
+            },
+            select: {
+              name: true,
+            },
+          });
 
+          if (!process) {
+            throw new Error("Board process not found");
+          }
+          const styleItem = await tx.styleItem.findFirst({
+            where: {
+              name: process.name,
+            },
+            select: {
+              id: true,
+              uomId: true,
+            },
+          });
+
+          if (!styleItem) {
+            throw new Error(`Style Item not found for process ${process.name}`);
+          }
+          await tx.stock.create({
+            data: {
+              branchId: Number(branchId),
+              storeId: Number(storeId),
+              styleItemId: parseInt(styleItem.id),
+              gsmId: parseInt(boardQuality.gsmId),
+              sizeId: parseInt(boardQuality.fullBoardId),
+              inOrOut: "Out",
+              qty:
+                boardQuality?.noOfSheets &&
+                !isNaN(parseFloat(boardQuality.noOfSheets))
+                  ? -Math.abs(parseInt(boardQuality.noOfSheets))
+                  : null,
+              uomId: parseInt(styleItem.uomId),
+              createdById: parseInt(userId),
+              itemGroupId: parseInt(itemGroupId),
+              jobCardId: Number(id),
+              processName: "Job Card",
+            },
+          });
+        }
+      } else {
+        const styleItem = await tx.styleItem.findUnique({
+          where: {
+            id: parseInt(labelItemId),
+          },
+          select: {
+            id: true,
+            uomId: true,
+          },
+        });
+
+        await tx.stock.updateMany({
+          where: {
+            jobCardId: parseInt(data.id),
+          },
+          data: {
+            branchId: branchId ? parseInt(branchId) : undefined,
+            storeId: parseInt(storeId),
+            styleItemId: parseInt(labelItemId),
+            sizeId: parseInt(labelSizeId),
+            inOrOut: "Out",
+            qty:
+              rollQty && !isNaN(parseFloat(rollQty))
+                ? -Math.abs(parseFloat(rollQty))
+                : null,
+            uomId: parseInt(styleItem.uomId),
+            updatedById: parseInt(userId),
+            itemGroupId: parseInt(itemGroupId),
+            processName: "Job Card",
+            colorId: parseInt(colorId),
+          },
+        });
+      }
       if (submitApproval && hasApproval && module) {
         await tx.approvalLog.deleteMany({
           where: {
@@ -766,7 +1384,9 @@ async function remove(id) {
       where: { id: jobCardId },
     });
     if (!dataFound) return NoRecordFound("Job Card");
-
+    await prisma.stock.deleteMany({
+      where: { jobCardId: jobCardId },
+    });
     const data = await prisma.jobCard.delete({
       where: { id: jobCardId },
     });
@@ -800,7 +1420,7 @@ async function getJobCardList(req) {
           Process: {
             select: {
               name: true,
-              isOutSide: true,
+              isOutsideJob: true,
             },
           },
         },

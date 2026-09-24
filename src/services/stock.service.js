@@ -236,7 +236,63 @@ async function get(req) {
 
   return { statusCode: 0, data, totalCount };
 }
+async function getBoardQty(req) {
+  const { processId, storeId, gsmId, sizeId, isLabel, styleItemId, colorId } =
+    req.query;
 
+  let stockQty = 0;
+  if (isLabel) {
+    stockQty = await prisma.stock.aggregate({
+      where: {
+        storeId: parseInt(storeId),
+        styleItemId: parseInt(styleItemId),
+        sizeId: parseInt(sizeId),
+        colorId: parseInt(colorId),
+      },
+      _sum: {
+        qty: true,
+      },
+    });
+  } else {
+    const boardData = await prisma.process.findFirst({
+      where: {
+        id: parseInt(processId),
+      },
+      select: {
+        name: true,
+      },
+    });
+    if (!boardData) {
+      return { statusCode: 404, message: "Board not found" };
+    }
+    const itemData = await prisma.styleItem.findFirst({
+      where: {
+        name: boardData.name,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!itemData) {
+      return { statusCode: 404, message: "Board not found" };
+    }
+
+    stockQty = await prisma.stock.aggregate({
+      where: {
+        storeId: parseInt(storeId),
+        styleItemId: itemData.id,
+        gsmId: parseInt(gsmId),
+        sizeId: parseInt(sizeId),
+      },
+      _sum: {
+        qty: true,
+      },
+    });
+  }
+
+  return { statusCode: 0, stockQty: stockQty._sum.qty };
+}
 async function getOne(id, query) {
   const { productId, salesBillItemsId, isOn } = query;
   isOn: typeof isOn === "undefined" ? undefined : JSON.parse(isOn);
@@ -372,90 +428,6 @@ async function remove(id) {
   });
   return { statusCode: 0, data };
 }
-// async function getStock(req) {
-//   const {
-//     locationId,
-//     pagination,
-//     pageNumber,
-//     dataPerPage,
-//     finYearId,
-//     styleId,
-//     sizeId,
-//     styleItemId,
-//     colorId,
-//     barcodeId,
-//     gsmId,
-//     itemGroupId,
-//     uomId,
-//   } = req.query;
-
-//   let finYearDate = await getFinYearStartTimeEndTime(finYearId);
-//   let data;
-//   let totalCount;
-//   let totalQty;
-//   data = await prisma.stock.groupBy({
-//     where: {
-//       branchId: locationId ? parseInt(locationId) : undefined,
-//       styleId: styleId ? parseInt(styleId) : undefined,
-//       sizeId: sizeId ? parseInt(sizeId) : undefined,
-//       styleItemId: styleItemId ? parseInt(styleItemId) : undefined,
-//       colorId: colorId ? parseInt(colorId) : undefined,
-//       uomId: uomId ? parseInt(uomId) : undefined,
-//       itemGroupId: itemGroupId ? parseInt(itemGroupId) : undefined,
-//       gsmId: gsmId ? parseInt(gsmId) : undefined,
-//       AND: finYearDate
-//         ? [
-//             {
-//               createdAt: {
-//                 gte: finYearDate.startTime,
-//               },
-//             },
-//             {
-//               createdAt: {
-//                 lte: finYearDate.endTime,
-//               },
-//             },
-//           ]
-//         : undefined,
-//     },
-//     by: [
-//       "styleId",
-//       "sizeId",
-//       "styleItemId",
-//       "uomId",
-//       "colorId",
-//       "branchId",
-//       "itemGroupId",
-//       "gsmId",
-//     ],
-//     _sum: {
-//       qty: true,
-//     },
-//   });
-//   data = data.filter((item) => Number(item._sum?.qty) > 0);
-//   totalCount = data.length;
-//   totalQty = data?.reduce((sum, item) => sum + (item._sum?.qty || 0), 0);
-//   // if (pagination) {
-//   //   data = data.slice(
-//   //     (pageNumber - 1) * parseInt(dataPerPage),
-//   //     pageNumber * dataPerPage
-//   //   );
-//   // }
-//   return {
-//     statusCode: 0,
-//     data: data.map((d) => ({
-//       styleId: d.styleId,
-//       sizeId: d.sizeId,
-//       qty: d._sum.qty,
-
-//       styleItemId: d.styleItemId,
-//       colorId: d.colorId,
-//       branchId: d.branchId,
-//     })),
-//     totalCount,
-//     totalQty,
-//   };
-// }
 
 async function getStock(req, res) {
   try {
@@ -511,14 +483,17 @@ async function getStock(req, res) {
       grouped[key].netQty += s.qty ?? 0;
     }
 
-    const data = Object.values(grouped);
+    const rawData = Object.values(grouped);
+
+    // Filter to only include actual goods currently in stock (netQty > 0)
+    const data = rawData.filter((r) => r.netQty > 0);
 
     // ── summary ──────────────────────────────────────────────────────────────
     const summary = {
       totalItems: data.length,
-      negativeQty: data.filter((r) => r.netQty < 0).length,
-      zeroQty: data.filter((r) => r.netQty === 0).length,
-      positiveQty: data.filter((r) => r.netQty > 0).length,
+      negativeQty: rawData.filter((r) => r.netQty < 0).length,
+      zeroQty: rawData.filter((r) => r.netQty === 0).length,
+      positiveQty: data.length,
       totalNetQty: data.reduce((s, r) => s + r.netQty, 0),
     };
 
@@ -529,4 +504,13 @@ async function getStock(req, res) {
   }
 }
 
-export { get, getOne, getSearch, create, update, remove, getStock };
+export {
+  get,
+  getOne,
+  getSearch,
+  create,
+  update,
+  remove,
+  getStock,
+  getBoardQty,
+};

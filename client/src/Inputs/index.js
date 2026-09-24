@@ -3959,6 +3959,7 @@ export const DropdownNew = forwardRef(
       otherValue,
       onKeyDown,
       autoFocus,
+      beforeChange,
     },
     ref,
   ) => {
@@ -3995,7 +3996,16 @@ export const DropdownNew = forwardRef(
           ref={ref}
           options={options}
           value={selectedOption}
-          onChange={(selected) => setValue(selected?.value || "")}
+          onChange={(selected) => {
+            setValue(selected?.value || "");
+            if (beforeChange) {
+              const originalItem = dataList?.find((item) => {
+                const itemValue = otherValue ? item?.[otherValue] : item?.id;
+                return itemValue === selected?.value;
+              });
+              beforeChange(originalItem || selected);
+            }
+          }}
           isDisabled={disabled || readonly}
           isSearchable
           isClearable={false}

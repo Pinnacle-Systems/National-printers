@@ -185,10 +185,17 @@ export async function isApprovalEnabled(branchId, moduleId) {
 }
 
 export async function getModuleApprovalSetup(referencePage, branchId) {
-  const module = await prisma.approvalRuleModule.findUnique({
+  let module = await prisma.approvalRuleModule.findUnique({
     where: { name: referencePage },
     select: { id: true, name: true },
   });
+
+  if (!module) {
+    const allModules = await prisma.approvalRuleModule.findMany({ select: { id: true, name: true } });
+    const normalize = (str) => str.replace(/\s+/g, '').toLowerCase();
+    module = allModules.find(m => normalize(m.name) === normalize(referencePage));
+  }
+
   if (!module) return { module: null, hasApproval: false };
 
   const activeConfig = await prisma.approvalConfig.findFirst({

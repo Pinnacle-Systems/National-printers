@@ -24,6 +24,7 @@ async function get(req) {
           },
         },
       },
+      ItemGroup: true,
     },
   });
   return {

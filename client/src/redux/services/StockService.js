@@ -101,6 +101,19 @@ const stockApi = createApi({
       },
       providesTags: ["Stock"],
     }),
+    getBoardQty: builder.query({
+      query: ({ params }) => {
+        return {
+          url: STOCK_API + "/getBoardQty",
+          method: "GET",
+          headers: {
+            "Content-type": "application/json; charset=UTF-8",
+          },
+          params,
+        };
+      },
+      providesTags: ["Stock"],
+    }),
   }),
 });
 
@@ -112,6 +125,8 @@ export const {
   useDeleteStockMutation,
   useGetPcsStockQuery,
   useGetStockReportQuery,
+  useGetBoardQtyQuery,
+  useLazyGetBoardQtyQuery,
 } = stockApi;
 
 export default stockApi;

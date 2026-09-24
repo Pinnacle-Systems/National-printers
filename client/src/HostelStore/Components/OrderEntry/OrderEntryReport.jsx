@@ -385,7 +385,7 @@ const OrderEntryReport = ({
                     <th className="w-80  px-3   font-medium text-[13px] text-gray-900  text-center ">
                       <div>Customer</div>
                     </th>
-                    <th
+                    {/* <th
                       className=" px-3 w-36  font-medium text-[13px]  text-gray-900  text-center "
                       rowSpan={2}
                     >
@@ -404,7 +404,7 @@ const OrderEntryReport = ({
                       >
                         <div>Approval Actions</div>
                       </th>
-                    )}
+                    )} */}
 
                     <th
                       className="w-14   px-3  font-medium text-[13px]  text-gray-900  text-center "
@@ -513,7 +513,7 @@ const OrderEntryReport = ({
                               {" "}
                               {dataObj?.customer?.name}
                             </td>
-                            <td className="py-1.5 text-left">
+                            {/* <td className="py-1.5 text-left">
                               <ApprovalBadge
                                 approvalStatus={dataObj?.approvalStatus}
                               />
@@ -526,7 +526,6 @@ const OrderEntryReport = ({
                             {canApprove && (
                               <td className="px-2 py-1">
                                 <div className="flex items-center justify-center gap-1.5">
-                                  {/* ↩️ Send Back — show when PENDING or APPROVED */}
                                   {["PENDING"].includes(
                                     dataObj?.approvalStatus?.status,
                                   ) && (
@@ -546,7 +545,6 @@ const OrderEntryReport = ({
                                     </Tooltip>
                                   )}
 
-                                  {/* ✅ Approve — show only when PENDING */}
                                   {dataObj?.approvalStatus?.status ===
                                     "PENDING" && (
                                     <Tooltip title="Approve" arrow>
@@ -572,7 +570,7 @@ const OrderEntryReport = ({
                                   )}
                                 </div>
                               </td>
-                            )}
+                            )} */}
                             {rowActions && (
                               <td className="px-2 py-1">
                                 <div className="flex items-center justify-center">

@@ -56,22 +56,28 @@ async function getOne(id) {
 }
 
 async function create(body) {
-  const { name, companyId, active = true, isOutSide = false } = await body;
+  const {
+    name,
+    companyId,
+    active = true,
+    isOutsideJob,
+    departmentId,
+  } = await body;
 
   const data = await prisma.process.create({
     data: {
       name,
       active,
-      isOutSide,
       companyId: parseInt(companyId),
+      isOutsideJob: Boolean(isOutsideJob),
+      departmentId: parseInt(departmentId),
     },
   });
 
   return { statusCode: 0, data };
 }
-
 async function update(id, body) {
-  const { name, active, companyId, isOutSide } = await body;
+  const { name, active, companyId, isOutsideJob, departmentId } = await body;
   const dataFound = await prisma.process.findUnique({
     where: {
       id: parseInt(id),
@@ -85,8 +91,9 @@ async function update(id, body) {
     data: {
       name,
       active,
-      isOutSide,
       companyId: parseInt(companyId),
+      isOutsideJob: Boolean(isOutsideJob),
+      departmentId: parseInt(departmentId),
     },
   });
   return { statusCode: 0, data };

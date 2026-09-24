@@ -352,7 +352,6 @@ export default function Form({ onSuccess, defaultName = "" }) {
                     value={aliasName}
                     setValue={setAliasName}
                     readOnly={readOnly}
-                    disabled={childRecord.current > 0}
                   />
                 </div>
                 <div className="mb-3">
@@ -454,7 +453,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
                     setValue={setGsmId}
                     readOnly={readOnly}
                     className={`w-[150px]`}
-                    // disabled={childRecord.current > 0}
+                    disabled={childRecord.current > 0}
                     addNewLabel="+ Add New Gsm"
                     childComponent={Gsm}
                     addNewModalWidth="w-[40%] h-[50%]"
@@ -481,6 +480,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
 
                       setPrice(formattedValue);
                     }}
+                    disabled={childRecord.current > 0}
                   />
                 </div>
                 <div className="mb-5">
