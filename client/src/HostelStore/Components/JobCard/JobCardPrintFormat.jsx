@@ -17,6 +17,7 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica",
     fontSize: 8,
     padding: 0,
+    paddingBottom: 20,
     backgroundColor: "#fff",
   },
   topBar: { height: 4, backgroundColor: "#1a1a2e" },
@@ -34,19 +35,12 @@ const styles = StyleSheet.create({
   },
   logoContainer: { width: 130, alignItems: "flex-start" },
   logo: { height: 60, width: 130 },
-  companyCenter: { flex: 2, alignItems: "center", paddingHorizontal: 10 },
+  companyCenter: { alignItems: "center", flex: 1, paddingHorizontal: 10 },
   companyName: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "bold",
     color: "#1a1a2e",
-    marginBottom: 4,
-  },
-  companyAddr: {
-    fontSize: 7.5,
-    color: "#444",
-    textAlign: "center",
-    lineHeight: 1.3,
-    maxWidth: 250,
+    letterSpacing: 0.5,
   },
   companyRight: { width: 130, alignItems: "flex-end" },
   companyRightRow: {
@@ -87,21 +81,19 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 2,
   },
-  metaLabel: { fontSize: 8.5, color: "#444", marginRight: 3 },
-  metaValue: { fontSize: 8.5, fontWeight: "bold", color: "#1a1a2e" },
+  metaLabel: { fontSize: 7.5, color: "#888", marginRight: 3 },
+  metaValue: { fontSize: 7.5, fontWeight: "bold", color: "#1a1a2e" },
 
-  // ── SECTION WRAPS ──
+  // ── TWO COLUMN ──
   twoCol: {
     flexDirection: "row",
     marginHorizontal: 20,
     marginBottom: 8,
     border: "1 solid #ddd",
     borderRadius: 3,
-    overflow: "hidden",
   },
   colHalf: { flex: 1 },
   colThird: { flex: 1 },
-
   sectionHeader: {
     backgroundColor: "#2d2d44",
     color: "#e8e8f0",
@@ -112,19 +104,24 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   sectionBody: { padding: 8 },
-
-  // ── DATA ROWS ──
-  orderInfoRow: { flexDirection: "row", marginBottom: 3 },
-  orderInfoLabel: { fontSize: 8.5, color: "#444", width: 72 },
-  orderInfoColon: { fontSize: 8.5, color: "#444", width: 8 },
-  orderInfoValue: {
-    fontSize: 8.5,
-    color: "#1a1a2e",
+  infoName: {
+    fontSize: 9,
     fontWeight: "bold",
-    flex: 1,
+    color: "#1a1a2e",
+    marginBottom: 3,
   },
+  infoRow: { flexDirection: "row", marginBottom: 2 },
+  infoLabel: { fontSize: 7.5, color: "#888", width: 70 },
+  infoValue: { fontSize: 7.5, color: "#222", fontWeight: "bold", flex: 1 },
 
   // ── SECTION WRAPPER ──
+  sectionWrap: {
+    marginHorizontal: 20,
+    marginBottom: 8,
+    border: "1 solid #ddd",
+    borderRadius: 3,
+    overflow: "hidden",
+  },
   sectionTitle: {
     backgroundColor: "#2d2d44",
     color: "#e8e8f0",
@@ -134,27 +131,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  sectionWrap: {
-    marginHorizontal: 20,
-    marginBottom: 8,
-    border: "1 solid #ddd",
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  sectionContent: { padding: 8 },
-
-  // ── SPEC FIELDS ──
-  specTable: { flexDirection: "row", flexWrap: "wrap" },
-  specCell: { width: "25%", paddingVertical: 3, paddingRight: 8 },
-  specLabel: {
-    fontSize: 7.5,
-    color: "#444",
-    fontWeight: "bold",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-    marginBottom: 1,
-  },
-  specValue: { fontSize: 9, color: "#1a1a2e", fontWeight: "bold" },
+  sectionContent: { padding: 5 },
 
   // ── GRID / CHECKBOX ──
   gridRow: { flexDirection: "row", flexWrap: "wrap" },
@@ -167,7 +144,7 @@ const styles = StyleSheet.create({
   checkboxBox: {
     width: 9,
     height: 9,
-    border: "1 solid #444",
+    border: "1 solid #888",
     borderRadius: 1,
     marginRight: 4,
     backgroundColor: "#fff",
@@ -178,38 +155,18 @@ const styles = StyleSheet.create({
   checkboxTick: { color: "#fff", fontSize: 6 },
   checkLabel: { fontSize: 7.5, color: "#333" },
 
-  // ── LV TABLE ──
-  lvTableHeader: {
-    flexDirection: "row",
-    borderBottom: "1 solid #ddd",
-    paddingBottom: 3,
-    marginBottom: 3,
-  },
-  lvHeaderType: {
-    flex: 3,
-    fontSize: 8,
+  // ── SPEC FIELDS ──
+  specTable: { flexDirection: "row", flexWrap: "wrap" },
+  specCell: { width: "25%", paddingVertical: 3, paddingRight: 8 },
+  specLabel: {
+    fontSize: 6.5,
+    color: "#888",
     fontWeight: "bold",
-    color: "#444",
-    textTransform: "uppercase",
     letterSpacing: 0.5,
-  },
-  lvHeaderCenter: {
-    flex: 1,
-    fontSize: 8,
-    fontWeight: "bold",
-    color: "#444",
     textTransform: "uppercase",
-    letterSpacing: 0.5,
-    textAlign: "center",
+    marginBottom: 1,
   },
-  lvRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 2,
-    borderBottom: "1 solid #f0f0f0",
-  },
-  lvName: { flex: 3, fontSize: 8.5, color: "#333" },
-  lvCheck: { flex: 1, alignItems: "center" },
+  specValue: { fontSize: 8, color: "#1a1a2e", fontWeight: "bold" },
 
   // ── THREE COLUMN ──
   threeCol: {
@@ -234,7 +191,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   remarksBody: { padding: 8, minHeight: 30 },
-  remarksText: { fontSize: 8.5, color: "#333", lineHeight: 1.5 },
+  remarksText: { fontSize: 7.5, color: "#555", lineHeight: 1.5 },
 
   // ── SIGNATURES ──
   sigArea: { marginHorizontal: 20, marginTop: 14, marginBottom: 8 },
@@ -254,30 +211,31 @@ const styles = StyleSheet.create({
   sigItem: {
     flex: 1,
     textAlign: "center",
-    fontSize: 8.5,
-    color: "#333",
+    fontSize: 7.5,
+    color: "#555",
     fontWeight: "bold",
   },
 
-  // ── FOOTER BAR ──
+  // ── FOOTER ──
   footerBar: {
-    backgroundColor: "#fff",
+    backgroundColor: "#1a1a2e",
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    paddingVertical: 5,
     paddingHorizontal: 20,
-    paddingVertical: 4,
-    marginTop: "auto",
-    borderTop: "1 solid #ddd",
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
-  footerRight: { fontSize: 8, color: "#444" },
+  footerLeft: { fontSize: 7, color: "rgba(255,255,255,0.5)" },
+  footerRight: { fontSize: 7, color: "rgba(255,255,255,0.5)" },
 
   // ── SIZE BREAKUP TABLE ──
   breakupTable: {
     border: "1 solid #ddd",
     borderRadius: 2,
     overflow: "hidden",
-    marginTop: 6,
   },
   breakupTh: {
     backgroundColor: "#1a1a2e",
@@ -311,21 +269,103 @@ const styles = StyleSheet.create({
     borderRight: "1 solid #eee",
   },
 
-  qrBox: { alignItems: "center", justifyContent: "center", padding: 6 },
-  qrImage: { width: 56, height: 56 },
-  qrLabel: { fontSize: 7, color: "#444", marginTop: 2, textAlign: "center" },
-
+  // ── LABEL DETAIL FIELDS ──
   labelFieldRow: { flexDirection: "row", marginBottom: 4 },
-  labelFieldLabel: { fontSize: 8.5, color: "#444", width: 70 },
+  labelFieldLabel: { fontSize: 7.5, color: "#888", width: 70 },
   labelFieldValue: {
     fontSize: 7.5,
     color: "#1a1a2e",
     fontWeight: "bold",
     flex: 1,
   },
+
+  // ── ORDER INFO FIELD ROW ──
+  orderInfoRow: { flexDirection: "row", marginBottom: 3 },
+  orderInfoLabel: { fontSize: 7, color: "#888", width: 72 },
+  orderInfoColon: { fontSize: 7, color: "#888", width: 8 },
+  orderInfoValue: {
+    fontSize: 7,
+    color: "#1a1a2e",
+    fontWeight: "bold",
+    flex: 1,
+  },
+
+  // ── QR ──
+  qrBox: { alignItems: "center", justifyContent: "center", padding: 6 },
+  qrImage: { width: 56, height: 56 },
+  qrLabel: { fontSize: 6, color: "#aaa", marginTop: 2, textAlign: "center" },
+
+  // ── PROCESS ROUTE (vertical) ──
+  routeWrap: {
+    marginHorizontal: 20,
+    marginBottom: 8,
+    border: "1 solid #ddd",
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  routeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderBottom: "1 solid #f0f0f0",
+  },
+  routeRowEven: { backgroundColor: "#fafafa" },
+  routeRowOdd: { backgroundColor: "#fff" },
+  routeSeqBadge: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#1a1a2e",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
+  },
+  routeSeqText: { fontSize: 7, color: "#fff", fontWeight: "bold" },
+  routeNameText: { fontSize: 8, color: "#1a1a2e", fontWeight: "bold" },
+  routeConnector: {
+    marginLeft: 19,
+    width: 1,
+    height: 6,
+    backgroundColor: "#ccc",
+  },
+
+  // ── PLATE SET TABLE ──
+  plateTable: {
+    border: "1 solid #ddd",
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  plateTh: { backgroundColor: "#1a1a2e", flexDirection: "row" },
+  plateThCell: {
+    fontSize: 7,
+    fontWeight: "bold",
+    color: "#fff",
+    textAlign: "center",
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+    borderRight: "1 solid #4a4a60",
+  },
+  plateTrOdd: {
+    flexDirection: "row",
+    borderBottom: "1 solid #eee",
+    backgroundColor: "#fff",
+  },
+  plateTrEven: {
+    flexDirection: "row",
+    borderBottom: "1 solid #eee",
+    backgroundColor: "#fafafa",
+  },
+  plateTd: {
+    fontSize: 7.5,
+    color: "#333",
+    paddingVertical: 3,
+    paddingHorizontal: 4,
+    borderRight: "1 solid #eee",
+  },
 });
 
-// ── REUSABLE COMPONENTS ──
+// ── SHARED HELPERS ────────────────────────────────────────────────────────────
 
 const Checkbox = ({ checked, label, width }) => (
   <View style={[styles.gridCell, width ? { width } : {}]}>
@@ -343,249 +383,52 @@ const SpecField = ({ label, value, width }) => (
   </View>
 );
 
-const LVSection = ({ title, items, selectedList }) => (
-  <View style={styles.threeColItem}>
-    <Text style={styles.sectionHeader}>{title}</Text>
-    <View style={styles.sectionContent}>
-      {items && items.length > 0 ? (
-        <>
-          <View style={styles.lvTableHeader}>
-            <Text style={styles.lvHeaderType}>Type</Text>
-            <Text style={styles.lvHeaderCenter}>Front</Text>
-            <Text style={styles.lvHeaderCenter}>F&B</Text>
-          </View>
-          {items.map((item) => {
-            const sel = selectedList?.find((s) => s.processId === item.id);
-            const isSelected = !!sel;
-            return (
-              <View key={item.id} style={styles.lvRow}>
-                <View
-                  style={{
-                    flex: 3,
-                    flexDirection: "row",
-                    alignItems: "center",
-                  }}
-                >
-                  <View
-                    style={[
-                      styles.checkboxBox,
-                      isSelected && styles.checkboxChecked,
-                    ]}
-                  >
-                    {isSelected && <Text style={styles.checkboxTick}>✓</Text>}
-                  </View>
-                  <Text style={[styles.lvName, { marginLeft: 3 }]}>
-                    {item.name}
-                  </Text>
-                </View>
-                <View style={styles.lvCheck}>
-                  <View
-                    style={[
-                      styles.checkboxBox,
-                      sel?.isFront && styles.checkboxChecked,
-                    ]}
-                  >
-                    {sel?.isFront && <Text style={styles.checkboxTick}>✓</Text>}
-                  </View>
-                </View>
-                <View style={styles.lvCheck}>
-                  <View
-                    style={[
-                      styles.checkboxBox,
-                      sel?.isFrontAndBack && styles.checkboxChecked,
-                    ]}
-                  >
-                    {sel?.isFrontAndBack && (
-                      <Text style={styles.checkboxTick}>✓</Text>
-                    )}
-                  </View>
-                </View>
-              </View>
-            );
-          })}
-        </>
-      ) : (
-        <Text style={{ fontSize: 7.5, color: "#aaa", fontStyle: "italic" }}>
-          No options configured.
-        </Text>
-      )}
-    </View>
-  </View>
-);
+// ── PROCESS ROUTE — vertical simple view ─────────────────────────────────────
 
-const BarcodeTable = ({ data }) => (
-  <View style={[styles.breakupTable, { width: "75%" }]}>
-    <View style={styles.breakupTh}>
-      <Text style={[styles.breakupThCell, { flex: 0.4 }]}>S.No</Text>
-      <Text style={[styles.breakupThCell, { flex: 2 }]}>Barcode From</Text>
-      <Text style={[styles.breakupThCell, { flex: 2 }]}>Barcode To</Text>
-      <Text style={[styles.breakupThCell, { flex: 0.8, borderRight: "none" }]}>
-        Qty
-      </Text>
-    </View>
-    {data.map((item, idx) => (
-      <View
-        key={idx}
-        style={idx % 2 === 0 ? styles.breakupTrEven : styles.breakupTrOdd}
-      >
-        <Text style={[styles.breakupTd, { flex: 0.4 }]}>{idx + 1}</Text>
-        <Text style={[styles.breakupTd, { flex: 2, textAlign: "left" }]}>
-          {item.barcodeFrom}
-        </Text>
-        <Text style={[styles.breakupTd, { flex: 2, textAlign: "left" }]}>
-          {item.barcodeTo}
-        </Text>
-        <Text
-          style={[
-            styles.breakupTd,
-            { flex: 0.8, textAlign: "right", borderRight: "none" },
-          ]}
-        >
-          {item.qty}
-        </Text>
-      </View>
-    ))}
-  </View>
-);
-
-const SizeTemplateTable = ({ data, sizeList }) => (
-  <View style={[styles.breakupTable, { width: "50%" }]}>
-    <View style={styles.breakupTh}>
-      <Text style={[styles.breakupThCell, { flex: 0.4 }]}>S.No</Text>
-      <Text style={[styles.breakupThCell, { flex: 2 }]}>Size</Text>
-      <Text style={[styles.breakupThCell, { flex: 0.8, borderRight: "none" }]}>
-        Qty
-      </Text>
-    </View>
-    {data.map((item, idx) => (
-      <View
-        key={idx}
-        style={idx % 2 === 0 ? styles.breakupTrEven : styles.breakupTrOdd}
-      >
-        <Text style={[styles.breakupTd, { flex: 0.4 }]}>{idx + 1}</Text>
-        <Text style={[styles.breakupTd, { flex: 2, textAlign: "left" }]}>
-          {item.Size?.name ||
-            findFromList(item.sizeId, sizeList?.data, "name") ||
-            "—"}
-        </Text>
-        <Text
-          style={[
-            styles.breakupTd,
-            { flex: 0.8, textAlign: "right", borderRight: "none" },
-          ]}
-        >
-          {item.qty}
-        </Text>
-      </View>
-    ))}
-  </View>
-);
-
-const SizeTemplateBarcodeTable = ({ data, sizeList }) => (
-  <View style={[styles.breakupTable, { width: "85%" }]}>
-    <View style={styles.breakupTh}>
-      <Text style={[styles.breakupThCell, { flex: 0.4 }]}>S.No</Text>
-      <Text style={[styles.breakupThCell, { flex: 1.5 }]}>Size</Text>
-      <Text style={[styles.breakupThCell, { flex: 1.5 }]}>From</Text>
-      <Text style={[styles.breakupThCell, { flex: 1.5 }]}>To</Text>
-      <Text style={[styles.breakupThCell, { flex: 0.8, borderRight: "none" }]}>
-        Qty
-      </Text>
-    </View>
-    {data.map((item, idx) => (
-      <View
-        key={idx}
-        style={idx % 2 === 0 ? styles.breakupTrEven : styles.breakupTrOdd}
-      >
-        <Text style={[styles.breakupTd, { flex: 0.4 }]}>{idx + 1}</Text>
-        <Text style={[styles.breakupTd, { flex: 1.5, textAlign: "left" }]}>
-          {item.Size?.name ||
-            findFromList(item.sizeId, sizeList?.data, "name") ||
-            "—"}
-        </Text>
-        <Text style={[styles.breakupTd, { flex: 1.5, textAlign: "left" }]}>
-          {item.barcodeFrom}
-        </Text>
-        <Text style={[styles.breakupTd, { flex: 1.5, textAlign: "left" }]}>
-          {item.barcodeTo}
-        </Text>
-        <Text
-          style={[
-            styles.breakupTd,
-            { flex: 0.8, textAlign: "right", borderRight: "none" },
-          ]}
-        >
-          {item.qty}
-        </Text>
-      </View>
-    ))}
-  </View>
-);
-
-const SizeBreakupTable = ({ trackingType, sizeDetails, sizeList }) => {
-  if (!sizeDetails || sizeDetails.length === 0) return null;
-  const filtered = sizeDetails.filter(
-    (sb) => (Number(sb.qty) || 0) > 0 || sb.barcodeFrom,
-  );
-  if (filtered.length === 0) return null;
-
-  if (trackingType === "Barcode") {
-    return <BarcodeTable data={filtered} />;
-  }
-
-  if (trackingType === "Size Template") {
-    return <SizeTemplateTable data={filtered} sizeList={sizeList} />;
-  }
-
-  if (trackingType === "Size Template + Barcode") {
-    return <SizeTemplateBarcodeTable data={filtered} sizeList={sizeList} />;
-  }
-
-  return null;
-};
-
-const ProcessRouteSection = ({ processRoute }) => {
+const ProcessRouteVertical = ({
+  processRoute = [],
+  title = "PROCESS ROUTE",
+}) => {
   if (!processRoute || processRoute.length === 0) return null;
 
+  const colSize = Math.ceil(processRoute.length / 3);
+  const columns = [
+    processRoute.slice(0, colSize),
+    processRoute.slice(colSize, colSize * 2),
+    processRoute.slice(colSize * 2),
+  ];
+
   return (
-    <View style={styles.sectionWrap} wrap={false}>
-      <Text style={styles.sectionTitle}>PROCESS ROUTE / SEQUENCE</Text>
+    <View style={styles.routeWrap}>
+      <Text style={styles.sectionTitle}>{title}</Text>
       <View
         style={[
           styles.sectionContent,
-          {
-            flexDirection: "row",
-            flexWrap: "wrap",
-            alignItems: "center",
-            gap: 6,
-          },
+          { flexDirection: "row", flexWrap: "wrap" },
         ]}
       >
-        {processRoute.map((item, index) => (
+        {processRoute.map((step, idx) => (
           <View
-            key={index}
-            style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+            key={idx}
+            style={{
+              width: "25%",
+              borderRight: (idx + 1) % 4 === 0 ? "none" : "1 solid #eee",
+              borderBottom: "1 solid #f0f0f0",
+            }}
           >
             <View
-              style={{
-                paddingHorizontal: 10,
-                paddingVertical: 5,
-                backgroundColor: "#f4f4f6",
-                border: "1 solid #1a1a2e",
-                borderRadius: 4,
-              }}
+              style={[
+                styles.routeRow,
+                idx % 2 === 0 ? styles.routeRowOdd : styles.routeRowEven,
+              ]}
             >
-              <Text
-                style={{ fontSize: 8, fontWeight: "bold", color: "#1a1a2e" }}
-              >
-                {item.Process?.name || item.name || "Process"}
+              <View style={styles.routeSeqBadge}>
+                <Text style={styles.routeSeqText}>{idx + 1}</Text>
+              </View>
+              <Text style={styles.routeNameText}>
+                {step.name || `Step ${idx + 1}`}
               </Text>
             </View>
-            {index < processRoute.length - 1 && (
-              <Text style={{ fontSize: 10, color: "#999", fontWeight: "bold" }}>
-                {">"}
-              </Text>
-            )}
           </View>
         ))}
       </View>
@@ -593,43 +436,179 @@ const ProcessRouteSection = ({ processRoute }) => {
   );
 };
 
-const FooterBlock = ({ remarks }) => (
-  <View style={{ marginTop: 10, paddingBottom: 60 }}>
-    <View style={styles.remarksBar} wrap={false}>
-      <Text style={styles.sectionTitle}>REMARKS / INSTRUCTIONS</Text>
-      <View style={styles.remarksBody}>
-        <Text style={styles.remarksText}>
-          {remarks || "No special instructions."}
+// ── PLATE SET TABLE ───────────────────────────────────────────────────────────
+
+const PlateSetTable = ({ plateDetails = [], plateList, machineList }) => {
+  const filtered = plateDetails.filter(
+    (p) =>
+      p.plateId ||
+      p.machineId ||
+      p.plateName ||
+      (p.qty !== "" && p.qty !== null && p.qty !== undefined),
+  );
+  if (filtered.length === 0)
+    return (
+      <Text style={{ fontSize: 7.5, color: "#aaa", fontStyle: "italic" }}>
+        No plate details.
+      </Text>
+    );
+  return (
+    <View style={styles.plateTable}>
+      <View style={styles.plateTh}>
+        <Text style={[styles.plateThCell, { flex: 0.4 }]}>S.No</Text>
+        <Text style={[styles.plateThCell, { flex: 1.5 }]}>Machine Name</Text>
+        <Text style={[styles.plateThCell, { flex: 1.5 }]}>Plate Size</Text>
+        <Text style={[styles.plateThCell, { flex: 2 }]}>Description</Text>
+        <Text style={[styles.plateThCell, { flex: 0.6, borderRight: "none" }]}>
+          Qty
         </Text>
       </View>
-    </View>
-  </View>
-);
-
-const Signatures = ({ branchName }) => (
-  <View style={styles.sigArea} wrap={false}>
-    <View style={styles.sigRow}>
-      {[
-        "Designer Sign",
-        "Incharge Sign",
-        "Proprietor Sign",
-        "Operator Sign",
-      ].map((role) => (
-        <Text key={role} style={styles.sigItem}>
-          {role}
-        </Text>
+      {filtered.map((row, idx) => (
+        <View
+          key={idx}
+          style={idx % 2 === 0 ? styles.plateTrOdd : styles.plateTrEven}
+        >
+          <Text style={[styles.plateTd, { flex: 0.4, textAlign: "center" }]}>
+            {idx + 1}
+          </Text>
+          <Text style={[styles.plateTd, { flex: 1.5 }]}>
+            {findFromList(row.machineId, machineList?.data, "name") || "—"}
+          </Text>
+          <Text style={[styles.plateTd, { flex: 1.5 }]}>
+            {findFromList(row.plateId, plateList?.data, "name") || "—"}
+          </Text>
+          <Text style={[styles.plateTd, { flex: 2 }]}>
+            {row.plateName || "—"}
+          </Text>
+          <Text
+            style={[
+              styles.plateTd,
+              { flex: 0.6, textAlign: "right", borderRight: "none" },
+            ]}
+          >
+            {row.qty !== null && row.qty !== "" && row.qty !== undefined
+              ? row.qty
+              : "—"}
+          </Text>
+        </View>
       ))}
     </View>
-  </View>
+  );
+};
+
+// ── SIZE BREAKUP TABLE (PDF) ──────────────────────────────────────────────────
+
+const SizeBreakupTable = ({ sizeDetails, sizeList }) => {
+  if (!sizeDetails || sizeDetails.length === 0) return null;
+
+  return (
+    <View style={styles.breakupTable}>
+      <View style={styles.breakupTh}>
+        <Text style={[styles.breakupThCell, { flex: 0.4 }]}>S.No</Text>
+        <Text style={[styles.breakupThCell, { flex: 2 }]}>Size</Text>
+        <Text style={[styles.breakupThCell, { flex: 1, borderRight: "none" }]}>
+          Qty
+        </Text>
+      </View>
+      {sizeDetails.map((item, idx) => (
+        <View
+          key={idx}
+          style={idx % 2 === 0 ? styles.breakupTrOdd : styles.breakupTrEven}
+        >
+          <Text style={[styles.breakupTd, { flex: 0.4 }]}>{idx + 1}</Text>
+          <Text style={[styles.breakupTd, { flex: 2, textAlign: "left" }]}>
+            {findFromList(item.sizeId, sizeList?.data, "name") || "—"}
+          </Text>
+          <Text
+            style={[
+              styles.breakupTd,
+              { flex: 1, textAlign: "right", borderRight: "none" },
+            ]}
+          >
+            {Number(item.qty) || ""}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+};
+
+// ── FOOTER BLOCK (shared) ─────────────────────────────────────────────────────
+
+const FooterBlock = ({ remarks, branchName }) => (
+  <>
+    <View style={styles.remarksBar}>
+      <Text style={styles.sectionTitle}>REMARKS</Text>
+      <View style={styles.remarksBody}>
+        <Text style={styles.remarksText}>{remarks || ""}</Text>
+      </View>
+    </View>
+
+    <View style={styles.sigArea}>
+      <Text style={styles.sigCompany}>For {branchName || ""}</Text>
+      <View style={styles.sigRow}>
+        {[
+          "Designer Sign",
+          "Incharge Sign",
+          "Proprietor Sign",
+          "Operator Sign",
+        ].map((role) => (
+          <Text key={role} style={styles.sigItem}>
+            {role}
+          </Text>
+        ))}
+      </View>
+    </View>
+  </>
 );
 
-// ── MAIN COMPONENT ──
+// ── RESOLVE PROCESS ROUTE NAMES ───────────────────────────────────────────────
+// processRoute from DB: [{ type, processId, sequence, isFront, isFrontAndBack }]
+// We need to resolve display names from the various process lists.
+
+const resolveRouteSteps = (
+  dbProcessRoute = [],
+  defaultList = [],
+  laminationList = [],
+  varnishList = [],
+  boardList = [],
+  printingList = [],
+  labelPrintingList = [],
+  finishingList = [],
+  dieList = [],
+  dieId = null,
+) => {
+  const sorted = [...dbProcessRoute].sort((a, b) => a.sequence - b.sequence);
+  return sorted.map((r) => {
+    let name = "";
+    if (r.type === "die") {
+      name = findFromList(dieId, dieList?.data, "name") || "Die Details";
+    } else {
+      const allLists = [
+        ...defaultList,
+        ...laminationList,
+        ...varnishList,
+        ...boardList,
+        ...printingList,
+        ...labelPrintingList,
+        ...finishingList,
+      ];
+      const found = allLists.find((p) => p.id === r.processId);
+      name = found?.name || `#${r.processId}`;
+    }
+    if (r.isFront) name += " (Front)";
+    else if (r.isFrontAndBack) name += " (F & B)";
+    return { name, sequence: r.sequence };
+  });
+};
+
+// ── MAIN COMPONENT ────────────────────────────────────────────────────────────
 
 const JobCardPrintFormat = ({
   singleData,
   customerList,
-  gsmList,
   boardList,
+  gsmList,
   plateList,
   dieList,
   defaultList,
@@ -639,9 +618,14 @@ const JobCardPrintFormat = ({
   branchData,
   orderList,
   sizeList,
+  colorList,
   qrCodeDataUrl,
   employeeList,
   styleItemList,
+  labelPrintingList,
+  finishingList,
+  printingList,
+  styleList,
 }) => {
   if (!singleData) return null;
 
@@ -650,111 +634,201 @@ const JobCardPrintFormat = ({
     docDate,
     orderQty,
     customerId,
-    gsmId,
-    boardId,
-    fullBoard,
-    noOfPockets,
-    cuttingSize,
+    remarks,
+    cuttingSizeId,
+    splitType,
     runningQty,
-    isFourColor,
-    isCutColor,
-    isFront,
-    isFrontAndBack,
-    isCMYK,
-    isCutColMachine,
-    isFrontMachine,
-    isFrontBackMachine,
     plateId,
     dieId,
-    totalPlateSet: totalPlatesets,
-    boardQualities,
-    processDetails,
-    laminationDetails,
-    varnishDetails,
+    totalPlatesets,
     machineDetails,
     jobRunTime,
-    itemGroup: itemType,
+    itemType,
     styleItemId,
-    labelQuality,
-    labelBlock: block,
-    labelRollQty: rollQty,
-    labelCutAndSeal: cutAndSeal,
+    block,
+    rollQty,
+    totalMeter,
+    jobCardSizeDetails,
+    trackingType,
+    productionType,
     tagCardUps,
     followUpId,
     designerId,
-    remarks,
+    processRoute: dbProcessRoute,
+    plateDetails,
+    labelSizeId,
+    colorId,
+    labelItemId,
+    lenght,
+    width,
+    plateSupplierId,
+    isOldPlate,
+    isNewPlate,
+    dieMethod,
+    dieDescription,
   } = singleData;
 
-  const trackingType =
-    singleData.trackingType || singleData.OrderEntryItem?.trackingType || "";
-  const productionType =
-    singleData.productionType || singleData.OrderEntry?.productionType || "";
-  const jobCardSizeDetails =
-    singleData.jobCardSizeDetails ||
-    singleData.OrderEntryItem?.sizeBreakup ||
-    [];
-
   const isLabel = itemType === "LABEL";
-  const customer =
-    singleData?.customer ||
-    singleData?.Customer ||
-    customerList?.data?.find((c) => c.id === customerId);
-  const orderEntry =
-    singleData?.OrderEntry ||
-    orderList?.data?.find((o) => o.id === singleData?.orderEntryId);
 
+  const customer = customerList?.data?.find((c) => c.id === customerId);
+  const plateSupplier = customerList?.data?.find(
+    (c) => c.id === plateSupplierId,
+  );
+  const plateSupplierName = plateSupplier?.name || "N/A";
+  const die = dieList?.data?.find((d) => d.id === dieId);
+  const dieName = die?.name || "N/A";
+  const orderEntry = orderList?.data?.find(
+    (o) => o.id === singleData?.orderEntryId,
+  );
   const styleItemName =
     singleData?.StyleItem?.name ||
-    singleData?.OrderEntryItem?.StyleItem?.name ||
     findFromList(styleItemId, styleItemList?.data, "name") ||
     "";
+
+  // Label calculations
+  const calculatedMeter = (() => {
+    if (lenght && orderQty) {
+      const lengthVal = parseFloat(lenght);
+      const qty = parseFloat(orderQty);
+      if (!isNaN(lengthVal) && !isNaN(qty)) {
+        return ((lengthVal * qty) / 1000).toFixed(3);
+      }
+    }
+    return "";
+  })();
+
+  const requiredRolls = (() => {
+    if (lenght && orderQty && totalMeter) {
+      const lengthVal = parseFloat(lenght);
+      const qty = parseFloat(orderQty);
+      const rMeter = parseFloat(totalMeter);
+      if (!isNaN(lengthVal) && !isNaN(qty) && !isNaN(rMeter) && rMeter > 0) {
+        const calcMeter = (lengthVal * qty) / 1000;
+        if (calcMeter > 0) {
+          return Math.ceil(calcMeter / rMeter);
+        }
+      }
+    }
+    return "";
+  })();
+
   const followUpName =
-    employeeList?.data?.find((e) => String(e.id) === String(followUpId))
-      ?.name || "";
+    employeeList?.data?.find((e) => e.id === followUpId)?.name || "";
   const designerName =
-    employeeList?.data?.find((e) => String(e.id) === String(designerId))
-      ?.name || "";
-  const fullBoardName = fullBoard || "—";
-  const cuttingSizeName = cuttingSize || "—";
+    employeeList?.data?.find((e) => e.id === designerId)?.name || "";
+  const cuttingSizeName = findFromList(cuttingSizeId, sizeList?.data, "name");
+  const labelSizeName = findFromList(labelSizeId, sizeList?.data, "name");
+  const labelColorName =
+    findFromList(colorId, colorList?.data || [], "name") || "";
+  const labelItem =
+    findFromList(labelItemId, styleList?.data || [], "name") || "";
 
-  const selectedBoardIds = boardQualities?.map((b) => b.boardId) || [];
-  const selectedProcessIds = processDetails?.map((p) => p.processId) || [];
-  const selectedMachineIds = machineDetails?.map((m) => m.machineId) || [];
-  const savedLaminations =
-    laminationDetails?.map((l) => ({
-      processId: l.laminationId,
-      isFront: l.isFront,
-      isFrontAndBack: l.isFrontAndBack,
-    })) || [];
-  const savedVarnishes =
-    varnishDetails?.map((v) => ({
-      processId: v.varnishId,
-      isFront: v.isFront,
-      isFrontAndBack: v.isFrontAndBack,
-    })) || [];
+  // Selected machines (only those in machineDetails)
+  const selectedMachineIds = machineDetails?.map((m) => m.macId) || [];
+  const selectedMachines = (machineList?.data || machineList || []).filter(
+    (m) => selectedMachineIds.includes(m.id),
+  );
 
-  const processRoute =
-    singleData.processRoute ||
-    singleData.processDetails?.map((p) => ({ Process: p.Process })) ||
-    [];
+  // Process route steps with resolved names
+  const routeSteps = resolveRouteSteps(
+    dbProcessRoute || [],
+    defaultList || [],
+    laminationList || [],
+    varnishList || [],
+    boardList || [],
+    printingList || [], // printingList — pass if available
+    labelPrintingList || [],
+    finishingList || [],
+    dieList || [],
+    dieId,
+  );
+
+  const BoardDetailsGrid = ({
+    boardQualities = [],
+    boardList,
+    gsmList,
+    sizeList,
+  }) => {
+    const filtered = boardQualities.filter((r) => r.processId);
+    if (filtered.length === 0) return null;
+    return (
+      <View>
+        <Text style={{ paddingLeft: 5, marginTop: 2 }}>BOARD DETAILS</Text>
+        <View style={styles.sectionContent}>
+          <View style={styles.breakupTable}>
+            <View style={styles.breakupTh}>
+              <Text style={[styles.breakupThCell, { flex: 0.4 }]}>S.No</Text>
+              <Text style={[styles.breakupThCell, { flex: 2 }]}>
+                Board Quality
+              </Text>
+              <Text style={[styles.breakupThCell, { flex: 1 }]}>GSM</Text>
+              <Text style={[styles.breakupThCell, { flex: 1.5 }]}>
+                Board Size
+              </Text>
+              <Text
+                style={[styles.breakupThCell, { flex: 1, borderRight: "none" }]}
+              >
+                No. of Sheets
+              </Text>
+            </View>
+            {filtered.map((row, idx) => (
+              <View
+                key={idx}
+                style={
+                  idx % 2 === 0 ? styles.breakupTrOdd : styles.breakupTrEven
+                }
+              >
+                <Text
+                  style={[styles.breakupTd, { flex: 0.4, textAlign: "center" }]}
+                >
+                  {idx + 1}
+                </Text>
+                <Text
+                  style={[styles.breakupTd, { flex: 2, textAlign: "left" }]}
+                >
+                  {findFromList(row.processId, boardList, "name") || "—"}
+                </Text>
+                <Text
+                  style={[styles.breakupTd, { flex: 1, textAlign: "right" }]}
+                >
+                  {findFromList(row.gsmId, gsmList?.data, "name") || "—"}
+                </Text>
+                <Text
+                  style={[styles.breakupTd, { flex: 1.5, textAlign: "left" }]}
+                >
+                  {findFromList(row.fullBoardId, sizeList?.data, "name") || "—"}
+                </Text>
+                <Text
+                  style={[
+                    styles.breakupTd,
+                    { flex: 1, textAlign: "right", borderRight: "none" },
+                  ]}
+                >
+                  {row.noOfSheets || "—"}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </View>
+    );
+  };
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        <View
-          fixed
-          render={({ pageNumber }) =>
-            pageNumber > 1 ? <View style={{ height: 35 }} /> : null
-          }
-        />
+        {/* ── TOP ACCENT BAR ── */}
         <View style={styles.topBar} />
 
+        {/* ── HEADER ── */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
             <Image src={Logo} style={styles.logo} />
           </View>
           <View style={styles.companyCenter}>
-            <Text style={styles.companyName}>NATIONAL PRINTING PRESS</Text>
+            <Text style={styles.companyName}>
+              {branchData?.branchName || "NATIONAL PRINTING PRESS"}
+            </Text>
             <Text style={styles.companyAddr}>
               {branchData?.address ||
                 "9(1)-MAARIYAMMAN LAYOUT 2ND STREET, KUMARANATHA PURAM, TIRUPUR : 641602"}
@@ -776,19 +850,18 @@ const JobCardPrintFormat = ({
           </View>
         </View>
 
+        {/* ── TITLE BAND ── */}
         <Text style={styles.titleBand}>
           {isLabel ? "JOB CARD — LABEL" : "JOB CARD"}
         </Text>
 
+        {/* ── META PILLS ── */}
         <View style={styles.metaRow}>
           {[
             { label: "Job Card No", value: docId },
             { label: "Date", value: getDateFromDateTimeToDisplay(docDate) },
-            { label: "Order No", value: orderEntry?.docId || "—" },
-            {
-              label: "Production Type",
-              value: singleData?.orderType || orderEntry?.productionType || "—",
-            },
+            { label: "Order No", value: orderEntry?.docId || "-" },
+            { label: "Order Qty", value: orderQty ? Number(orderQty) : "" },
           ].map(({ label, value }) => (
             <View key={label} style={styles.metaPill}>
               <Text style={styles.metaLabel}>{label}:</Text>
@@ -797,85 +870,44 @@ const JobCardPrintFormat = ({
           ))}
         </View>
 
+        {/* ── CUSTOMER + ORDER DETAILS + QR ── */}
         <View style={[styles.twoCol, { alignItems: "stretch" }]}>
+          {/* Customer */}
           <View
             style={[
               styles.colThird,
-              { borderRight: "1 solid #ddd", width: "35%" },
+              { borderRight: "1 solid #ddd", flex: 1.2 },
             ]}
           >
             <Text style={styles.sectionHeader}>CUSTOMER</Text>
             <View style={styles.sectionBody}>
               <Text
-                style={{ fontSize: 10, fontWeight: "bold", color: "#1a1a2e" }}
+                style={{ fontSize: 8, fontWeight: "bold", color: "#1a1a2e" }}
               >
                 {customer?.name || "—"}
               </Text>
-              <Text
-                style={{
-                  fontSize: 8.5,
-                  color: "#333",
-                  marginTop: 2,
-                  lineHeight: 1.3,
-                }}
-              >
-                {customer?.address || "—"}
+              <Text style={{ fontSize: 7, color: "#888", marginTop: 3 }}>
+                Production: {productionType || "—"}
               </Text>
-              <View style={{ flexDirection: "row", marginTop: 4 }}>
-                <Text style={{ fontSize: 8.5, color: "#444", width: 35 }}>
-                  GST
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 8.5,
-                    color: "#1a1a2e",
-                    fontWeight: "bold",
-                  }}
-                >
-                  : {customer?.gstNo || "—"}
-                </Text>
-              </View>
-              <View style={{ flexDirection: "row", marginTop: 1 }}>
-                <Text style={{ fontSize: 8.5, color: "#444", width: 35 }}>
-                  Mobile
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 8.5,
-                    color: "#1a1a2e",
-                    fontWeight: "bold",
-                  }}
-                >
-                  :{" "}
-                  {customer?.contactNumber ||
-                    (customer?.contactMobile && customer.contactMobile !== 0
-                      ? String(customer.contactMobile)
-                      : customer?.mobile || "—")}
-                </Text>
-              </View>
             </View>
           </View>
 
+          {/* Order Details */}
           <View
-            style={[
-              styles.colThird,
-              { borderRight: "1 solid #ddd", width: "50%" },
-            ]}
+            style={[styles.colThird, { borderRight: "1 solid #ddd", flex: 2 }]}
           >
             <Text style={styles.sectionHeader}>ORDER DETAILS</Text>
             <View style={styles.sectionBody}>
               {[
-                { label: "Item Group", value: itemType || "—" },
                 { label: "Item Description", value: styleItemName },
-                { label: "Order Qty", value: orderQty || "0" },
-                { label: "Follow Up", value: followUpName },
-                { label: "Designer", value: designerName },
                 ...(!isLabel
                   ? [
                       { label: "Tag / Card Ups", value: tagCardUps },
                       { label: "Job Run Time", value: jobRunTime },
                     ]
                   : []),
+                { label: "Follow Up", value: followUpName },
+                { label: "Designer", value: designerName },
               ].map(({ label, value }) => (
                 <View key={label} style={styles.orderInfoRow}>
                   <Text style={styles.orderInfoLabel}>{label}</Text>
@@ -886,9 +918,10 @@ const JobCardPrintFormat = ({
             </View>
           </View>
 
+          {/* QR Code */}
           <View
             style={{
-              width: "15%",
+              flex: 0.6,
               alignItems: "center",
               justifyContent: "center",
               padding: 8,
@@ -900,283 +933,290 @@ const JobCardPrintFormat = ({
                 <Text style={styles.qrLabel}>Scan to identify</Text>
               </>
             ) : (
-              <View style={styles.qrBox}>
-                <Text style={{ fontSize: 6, color: "#bbb" }}>QR Code</Text>
+              <View
+                style={{
+                  width: 56,
+                  height: 56,
+                  border: "1 dashed #ccc",
+                  borderRadius: 2,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text
+                  style={{ fontSize: 6, color: "#bbb", textAlign: "center" }}
+                >
+                  QR Code
+                </Text>
               </View>
             )}
           </View>
         </View>
-        {!isLabel && boardList?.length > 0 && (
-          <View style={styles.sectionWrap}>
-            <Text style={styles.sectionTitle}>BOARD QUALITY</Text>
-            <View style={styles.sectionContent}>
-              <View style={styles.gridRow}>
-                {boardList.map((item) => (
-                  <Checkbox
-                    key={item.id}
-                    checked={selectedBoardIds.includes(item.id)}
-                    label={item.name}
-                  />
-                ))}
-              </View>
-            </View>
-          </View>
-        )}
 
+        {/* ══════════════════════════════════════════════════
+            NON-LABEL LAYOUT
+        ══════════════════════════════════════════════════ */}
         {!isLabel && (
           <>
-            <View style={styles.sectionWrap} wrap={false}>
+            {/* ── SPECIFICATIONS ── */}
+            <View style={styles.sectionWrap}>
+              <BoardDetailsGrid
+                boardQualities={singleData?.boardQualities || []}
+                boardList={boardList}
+                gsmList={gsmList}
+                sizeList={sizeList}
+              />
               <Text style={styles.sectionTitle}>SPECIFICATIONS</Text>
               <View style={styles.sectionContent}>
                 <View style={styles.specTable}>
-                  <SpecField
-                    label="GSM"
-                    value={findFromList(gsmId, gsmList?.data, "name")}
-                  />
-                  <SpecField
-                    label="Others / Board"
-                    value={findFromList(boardId, boardList, "name")}
-                  />
-                  <SpecField label="Full Board" value={fullBoardName} />
                   <SpecField label="Cutting Size" value={cuttingSizeName} />
-                  <SpecField label="No. of Pockets" value={noOfPockets} />
-                  <SpecField label="Running Qty" value={runningQty} />
-                </View>
-
-                <View
-                  style={[
-                    styles.gridRow,
-                    { marginTop: 8, paddingTop: 6, borderTop: "1 solid #eee" },
-                  ]}
-                >
-                  <Checkbox checked={isFourColor} label="4 Color" />
-                  <Checkbox checked={isCutColor} label="Cut Color" />
-                  <Checkbox checked={isFront} label="Front" />
-                  <Checkbox checked={isFrontAndBack} label="Front & Back" />
+                  <SpecField label="Split Type" value={splitType || "—"} />
+                  <SpecField label="Running Qty" value={runningQty || "—"} />
+                  {/* <SpecField
+                    label="Plate Details"
+                    value={findFromList(plateId, plateList?.data, "name")}
+                  />
+                  <SpecField
+                    label="Die Details"
+                    value={findFromList(dieId, dieList?.data, "name")}
+                  />
+                  <SpecField
+                    label="Total Plate Sets"
+                    value={totalPlatesets || "—"}
+                  /> */}
                 </View>
               </View>
             </View>
 
-            <View style={styles.threeCol}>
-              <View style={styles.threeColItem}>
-                <Text style={styles.sectionHeader}>PROCESS</Text>
+            {/* ── SIZE DETAILS + PLATE SET DETAILS — side by side ── */}
+            <View
+              style={{
+                flexDirection: "row",
+                marginHorizontal: 20,
+                marginBottom: 8,
+                gap: 8,
+              }}
+            >
+              {/* Size Details */}
+              <View
+                style={{
+                  flex: 0.7,
+                  border: "1 solid #ddd",
+                  borderRadius: 3,
+                  overflow: "hidden",
+                }}
+              >
+                <Text style={{ paddingLeft: 5, marginTop: 2 }}>
+                  {"SIZE WISE DETAILS"}
+                </Text>
                 <View style={styles.sectionContent}>
-                  <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-                    {defaultList?.map((item) => (
-                      <View
-                        key={item.id}
-                        style={{
-                          width: "50%",
-                          flexDirection: "row",
-                          alignItems: "center",
-                          paddingVertical: 2,
-                        }}
-                      >
-                        <View
-                          style={[
-                            styles.checkboxBox,
-                            selectedProcessIds.includes(item.id) &&
-                              styles.checkboxChecked,
-                          ]}
-                        >
-                          {selectedProcessIds.includes(item.id) && (
-                            <Text style={styles.checkboxTick}>✓</Text>
-                          )}
-                        </View>
-                        <Text style={[styles.checkLabel, { marginLeft: 4 }]}>
-                          {item.name}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              </View>
-              <LVSection
-                title="VARNISH"
-                items={varnishList}
-                selectedList={savedVarnishes}
-              />
-              <LVSection
-                title="LAMINATION"
-                items={laminationList}
-                selectedList={savedLaminations}
-              />
-            </View>
-
-            {machineList?.length > 0 && (
-              <View style={styles.sectionWrap} wrap={false}>
-                <Text style={styles.sectionTitle}>MACHINE DETAILS</Text>
-                <View style={styles.sectionContent}>
-                  <View style={styles.gridRow}>
-                    {machineList.map((item) => (
-                      <Checkbox
-                        key={item.id}
-                        checked={selectedMachineIds.includes(item.id)}
-                        label={item.name}
-                      />
-                    ))}
-                  </View>
-                  <View
-                    style={[
-                      styles.gridRow,
-                      {
-                        marginTop: 6,
-                        paddingTop: 5,
-                        borderTop: "1 solid #eee",
-                      },
-                    ]}
-                  >
-                    <Checkbox checked={isCMYK} label="CMYK" />
-                    <Checkbox checked={isCutColMachine} label="Cut Col" />
-                    <Checkbox checked={isFrontMachine} label="Front" />
-                    <Checkbox
-                      checked={isFrontBackMachine}
-                      label="Front & Back"
-                    />
-                  </View>
-                </View>
-              </View>
-            )}
-
-            {(plateId || dieId || totalPlatesets) && (
-              <View style={styles.sectionWrap} wrap={false}>
-                <Text style={styles.sectionTitle}>PLATE & DIE DETAILS</Text>
-                <View style={styles.sectionContent}>
-                  <View style={styles.specTable}>
-                    <SpecField
-                      label="Plate Details"
-                      value={findFromList(plateId, plateList?.data, "name")}
-                      width="33%"
-                    />
-                    <SpecField
-                      label="Die Details"
-                      value={findFromList(dieId, dieList?.data, "name")}
-                      width="33%"
-                    />
-                    <SpecField
-                      label="Total Plate Sets"
-                      value={totalPlatesets}
-                      width="33%"
-                    />
-                  </View>
-                </View>
-              </View>
-            )}
-
-            {jobCardSizeDetails &&
-              jobCardSizeDetails.length > 0 &&
-              trackingType &&
-              trackingType !== "None" && (
-                <View style={styles.sectionWrap} wrap={false}>
-                  <Text style={styles.sectionTitle}>
-                    {trackingType === "Barcode"
-                      ? "BARCODE WISE DETAILS"
-                      : trackingType === "Size Template + Barcode"
-                        ? "SIZE + BARCODE WISE DETAILS"
-                        : "SIZE WISE DETAILS"}
-                  </Text>
-                  <View style={styles.sectionContent}>
+                  {jobCardSizeDetails && jobCardSizeDetails.length > 0 ? (
                     <SizeBreakupTable
-                      trackingType={trackingType}
+                      //   trackingType={trackingType}
                       sizeDetails={jobCardSizeDetails}
                       sizeList={sizeList}
                     />
+                  ) : (
+                    <Text
+                      style={{
+                        fontSize: 7.5,
+                        color: "#aaa",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      No size details available.
+                    </Text>
+                  )}
+                </View>
+              </View>
+
+              {/* Plate Set Details */}
+              <View
+                style={{
+                  flex: 1.3,
+                  border: "1 solid #ddd",
+                  borderRadius: 3,
+                  overflow: "hidden",
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    paddingLeft: 5,
+                    paddingRight: 5,
+                    marginTop: 2,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ fontSize: 9, fontWeight: "bold", flex: 1 }}>
+                    PLATE SET DETAILS
+                  </Text>
+                  <View style={{ flexDirection: "row", gap: 10 }}>
+                    <Text style={{ fontSize: 7.5 }}>
+                      <Text style={{ color: "#555" }}>Plate Supplier: </Text>
+                      {plateSupplierName}
+                    </Text>
+                    <Text style={{ fontSize: 7.5 }}>
+                      <Text style={{ color: "#555" }}>Plate Type: </Text>
+                      {isOldPlate
+                        ? "Old Plate"
+                        : isNewPlate
+                          ? "New Plate"
+                          : "N/A"}
+                    </Text>
                   </View>
                 </View>
-              )}
+                <View style={styles.sectionContent}>
+                  <PlateSetTable
+                    plateDetails={plateDetails || []}
+                    plateList={plateList}
+                    machineList={machineList}
+                  />
+                </View>
+              </View>
+            </View>
 
-            <ProcessRouteSection processRoute={processRoute} />
+            {/* ── PROCESS ROUTE — vertical ── */}
+            <ProcessRouteVertical
+              processRoute={routeSteps}
+              title="PROCESS ROUTE"
+            />
+
+            {/* ── MACHINES (selected only) ── */}
+            {selectedMachines.length > 0 && (
+              <View style={styles.sectionWrap}>
+                <Text style={styles.sectionTitle}>MACHINE DETAILS</Text>
+                <View style={[styles.sectionContent, { paddingVertical: 6 }]}>
+                  <View style={styles.gridRow}>
+                    {selectedMachines.map((item) => (
+                      <Checkbox
+                        key={item.id}
+                        checked={true}
+                        label={`${item.name}${item.Size?.name ? ` (${item.Size.name})` : ""}`}
+                      />
+                    ))}
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* ── DIE DETAILS ── */}
+            {(dieId || dieMethod || dieDescription) && (
+              <View style={styles.sectionWrap}>
+                <Text style={styles.sectionTitle}>DIE DETAILS</Text>
+                <View
+                  style={[
+                    styles.sectionContent,
+                    { paddingVertical: 6, flexDirection: "row", gap: 15 },
+                  ]}
+                >
+                  {dieId && (
+                    <Text style={{ fontSize: 7.5, marginLeft: 5 }}>
+                      <Text style={{ color: "#555" }}>Die Name: </Text>
+                      <Text style={{ fontWeight: "bold" }}>{dieName}</Text>
+                    </Text>
+                  )}
+                  {dieMethod && (
+                    <Text style={{ fontSize: 7.5, marginLeft: !dieId ? 5 : 0 }}>
+                      <Text style={{ color: "#555" }}>Die Method: </Text>
+                      <Text style={{ fontWeight: "bold" }}>{dieMethod}</Text>
+                    </Text>
+                  )}
+                  {dieDescription && (
+                    <Text
+                      style={{
+                        fontSize: 7.5,
+                        marginLeft: !dieId && !dieMethod ? 5 : 0,
+                      }}
+                    >
+                      <Text style={{ color: "#555" }}>Die Description: </Text>
+                      <Text style={{ fontWeight: "bold" }}>
+                        {dieDescription}
+                      </Text>
+                    </Text>
+                  )}
+                </View>
+              </View>
+            )}
           </>
         )}
 
+        {/* ══════════════════════════════════════════════════
+            LABEL LAYOUT
+        ══════════════════════════════════════════════════ */}
         {isLabel && (
           <>
-            <View style={styles.sectionWrap} wrap={false}>
-              <Text style={styles.sectionTitle}>LABEL DETAILS</Text>
-              <View style={styles.sectionContent}>
-                <View style={{ flexDirection: "row" }}>
+            {/* ── LABEL DETAILS + SIZE BREAKUP ── */}
+            <View style={styles.twoCol}>
+              <View style={[styles.colHalf, { borderRight: "1 solid #ddd" }]}>
+                <Text style={styles.sectionHeader}>LABEL DETAILS</Text>
+                <View style={styles.sectionBody}>
                   {[
-                    { label: "Quality", value: labelQuality },
-                    { label: "Block", value: block },
-                    { label: "Qty", value: orderQty },
+                    { label: "Label Quality", value: labelItem },
+                    { label: "Label Size", value: labelSizeName },
+                    { label: "Label Color", value: labelColorName },
+                    {
+                      label: "Roll Meter (Per Roll)",
+                      value: totalMeter ? Number(totalMeter).toFixed(3) : "",
+                    },
+                    { label: "Length (MM)", value: lenght },
+                    { label: "Width (MM)", value: width },
+                    { label: "Calculated Meter", value: calculatedMeter },
+                    { label: "Required Rolls", value: requiredRolls },
                     { label: "Roll Qty", value: rollQty },
-                    { label: "Cut & Seal", value: cutAndSeal },
+                    { label: "Block", value: block },
                   ].map(({ label, value }) => (
-                    <View
-                      key={label}
-                      style={{
-                        flex: 1,
-                        flexDirection: "column",
-                        borderRight:
-                          label === "Cut & Seal" ? "none" : "1 solid #eee",
-                        paddingRight: 5,
-                        marginLeft: label === "Quality" ? 0 : 5,
-                      }}
-                    >
-                      <Text
-                        style={[styles.labelFieldLabel, { marginBottom: 2 }]}
-                      >
-                        {label}
-                      </Text>
-                      <Text
-                        style={[styles.labelFieldValue, { fontWeight: "bold" }]}
-                      >
-                        {value || "—"}
+                    <View key={label} style={styles.labelFieldRow}>
+                      <Text style={styles.labelFieldLabel}>{label}</Text>
+                      <Text style={styles.labelFieldValue}>
+                        : {value || "—"}
                       </Text>
                     </View>
                   ))}
                 </View>
               </View>
-            </View>
 
-            {jobCardSizeDetails &&
-              jobCardSizeDetails.length > 0 &&
-              trackingType &&
-              trackingType !== "None" && (
-                <View style={styles.sectionWrap} wrap={false}>
-                  <Text style={styles.sectionTitle}>
-                    {trackingType === "Barcode"
-                      ? "BARCODE WISE DETAILS"
-                      : trackingType === "Size Template + Barcode"
-                        ? "SIZE + BARCODE WISE DETAILS"
-                        : "SIZE WISE DETAILS"}
-                  </Text>
-                  <View style={styles.sectionContent}>
+              {/* Size breakup */}
+              <View style={styles.colHalf}>
+                <Text style={styles.sectionHeader}>{"SIZE WISE DETAILS"}</Text>
+                <View style={styles.sectionBody}>
+                  {jobCardSizeDetails && jobCardSizeDetails.length > 0 ? (
                     <SizeBreakupTable
                       trackingType={trackingType}
                       sizeDetails={jobCardSizeDetails}
                       sizeList={sizeList}
                     />
-                  </View>
+                  ) : (
+                    <Text
+                      style={{
+                        fontSize: 7.5,
+                        color: "#aaa",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      No size details available.
+                    </Text>
+                  )}
                 </View>
-              )}
+              </View>
+            </View>
 
-            <ProcessRouteSection processRoute={processRoute} />
+            {/* ── PROCESS ROUTE — vertical ── */}
+            <ProcessRouteVertical
+              processRoute={routeSteps}
+              title="PROCESS ROUTE"
+            />
+
+            <View style={{ flex: 1 }} />
           </>
         )}
 
-        <FooterBlock remarks={remarks} />
+        {/* ── REMARKS + SIGNATURES + FOOTER ── */}
+        <FooterBlock remarks={remarks} branchName={branchData?.branchName} />
 
-        <View
-          style={{ position: "absolute", bottom: 15, left: 0, right: 0 }}
-          fixed
-          render={({ pageNumber, totalPages }) =>
-            pageNumber === totalPages ? (
-              <Signatures branchName={branchData?.branchName} />
-            ) : null
-          }
-        />
-
-        <View
-          style={[
-            styles.footerBar,
-            { position: "absolute", bottom: 0, left: 0, right: 0 },
-          ]}
-          fixed
-        >
-          <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.5)" }}>
-            National Printing Press
-          </Text>
+        <View style={styles.footerBar} fixed={true}>
+          <Text style={styles.footerLeft}></Text>
           <Text
             style={styles.footerRight}
             render={({ pageNumber, totalPages }) =>

@@ -317,6 +317,7 @@ const JobCardForm = ({
   const [addApprovalStatus] = useAddApprovalStausMutation();
   const [getOrderById] = useLazyGetOrderEntryByIdQuery();
   const [getRefById] = useLazyGetJobCardByIdQuery();
+  console.log(itemType, "itemtype");
 
   // ── Sync form from DB data ────────────────────────────────────────────────
   const syncFormWithDb = useCallback((data) => {
