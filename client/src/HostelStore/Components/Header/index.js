@@ -2,7 +2,7 @@ import "./Header.css";
 import dp from "../../../assets/default-dp.png";
 import { Bell, Search } from "lucide-react";
 import Profile from "./Profile";
-import logo from "../../../assets/NationalPrintLogo.jpeg";
+import logo from "../../../assets/mplogo.png";
 // import { useState } from "react"
 import { LogOut } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
@@ -25,10 +25,12 @@ import Logout from "../../../Basic/components/LogoutConfirm";
 import PageSearch from "./PageSearch";
 import Notification from "./Notification";
 import { GLOBE_ICON } from "../../../icons";
-
+import useLogout from "../../../CustomHooks/useLogout";
 const BASE_URL = process.env.REACT_APP_SERVER_URL;
 
 const Header = ({ profile, setProfile, setIsGlobalOpen }) => {
+  useLogout();
+
   const [logout, setLogout] = useState(false);
   const [hideNavBar, sethideNavBar] = useState(true);
 
