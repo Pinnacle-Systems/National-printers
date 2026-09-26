@@ -80,6 +80,7 @@ import {
   ProformaInvoice,
   ProductionAllocation,
   MachineMaster,
+  Packing,
 } from "../../../HostelStore/Components";
 
 const ActiveTabList = () => {
@@ -165,6 +166,7 @@ const ActiveTabList = () => {
     "PROFORMA INVOICE": <ProformaInvoice />,
     "PRODUCTION ALLOCATION": <ProductionAllocation />,
     "MACHINE MASTER": <MachineMaster />,
+     "PACKING": <Packing />,
   };
   const innerWidth = window.innerWidth;
   const itemsToShow = innerWidth / 130;

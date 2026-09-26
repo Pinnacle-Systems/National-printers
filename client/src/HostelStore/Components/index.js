@@ -55,3 +55,4 @@ export { default as BoardMaster } from "./BoardMaster";
 export { default as ProformaInvoice } from "./ProformaInvoice/ProformaInvoice";
 export { default as ProductionAllocation } from "./ProductionAllocation/index";
 export { default as MachineMaster } from "./MachineMaster";
+export { default as Packing } from "./Packing/index";

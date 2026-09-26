@@ -444,3 +444,30 @@ export const ModeChip = ({ id, readOnly }) => {
 
   return null;
 };
+export function formatCurrencyAmount(value = 0, currencyCode = "INR") {
+  if (value === "" || value === null || value === undefined) return "";
+  const cleanValue = typeof value === "string" ? value.replace(/,/g, "") : value;
+  const amount = Number(cleanValue);
+  if (isNaN(amount)) return "";
+
+  let locale = "en-IN";
+  if (currencyCode && typeof currencyCode === "string") {
+    const code = currencyCode.trim().toUpperCase();
+    if (
+      code &&
+      code !== "INR" &&
+      code !== "₹" &&
+      code !== "IN" &&
+      code !== "₹ (INR)" &&
+      code !== "RS" &&
+      code !== "RUPEES"
+    ) {
+      locale = "en-US";
+    }
+  }
+
+  return amount.toLocaleString(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
