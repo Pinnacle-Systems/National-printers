@@ -232,12 +232,17 @@ async function getOne(id) {
       CuttingSizeDtl: { select: { id: true, name: true } },
       Designer: { select: { id: true, name: true } },
       FollowUp: { select: { id: true, name: true } },
-      OrderEntryItem: {
-        include: {
-          StyleItem: { select: { name: true } },
-          ItemGroup: { select: { name: true } },
-          sizeBreakup: {
-            include: { Size: { select: { id: true, name: true } } },
+      OrderEntry: {
+        select: {
+          id:true,docId:true,
+          orderItems: {
+            include: {
+              StyleItem: { select: { name: true } },
+              ItemGroup: { select: { name: true } },
+              sizeBreakup: {
+                include: { Size: { select: { id: true, name: true } } },
+              },
+            },
           },
         },
       },

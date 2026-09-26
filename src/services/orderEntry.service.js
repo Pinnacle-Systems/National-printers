@@ -132,7 +132,11 @@ async function get(req) {
     searchOrderType,
     finYearId,
     searchCustomer,
+    isTakeOnlyFinshedJobCards,
   } = req.query;
+
+  const isTakeOnlyFinished =
+    isTakeOnlyFinshedJobCards === true || isTakeOnlyFinshedJobCards === "true";
 
   let finYearDate = await getFinYearStartTimeEndTime(finYearId);
   const shortCode = finYearDate
@@ -149,6 +153,7 @@ async function get(req) {
   data = await prisma.orderEntry.findMany({
     where: {
       branchId: branchId ? parseInt(branchId) : undefined,
+      JobCard: isTakeOnlyFinished ? { some: {} } : undefined,
       AND: finYearDate
         ? [
             {
@@ -200,14 +205,7 @@ async function get(req) {
   }
   totalCount = data.length;
 
-  // if (pagination) {
-  //   data = data.slice(
-  //     (pageNumber - 1) * parseInt(dataPerPage),
-  //     pageNumber * dataPerPage,
-  //   );
-  // }
-
-  // ── approval setup check ──────────────────────────────────────────────────
+  // ── approval setup check for Order Entry ──────────────────────────────────
   const { module, hasApproval } = await getModuleApprovalSetup(
     REFERENCE_PAGE,
     branchId,
@@ -248,7 +246,7 @@ async function get(req) {
       ? await prisma.approvalConfig.findMany({
           where: {
             moduleId: module.id,
-            branchId: parseInt(branchId),
+            branchId: branchId ? parseInt(branchId) : undefined,
             active: true,
           },
           include: {
@@ -285,7 +283,6 @@ async function get(req) {
       pageNumber * parseInt(dataPerPage),
     );
   }
-
   return {
     statusCode: 0,
     data: resolvedData,
@@ -542,6 +539,12 @@ async function getOne(id) {
           name: true,
           contactPersonName: true,
           contactNumber: true,
+        },
+      },
+      JobCard: {
+        select: {
+          id: true,
+          docId: true,
         },
       },
       _count: {

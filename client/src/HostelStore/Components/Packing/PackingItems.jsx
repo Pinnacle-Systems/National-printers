@@ -10,6 +10,7 @@ import { formatCurrencyAmount } from "../../../Utils/helper";
 import Modal from "../../../UiComponents/Modal";
 import { VIEW } from "../../../icons";
 import { FaEye, FaTrash } from "react-icons/fa";
+import { FiEye } from "react-icons/fi";
 
 import {
   DEFAULT_ROW_COUNT,
@@ -34,7 +35,7 @@ const PackingItems = ({
   hsnList,
   childRecord,
   itemSubGroupList,
-  enrichedItems,
+  // enrichedItems,
   taxTemplateId,
   conversionType,
   isSupplierOutside,
@@ -380,7 +381,7 @@ let packingControlData
 
   return (
     <>
-      <Modal
+      {/* <Modal
         isOpen={Number.isInteger(currentSelectedIndex)}
         onClose={() => {
           setCurrentSelectedIndex("");
@@ -398,7 +399,7 @@ let packingControlData
           isSupplierOutside={isSupplierOutside}
           currencyCode={currencyCode || isCurrencySymbol}
         />
-      </Modal>
+      </Modal> */}
 
       {/* Style & Size Breakup Modal */}
       <Modal
@@ -719,238 +720,410 @@ let packingControlData
         </div>
       </Modal>
 
-      <div className="w-full h-full overflow-y-auto bg-white">
-        <table className="table-fixed min-h-full bg-white border-collapse">
-          <thead className="bg-gray-200 text-gray-800 sticky top-0 z-10 text-[12px]">
-            <tr>
-              <th className="w-10 px-2 py-2 text-center font-medium border border-gray-300">
-                S.No
-              </th>
-              <th className="w-36 px-2 py-2 text-center font-medium border border-gray-300">
-                Item Group
-              </th>
-              <th className="w-36 px-2 py-2 text-center font-medium border border-gray-300">
-                Item Sub Group
-              </th>
-              <th className="w-72 px-2 py-2 text-center font-medium border border-gray-300">
-                Description of Goods<span className="text-red-500">*</span>
-              </th>
-              <th className="w-20 px-2 py-2 text-center font-medium border border-gray-300">
-                HSN
-              </th>
-              <th className="w-20 px-2 py-2 text-center font-medium border border-gray-300">
-                UOM
-              </th>
-              <th className="w-16 px-2 py-2 text-center font-medium border border-gray-300">
-                Qty<span className="text-red-500">*</span>
-              </th>
-              <th className="w-32 px-2 py-2 text-center font-medium border border-gray-300 ">
-                Label Width
-              </th>
-              <th className="w-24 px-1 py-2 text-center font-medium border border-gray-300">
-                Dozen
-              </th>
-              <th className="w-16 px-2 py-2 text-center font-medium border border-gray-300">
-                Breakup
-              </th>
-              <th className="w-16 px-2 py-2 text-center font-medium border border-gray-300">
-                Actions
-              </th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {(orderItems || []).map((row, index) => {
-              const rowBg = index % 2 === 0 ? "bg-white" : "bg-gray-50";
-
-              return (
-                <tr
-                  key={row.rowId || index}
-                  className={`${rowBg} border-b border-gray-200 h-7 cursor-pointer`}
-                  onContextMenu={(e) => {
-                    if (!readOnly && orderType !== "AGAINSTPI") {
-                      handleRightClick(e, index);
-                    }
-                  }}
-                >
-                  <td className="w-10 border border-gray-300 text-[11px] text-center items-center pt-2">
-                    {index + 1}
-                  </td>
-                  <td className="border border-gray-300 text-[11px] items-center pt-2">
-                    <FxSelectWithAdd
-                      value={row.itemGroupId}
-                      onChange={(val) => handleInputChange(val, index, "itemGroupId")}
-                      options={(itemGroupList?.data || [])
-                        .filter((i) => (id ? true : i.active))
-                        .map((i) => ({ label: i.name, value: i.id }))}
-                      readOnly={readOnly || childRecord?.current > 0 || orderType === "AGAINSTPI"}
-                      placeholder=""
-                      addNew={true}
-                      childComponent={ItemGroup}
-                      disabled={true}
-
-                    />
-                  </td>
-                  <td className="border border-gray-300 text-[11px] items-center pt-2">
-                    <FxSelectWithAdd
-                      value={row.itemSubGroupId}
-                      onChange={(val) => handleInputChange(val, index, "itemSubGroupId")}
-                      options={(itemSubGroupList?.data || [])
-                        .filter(
-                          (i) => (id ? true : i.active) && i.itemGroupId === row.itemGroupId
-                        )
-                        .map((i) => ({ label: i.name, value: i.id }))}
-                      readOnly={readOnly || childRecord?.current > 0 || orderType === "AGAINSTPI"}
-                      placeholder=""
-                      addNew={true}
-                      // childComponent={ItemSubGroupMaster}
-                      disabled={true}
-
-                    />
-                  </td>
-                  <td className="text-[11px] border border-gray-300 text-left items-center pt-2">
-                    <FxSelectWithAdd
-                      value={row.styleItemId}
-                      onChange={(val) => handleInputChange(val, index, "styleItemId")}
-                      options={(styleItemList?.data || [])
-                        .filter(
-                          (i) =>
-                            (id ? true : i.active) &&
-                            i.itemGroupId === row.itemGroupId &&
-                            (row.itemSubGroupId ? i.itemSubGroupId === row.itemSubGroupId : true)
-                        )
-                        .map((i) => ({ label: i.name, value: i.id }))}
-                      readOnly={readOnly || childRecord?.current > 0 || orderType === "AGAINSTPI"}
-                      placeholder=""
-                      addNew={true}
-                      childComponent={StyleItemMaster}
-                      disabled={true}
-
-                    />
-                  </td>
-                  <td className="border border-gray-300 text-[11px] items-center pt-2 text-center">
-                    <span className="px-1">
-                      {findFromList(row.hsnId, hsnList?.data, "name") || ""}
-                    </span>
-                  </td>
-                  <td className="border border-gray-300 text-[11px] items-center pt-2 text-center">
-                    <span className="px-1">
-                      {findFromList(row.uomId, uomList?.data, "name") || ""}
-                    </span>
-                  </td>
-                  <td className="border border-gray-300 text-[11px] text-right items-center pt-2 pr-1 font-medium">
-                    {row.orderQty ? Number(row.orderQty) : ""}
-                  </td>
-                  <td className="border border-gray-300 text-[11px] text-left items-center pt-2 pl-1 font-medium">
-                    <input
-                      type="text"
-                      value={row.labelWidth}
-                      onChange={(e) => handleInputChange(e.target.value, index, "labelWidth")}
-                      className="w-full text-left px-1 bg-transparent text-[11px] outline-none focus:bg-white"
-                      readOnly={readOnly || orderType === "AGAINSTPI"}
-                      disabled={true}
-
-                    />
-                  </td>
-                  <td className="text-[11px] border border-gray-300 text-right items-center pt-2 pr-1 font-medium">
-                    <input
-                      type="number"
-                      className="text-right px-1 w-full table-data-input outline-none bg-transparent focus:bg-white"
-                      value={focusedField === `dozen-${index}` ? (row?.dozen ?? "") : row?.dozen ? Number(row.dozen).toFixed(2) : ""}
-                      onChange={(e) => handleInputChange(e.target.value, index, "dozen")}
-                      onFocus={(e) => { e.target.select(); setFocusedField(`dozen-${index}`); }}
-                      onBlur={(e) => {
-                        const val = e.target.value;
-                        handleInputChange(val ? Number(val).toFixed(2) : "", index, "dozen");
-                        setFocusedField(null);
-                      }}
-                      disabled={true}
-                    />
-                  </td>
-                  <td className="border border-gray-300 text-center py-2">
-                    <button
-                      className="text-indigo-600 hover:text-indigo-800"
-                      onClick={() => setActiveModalRowIndex(index)}
-                      title="View Style & Size Breakup"
-                    >
-                      <FaEye size={16} className="mx-auto" />
-                    </button>
-                  </td>
-                  <td className="w-12 border border-gray-300 align-top pt-1 bg-gray-50 text-center">
-                    {!readOnly && orderType !== "AGAINSTPI" && (
-                      <div className="flex items-center justify-center">
-                        <button
-                          onClick={addMainRow}
-                          className="flex items-center justify-center p-0.5 bg-blue-50 hover:bg-blue-100 rounded"
-                          title="Add row"
-                          tabIndex={-1}
-                          disabled={true}
-
-                        >
-                          <Plus size={13} className="text-blue-700" />
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-
-          <tfoot className="sticky bottom-0 z-10 shadow-[0_-1px_2px_rgba(0,0,0,0.1)]">
-            <tr className="bg-gray-100 h-7 font-medium text-gray-800 text-[12px]">
-              <td className="text-right px-2 border border-gray-300 font-medium" colSpan={6}>
-                Total
-              </td>
-              <td className="text-right border border-gray-300 px-1 font-medium">
-                {orderItems?.reduce((s, r) => s + (Number(r.orderQty) || 0), 0)}
-              </td>
-              <td className="border border-gray-300 bg-gray-50" colSpan={1} />
-              <td className="text-right border border-gray-300 px-1 font-medium">
-                {orderItems?.reduce((s, r) => s + (Number(r.dozen) || 0), 0).toFixed(2)}
-              </td>
-              <td colSpan={2} className="border border-gray-300 bg-gray-50" />
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-
-      {contextMenu && (
-        <div
-          style={{
-            position: "fixed",
-            top: `${contextMenu.mouseY - 20}px`,
-            left: `${contextMenu.mouseX + 20}px`,
-            boxShadow: "0px 0px 5px rgba(0,0,0,0.3)",
-            padding: "8px",
-            borderRadius: "4px",
-            zIndex: 1000,
-          }}
-          className="bg-gray-100"
-          onMouseLeave={() => setContextMenu(null)}
-        >
-          <div className="flex flex-col gap-1">
-            <button
-              className="text-black text-[12px] text-left rounded px-1 hover:bg-gray-200"
-              onClick={() => {
-                deleteMainRow(contextMenu.rowId);
-                setContextMenu(null);
-              }}
-            >
-              Delete Row
-            </button>
-            <button
-              className="text-black text-[12px] text-left rounded px-1 hover:bg-gray-200"
-              onClick={() => {
-                handleDeleteAllRows();
-                setContextMenu(null);
-              }}
-            >
-              Delete All
-            </button>
-          </div>
-        </div>
-      )}
+       <div className="w-full h-full overflow-y-auto mb-2 bg-white border border-slate-200 rounded-md">
+             <table className="w-[90vw] border-collapse table-fixed">
+               <thead className="bg-gray-200 text-gray-800 sticky top-0 z-10 text-[12px]">
+                 <tr>
+                   <th className="w-6 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+                     S.No
+                   </th>
+                   <th className="w-44 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+                     Description of Goods
+                   </th>
+                   <th className="w-28 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+                     Item Group
+                   </th>
+                   <th className="w-20 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+                     HSN
+                   </th>
+                   <th className="w-28 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+                     Type
+                   </th>
+                   <th className="w-16 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+                     Size / Barcode
+                   </th>
+                   <th className="w-20 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+                     UOM
+                   </th>
+                   <th className="w-16 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+                     Qty
+                   </th>
+                   <th className="w-16 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+                     Price
+                   </th>
+                   <th className="w-40 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+                     Remarks
+                   </th>
+                 </tr>
+               </thead>
+               <tbody>
+                 {orderItems?.map((row, index) => (
+                   <tr
+                     key={index}
+                     className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50"} h-7 border border-gray-200 cursor-pointer hover:bg-indigo-50`}
+                     onContextMenu={(e) =>
+                       !readOnly && handleRightClick(e, index, "")
+                     }
+                   >
+                     <td className="text-[11px] text-center border border-gray-300">
+                       {index + 1}
+                     </td>
+     
+                     <td className="border border-gray-300 grid-editable-cell">
+                       <FxSelectWithAdd
+                         inputId={`styleItemId-input-${index}`}
+                         value={row.styleItemId}
+                         onChange={(val) => {
+                           handleInputChange(val, index, "styleItemId");
+                           // Automatically focus tracking type after style selection
+                           // Use a slightly longer timeout to avoid Enter bubbling
+                           setTimeout(() => {
+                             const nextEl = document.getElementById(
+                               `trackingType-input-${index}`,
+                             );
+                             if (nextEl) {
+                               nextEl.focus();
+                             }
+                           }, 100);
+                         }}
+                         onKeyDown={(e) => {
+                           if (e.key === "Enter" || e.key === "Tab") {
+                             if (!row.styleItemId) {
+                               e.preventDefault();
+                               const reqEl = document.getElementById(
+                                 "customerRequirements",
+                               );
+                               if (reqEl) {
+                                 reqEl.focus();
+                                 reqEl.select?.();
+                               }
+                             } else {
+                               // If value exists, move to Tracking Type
+                               e.preventDefault();
+                               const nextEl = document.getElementById(
+                                 `trackingType-input-${index}`,
+                               );
+                               if (nextEl) nextEl.focus();
+                             }
+                           }
+                         }}
+                         options={(styleItemList?.data || [])
+                           .filter((item) => (id ? true : item.active))
+                           .map((item) => ({ label: item.name, value: item.id }))}
+                         readOnly={readOnly}
+                         placeholder=""
+                         addNew={true}
+                         childComponent={StyleItemMaster}
+                         addNewModalWidth="w-[50%] h-[57%]"
+                       />
+                     </td>
+     
+                     <td className="border border-gray-300">
+                       <span className="w-full text-[11px] text-left pl-1 outline-none bg-transparent">
+                         {findFromList(
+                           row.itemGroupId,
+                           itemGroupList?.data,
+                           "name",
+                         ) || ""}
+                       </span>
+                     </td>
+                     <td className="border border-gray-300">
+                       <span className="w-full block text-[11px] text-right pr-1 outline-none bg-transparent">
+                         {findFromList(row.hsnId, hsnList?.data, "name") || ""}
+                       </span>
+                     </td>
+                     <td className="border border-gray-300 grid-editable-cell">
+                       <select
+                         id={`trackingType-input-${index}`}
+                         value={row.trackingType || "None"}
+                         onChange={(e) =>
+                           handleInputChange(e.target.value, index, "trackingType")
+                         }
+                         onKeyDown={(e) => {
+                           if (e.key === "Enter" || e.key === "Tab") {
+                             if (!row.styleItemId) {
+                               e.preventDefault();
+                               const reqEl = document.getElementById(
+                                 "customerRequirements",
+                               );
+                               if (reqEl) {
+                                 reqEl.focus();
+                                 reqEl.select?.();
+                               }
+                             } else if (e.key === "Enter") {
+                               e.preventDefault();
+                               if (row.trackingType === "None") {
+                                 const qtyEl = document.getElementById(
+                                   `orderQty-input-${index}`,
+                                 );
+                                 if (qtyEl) qtyEl.focus();
+                               } else {
+                                 const breakupEl = document.getElementById(
+                                   `breakup-btn-${index}`,
+                                 );
+                                 if (breakupEl) breakupEl.focus();
+                               }
+                             }
+                           }
+                         }}
+                         disabled={readOnly}
+                         className={`  pl-2 h-full text-[11px] cursor-pointer outline-none w-full bg-transparent   rounded-sm transition-all `}
+                       >
+                         <option value="None">None</option>
+                         <option value="Barcode">Barcode</option>
+                         <option value="Size Template">Size Template</option>
+                         <option value="Size Template + Barcode">
+                           Size Template + Barcode
+                         </option>
+                       </select>
+                     </td>
+                     <td className="border border-gray-300 text-center items-center">
+                       <button
+                         id={`breakup-btn-${index}`}
+                         type="button"
+                         onClick={() => handleOpenSizeModal(index)}
+                         onKeyDown={(e) => {
+                           if (e.key === "Enter" && !readOnly) {
+                             e.preventDefault();
+                             handleOpenSizeModal(index);
+                           }
+                         }}
+                         disabled={!row.styleItemId || row.trackingType === "None"}
+                         className="  text-indigo-600 hover:text-indigo-800 disabled:text-gray-400 transition-colors"
+                         title="View Sizes"
+                       >
+                         <FiEye size={18} />
+                       </button>
+                     </td>
+     
+                     <td className="border border-gray-300">
+                       <span className="w-full text-[11px] text-left pl-1 outline-none bg-transparent">
+                         {findFromList(row.uomId, uomList?.data, "name") || ""}
+                       </span>
+                     </td>
+     
+                     <td className="border border-gray-300 grid-editable-cell">
+                       <input
+                         id={`orderQty-input-${index}`}
+                         type="number"
+                         className="w-full h-full  text-[11px] text-right px-1 outline-none bg-transparent"
+                         onFocus={(e) => {
+                           e.target.select();
+                           setFocusedField(`${index}`);
+                         }}
+                         value={
+                           focusedField === `${index}`
+                             ? (row?.orderQty ?? "")
+                             : row?.orderQty !== undefined &&
+                                 row?.orderQty !== null &&
+                                 row?.orderQty !== ""
+                               ? Number(row.orderQty)
+                               : ""
+                         }
+                         onChange={(e) =>
+                           handleInputChange(e.target.value, index, "orderQty")
+                         }
+                         onBlur={(e) => {
+                           setFocusedField(null);
+                         }}
+                         onKeyDown={(e) => {
+                           if (e.key === "Enter" || e.key === "Tab") {
+                             if (!row.styleItemId) {
+                               e.preventDefault();
+                               const reqEl = document.getElementById(
+                                 "customerRequirements",
+                               );
+                               if (reqEl) {
+                                 reqEl.focus();
+                                 reqEl.select?.();
+                               }
+                             } else if (e.key === "Enter") {
+                               e.preventDefault();
+                               if (index === orderItems.length - 1) {
+                                 addRow();
+                               } else {
+                                 const nextStyleEl = document.getElementById(
+                                   `styleItemId-input-${index + 1}`,
+                                 );
+                                 if (nextStyleEl) nextStyleEl.focus();
+                               }
+                             }
+                           }
+                         }}
+                         disabled={
+                           readOnly ||
+                           [
+                             "Size Template",
+                             "Size Template + Barcode",
+                             "Barcode",
+                           ].includes(row.trackingType)
+                         }
+                         readOnly={
+                           readOnly ||
+                           [
+                             "Size Template",
+                             "Size Template + Barcode",
+                             "Barcode",
+                           ].includes(row.trackingType)
+                         }
+                       />
+                     </td>
+     
+                     <td className="border border-gray-300 grid-editable-cell">
+                       <input
+                         value={row?.price || ""}
+                         className="w-full text-[11px]  text-right pr-1 outline-none bg-transparent"
+                         onChange={(e) =>
+                           handleInputChange(e.target.value, index, "price")
+                         }
+                         onKeyDown={(e) => {
+                           if (e.key === "Enter" || e.key === "Tab") {
+                             if (!row.styleItemId) {
+                               e.preventDefault();
+                               const reqEl = document.getElementById(
+                                 "customerRequirements",
+                               );
+                               if (reqEl) {
+                                 reqEl.focus();
+                                 reqEl.select?.();
+                               }
+                             } else if (e.key === "Enter") {
+                               e.preventDefault();
+                               if (index === orderItems.length - 1) {
+                                 addRow();
+                               } else {
+                                 const nextStyleEl = document.getElementById(
+                                   `styleItemId-input-${index + 1}`,
+                                 );
+                                 if (nextStyleEl) nextStyleEl.focus();
+                               }
+                             }
+                           }
+                         }}
+                         onFocus={(e) => {
+                           e.target.select();
+                           setFocusedField(`${index}`);
+                         }}
+                         onBlur={(e) => {
+                           const val = e.target.value;
+                           handleInputChange(
+                             val ? Number(val).toFixed(2) : "",
+                             index,
+                             "price",
+                           );
+                           setFocusedField(null);
+                         }}
+                         disabled={readOnly}
+                       ></input>
+                     </td>
+     
+                     <td className="border border-gray-300 grid-editable-cell">
+                       <input
+                         id={`remarks-input-${index}`}
+                         type="text"
+                         className="w-full h-full text-[11px]  outline-none px-1 bg-transparent"
+                         value={row.remarks || ""}
+                         onChange={(e) =>
+                           handleInputChange(e.target.value, index, "remarks")
+                         }
+                         onKeyDown={(e) => {
+                           if (e.key === "Enter" || e.key === "Tab") {
+                             e.preventDefault();
+                             if (!row.styleItemId) {
+                               const reqEl = document.getElementById(
+                                 "customerRequirements",
+                               );
+                               if (reqEl) {
+                                 reqEl.focus();
+                                 reqEl.select?.();
+                               }
+                             } else {
+                               if (index === orderItems.length - 1) {
+                                 addRow();
+                               } else {
+                                 const nextStyleEl = document.getElementById(
+                                   `styleItemId-input-${index + 1}`,
+                                 );
+                                 if (nextStyleEl) nextStyleEl.focus();
+                               }
+                             }
+                           }
+                         }}
+                         disabled={readOnly}
+                         placeholder="Remarks"
+                       />
+                     </td>
+                   </tr>
+                 ))}
+               </tbody>
+               <tfoot className="sticky bottom-0 z-10">
+                 <tr className="bg-gray-100 h-7 font-bold text-gray-800 text-[12px]">
+                   <td
+                     className="text-right px-2 border border-gray-300"
+                     colSpan={7}
+                   >
+                     Total
+                   </td>
+                   <td className="text-right px-1 border border-gray-300 text-black">
+                     {orderItems?.reduce(
+                       (sum, row) => sum + (Number(row.orderQty) || 0),
+                       0,
+                     )}
+                   </td>
+                   <td className="text-right px-1 border border-gray-300 text-black">
+                     {orderItems
+                       ?.reduce((sum, row) => sum + (Number(row.price) || 0), 0)
+                       .toFixed(2)}
+                   </td>
+                   <td className="border border-gray-300"></td>
+                 </tr>
+               </tfoot>
+             </table>
+           </div>
+           {contextMenu && (
+             <div
+               style={{
+                 position: "fixed",
+                 top: `${contextMenu.mouseY}px`,
+                 left: `${contextMenu.mouseX}px`,
+                 boxShadow: "0px 0px 5px rgba(0,0,0,0.3)",
+                 padding: "4px",
+                 borderRadius: "4px",
+                 zIndex: 1000,
+               }}
+               className="bg-white border border-gray-200 shadow-xl"
+               onMouseLeave={handleCloseContextMenu}
+             >
+               <div className="flex flex-col min-w-[100px]">
+                 <button
+                   className="text-[12px] text-left px-3 py-1.5 hover:bg-red-50 text-red-600 font-medium rounded transition-colors"
+                   onClick={() => {
+                     if (contextMenu.type === "MODAL") {
+                       deleteModalRow(contextMenu.rowId);
+                     } else {
+                       deleteRow(contextMenu.rowId);
+                     }
+                     handleCloseContextMenu();
+                   }}
+                 >
+                   Delete
+                 </button>
+                 <button
+                   className="text-[12px] text-left px-3 py-1.5 hover:bg-gray-100 text-gray-700 font-medium rounded transition-colors"
+                   onClick={() => {
+                     if (contextMenu.type === "MODAL") {
+                       deleteModalAllRows();
+                     } else {
+                       handleDeleteAllRows();
+                     }
+                     handleCloseContextMenu();
+                   }}
+                 >
+                   Delete All
+                 </button>
+               </div>
+             </div>
+           )}
     </>
   );
 };
