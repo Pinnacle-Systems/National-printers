@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FxSelectWithAdd } from "../../../Inputs";
 import { ItemGroup, Size, StyleItemMaster, StyleMaster } from "..";
-import { findFromList } from "../../../Utils/helper";
+import { findFromList, getCommonParams } from "../../../Utils/helper";
 import { Plus } from "lucide-react";
 // import { ItemSubGroupMaster } from "../../../Basic/components";
 import TaxDetailsFullTemplate from "../TaxDetailsCompleteTemplate";
@@ -11,6 +11,7 @@ import Modal from "../../../UiComponents/Modal";
 import { VIEW } from "../../../icons";
 import { FaEye, FaTrash } from "react-icons/fa";
 import { FiEye } from "react-icons/fi";
+import { useGetSizeTemplateQuery } from "../../../redux/services/SizeTemplateMaster";
 
 import {
   DEFAULT_ROW_COUNT,
@@ -22,8 +23,8 @@ import {
 // import { useGetPackingControlQuery } from "../../../redux/uniformService/PackingControl";
 
 const PackingItems = ({
-  orderItems,
-  setOrderItems,
+  packingOrderItems,
+  setPackingOrderItems,
   readOnly,
   styleItemList,
   sizeList,
@@ -44,40 +45,118 @@ const PackingItems = ({
   currencyCode,
   isCurrencySymbol,
 }) => {
+  const { companyId } = getCommonParams();
+
+  console.log("orderItemsinpackingitems", packingOrderItems);
   const [contextMenu, setContextMenu] = useState(null);
+  const [sizeModalOpen, setSizeModalOpen] = useState(false);
+  const [activeRowIndex, setActiveRowIndex] = useState(null);
   const [currentSelectedIndex, setCurrentSelectedIndex] = useState(null);
   const [activeModalRowIndex, setActiveModalRowIndex] = useState(null);
   const [activeStyleIndex, setActiveStyleIndex] = useState(0);
   const [focusedField, setFocusedField] = useState(null);
-  const [activePackingBreakupInfo, setActivePackingBreakupInfo] = useState(null);
+  const [activePackingBreakupInfo, setActivePackingBreakupInfo] =
+    useState(null);
+  // Tracks which packingSizeBreakup row is selected for the packingItems child table
+  // Shape: { rowIndex: number, sizeIdx: number } | null
+  const [activeSizeKey, setActiveSizeKey] = useState(null);
+  const [panelTop, setPanelTop] = useState(200);
+  const [panelLeft, setPanelLeft] = useState(0);
+  const [packingItemsContextMenu, setPackingItemsContextMenu] = useState(null);
 
+  // Continuously track the Packing Details panel position so the fixed
+  // Packing Items panel stays aligned across scroll / zoom / resize
+  useEffect(() => {
+    if (!activeSizeKey) return;
+    const updatePos = () => {
+      const panel = document.querySelector(
+        `.packing-details-panel[data-row="${activeSizeKey.rowIndex}"]`,
+      );
+      if (panel) {
+        const rect = panel.getBoundingClientRect();
+        setPanelTop(rect.top);
+        setPanelLeft(rect.right);
+      }
+    };
+    updatePos();
+    window.addEventListener("scroll", updatePos, true);
+    window.addEventListener("resize", updatePos);
+    const ro = new ResizeObserver(updatePos);
+    ro.observe(document.documentElement);
+    return () => {
+      window.removeEventListener("scroll", updatePos, true);
+      window.removeEventListener("resize", updatePos);
+      ro.disconnect();
+    };
+  }, [activeSizeKey]);
+  const { data: sizeTemplateList } = useGetSizeTemplateQuery({
+    params: { companyId },
+  });
   // const { data: packingControlData, isLoading, isFetching } = useGetPackingControlQuery({});
-let packingControlData
+  let packingControlData;
   const packingPercentage = packingControlData?.data?.[0]?.packingPercentage;
 
-  console.log(uomList, "uomList")
-
+  console.log(uomList, "uomList");
+  const handleOpenSizeModal = (index) => {
+    setActiveRowIndex(index);
+    setSizeModalOpen(true);
+  };
   useEffect(() => {
-    if (!Array.isArray(orderItems)) return;
-    if (orderItems.length < DEFAULT_ROW_COUNT) {
-      setOrderItems(padRows(orderItems));
+    if (!Array.isArray(packingOrderItems)) return;
+    if (packingOrderItems.length === 0) {
+      setPackingOrderItems([makeEmptyRow()]);
     }
-  }, [orderItems.length, id]);
+  }, [packingOrderItems.length, id]);
 
-  const addMainRow = () => setOrderItems((prev) => [...prev, makeEmptyRow()]);
+  const addMainRow = () =>
+    setPackingOrderItems((prev) => [...prev, makeEmptyRow()]);
 
   const deleteMainRow = (index) => {
-    setOrderItems((prev) => {
+    setPackingOrderItems((prev) => {
       const next = prev.filter((_, i) => i !== index);
-      return next.length < DEFAULT_ROW_COUNT ? padRows(next) : next;
+      return next.length === 0 ? [makeEmptyRow()] : next;
     });
   };
 
-  const handleDeleteAllRows = () =>
-    setOrderItems(Array.from({ length: DEFAULT_ROW_COUNT }, makeEmptyRow));
+  const handleDeleteAllRows = () => setPackingOrderItems([makeEmptyRow()]);
+
+  const handleSizeBreakupChange = (rowIndex, sizeIndex, field, value) => {
+    setPackingOrderItems((prev) => {
+      const rows = [...prev];
+      const row = { ...rows[rowIndex] };
+      const packingSizeBreakup = [...(row.packingSizeBreakup || [])];
+
+      if (field === "packingQty") {
+        const currentSize = packingSizeBreakup[sizeIndex] || {};
+        const currentQty = Number(currentSize.qty) || 0;
+        const currentAlreadyPackingQty =
+          Number(currentSize.alreadyPackingQty) || 0;
+        const enteredPackingQty = Number(value) || 0;
+
+        const maxAllowed =
+          (currentQty * (Number(packingPercentage) || 0)) / 100 +
+          currentQty -
+          currentAlreadyPackingQty;
+
+        if (enteredPackingQty > maxAllowed) {
+          Swal.fire({
+            icon: "warning",
+            title: "Invalid Packing Quantity",
+            text: `Packing quantity cannot exceed ${maxAllowed}`,
+          });
+          return prev;
+        }
+      }
+
+      packingSizeBreakup[sizeIndex] = { ...packingSizeBreakup[sizeIndex], [field]: value };
+      row.packingSizeBreakup = packingSizeBreakup;
+      rows[rowIndex] = row;
+      return rows;
+    });
+  };
 
   const handleInputChange = (value, index, field) => {
-    setOrderItems((prev) => {
+    setPackingOrderItems((prev) => {
       const rows = [...prev];
       let row = { ...rows[index], [field]: value };
       if (field === "styleItemId" && value) {
@@ -90,7 +169,9 @@ let packingControlData
             uomId: found.uomId || "",
             hsnId: hsnId,
             taxPercent: hsnObj ? hsnObj.tax : "",
-            styleBreakup: id ? [...(row.styleBreakup || [])] : [EMPTY_STYLE_ROW()],
+            styleBreakup: id
+              ? [...(row.styleBreakup || [])]
+              : [EMPTY_STYLE_ROW()],
             orderQty: row.orderQty,
           };
         }
@@ -117,16 +198,16 @@ let packingControlData
 
   const recalculateOrderQty = (rowBreakup) => {
     let orderQty = 0;
-    rowBreakup.forEach(style => {
-      style.sizeBreakup.forEach(sz => {
-        orderQty += (Number(sz.qty) || 0);
+    rowBreakup.forEach((style) => {
+      style.packingSizeBreakup.forEach((sz) => {
+        orderQty += Number(sz.qty) || 0;
       });
     });
     return orderQty;
   };
 
   const handleStyleChange = (rowIndex, styleIndex, field, value) => {
-    setOrderItems((prev) => {
+    setPackingOrderItems((prev) => {
       const rows = [...prev];
       const row = { ...rows[rowIndex] };
       const breakup = [...(row.styleBreakup || [])];
@@ -153,7 +234,7 @@ let packingControlData
   };
 
   const addStyleRow = (rowIndex) => {
-    setOrderItems((prev) => {
+    setPackingOrderItems((prev) => {
       const rows = [...prev];
       const row = { ...rows[rowIndex] };
       row.styleBreakup = [...(row.styleBreakup || []), EMPTY_STYLE_ROW()];
@@ -163,7 +244,7 @@ let packingControlData
   };
 
   const deleteStyleRow = (rowIndex, styleIndex) => {
-    setOrderItems((prev) => {
+    setPackingOrderItems((prev) => {
       const rows = [...prev];
       const row = { ...rows[rowIndex] };
       const breakup = row.styleBreakup.filter((_, i) => i !== styleIndex);
@@ -178,16 +259,22 @@ let packingControlData
     });
   };
 
-  const handleNestedSizeChange = (rowIndex, styleIndex, sizeIndex, field, value) => {
-    setOrderItems((prev) => {
+  const handleNestedSizeChange = (
+    rowIndex,
+    styleIndex,
+    sizeIndex,
+    field,
+    value,
+  ) => {
+    setPackingOrderItems((prev) => {
       const rows = [...prev];
       const row = { ...rows[rowIndex] };
       const styleBreakup = [...(row.styleBreakup || [])];
       const styleObj = { ...styleBreakup[styleIndex] };
-      const sizeBreakup = [...(styleObj.sizeBreakup || [])];
+      const packingSizeBreakup = [...(styleObj.packingSizeBreakup || [])];
 
       if (field === "sizeId" && value) {
-        const isDuplicate = sizeBreakup.some(
+        const isDuplicate = packingSizeBreakup.some(
           (item, idx) => idx !== sizeIndex && item.sizeId === value,
         );
         if (isDuplicate) {
@@ -201,12 +288,16 @@ let packingControlData
       }
 
       if (field === "packingQty") {
-        const currentSize = sizeBreakup[sizeIndex] || {};
+        const currentSize = packingSizeBreakup[sizeIndex] || {};
         const currentQty = Number(currentSize.qty) || 0;
-        const currentAlreadyPackingQty = Number(currentSize.alreadyPackingQty) || 0;
+        const currentAlreadyPackingQty =
+          Number(currentSize.alreadyPackingQty) || 0;
         const enteredPackingQty = Number(value) || 0;
 
-        const maxAllowed = (currentQty * (Number(packingPercentage) || 0)) / 100 + currentQty - currentAlreadyPackingQty;
+        const maxAllowed =
+          (currentQty * (Number(packingPercentage) || 0)) / 100 +
+          currentQty -
+          currentAlreadyPackingQty;
 
         if (enteredPackingQty > maxAllowed) {
           Swal.fire({
@@ -223,23 +314,20 @@ let packingControlData
         let currentTotal = 0;
 
         styleBreakup.forEach((st, stIdx) => {
-          st.sizeBreakup.forEach((sz, szIdx) => {
+          st.packingSizeBreakup.forEach((sz, szIdx) => {
             if (stIdx === styleIndex && szIdx === sizeIndex) {
               currentTotal += newValue;
             } else {
-              currentTotal += (Number(sz.qty) || 0);
+              currentTotal += Number(sz.qty) || 0;
             }
           });
         });
-
-
       }
 
-      sizeBreakup[sizeIndex] = { ...sizeBreakup[sizeIndex], [field]: value };
-      styleObj.sizeBreakup = sizeBreakup;
+      packingSizeBreakup[sizeIndex] = { ...packingSizeBreakup[sizeIndex], [field]: value };
+      styleObj.packingSizeBreakup = packingSizeBreakup;
       styleBreakup[styleIndex] = styleObj;
       row.styleBreakup = styleBreakup;
-
 
       rows[rowIndex] = row;
       return rows;
@@ -247,13 +335,16 @@ let packingControlData
   };
 
   const addNestedSizeRow = (rowIndex, styleIndex) => {
-    setOrderItems((prev) => {
+    setPackingOrderItems((prev) => {
       const rows = [...prev];
       const row = { ...rows[rowIndex] };
       const styleBreakup = [...(row.styleBreakup || [])];
       const styleObj = { ...styleBreakup[styleIndex] };
 
-      styleObj.sizeBreakup = [...(styleObj.sizeBreakup || []), EMPTY_SIZE_ROW()];
+      styleObj.packingSizeBreakup = [
+        ...(styleObj.packingSizeBreakup || []),
+        EMPTY_SIZE_ROW(),
+      ];
       styleBreakup[styleIndex] = styleObj;
       row.styleBreakup = styleBreakup;
       rows[rowIndex] = row;
@@ -262,14 +353,17 @@ let packingControlData
   };
 
   const deleteNestedSizeRow = (rowIndex, styleIndex, sizeIndex) => {
-    setOrderItems((prev) => {
+    setPackingOrderItems((prev) => {
       const rows = [...prev];
       const row = { ...rows[rowIndex] };
       const styleBreakup = [...(row.styleBreakup || [])];
       const styleObj = { ...styleBreakup[styleIndex] };
 
-      const sizeBreakup = styleObj.sizeBreakup.filter((_, i) => i !== sizeIndex);
-      styleObj.sizeBreakup = sizeBreakup.length > 0 ? sizeBreakup : [EMPTY_SIZE_ROW()];
+      const packingSizeBreakup = styleObj.packingSizeBreakup.filter(
+        (_, i) => i !== sizeIndex,
+      );
+      styleObj.packingSizeBreakup =
+        packingSizeBreakup.length > 0 ? packingSizeBreakup : [EMPTY_SIZE_ROW()];
       styleBreakup[styleIndex] = styleObj;
       row.styleBreakup = styleBreakup;
 
@@ -281,28 +375,41 @@ let packingControlData
     });
   };
 
-  const handlePackingBreakupChange = (rowIndex, styleIndex, sizeIndex, breakupIndex, field, value) => {
-    setOrderItems((prev) => {
+  const handlePackingBreakupChange = (
+    rowIndex,
+    styleIndex,
+    sizeIndex,
+    breakupIndex,
+    field,
+    value,
+  ) => {
+    setPackingOrderItems((prev) => {
       const rows = [...prev];
       const row = { ...rows[rowIndex] };
       const styleBreakup = [...(row.styleBreakup || [])];
       const styleObj = { ...styleBreakup[styleIndex] };
-      const sizeBreakup = [...(styleObj.sizeBreakup || [])];
-      const sizeObj = { ...sizeBreakup[sizeIndex] };
+      const packingSizeBreakup = [...(styleObj.packingSizeBreakup || [])];
+      const sizeObj = { ...packingSizeBreakup[sizeIndex] };
       const packingBreakup = [...(sizeObj.packingBreakup || [])];
 
-      packingBreakup[breakupIndex] = { ...packingBreakup[breakupIndex], [field]: value };
+      packingBreakup[breakupIndex] = {
+        ...packingBreakup[breakupIndex],
+        [field]: value,
+      };
 
       let totalPackingQty = 0;
-      packingBreakup.forEach(item => {
+      packingBreakup.forEach((item) => {
         const bundle = Number(item.noOfunits) || 0;
         const qty = Number(item.qty) || 0;
-        totalPackingQty += (bundle * qty);
+        totalPackingQty += bundle * qty;
       });
 
       const currentQty = Number(sizeObj.qty) || 0;
       const currentAlreadyPackingQty = Number(sizeObj.alreadyPackingQty) || 0;
-      const maxAllowed = (currentQty * (Number(packingPercentage) || 0)) / 100 + currentQty - currentAlreadyPackingQty;
+      const maxAllowed =
+        (currentQty * (Number(packingPercentage) || 0)) / 100 +
+        currentQty -
+        currentAlreadyPackingQty;
 
       if (totalPackingQty > maxAllowed) {
         Swal.fire({
@@ -315,8 +422,8 @@ let packingControlData
 
       sizeObj.packingBreakup = packingBreakup;
       sizeObj.packingQty = totalPackingQty;
-      sizeBreakup[sizeIndex] = sizeObj;
-      styleObj.sizeBreakup = sizeBreakup;
+      packingSizeBreakup[sizeIndex] = sizeObj;
+      styleObj.packingSizeBreakup = packingSizeBreakup;
       styleBreakup[styleIndex] = styleObj;
       row.styleBreakup = styleBreakup;
       rows[rowIndex] = row;
@@ -325,18 +432,21 @@ let packingControlData
   };
 
   const addPackingBreakupRow = (rowIndex, styleIndex, sizeIndex) => {
-    setOrderItems((prev) => {
+    setPackingOrderItems((prev) => {
       const rows = [...prev];
       const row = { ...rows[rowIndex] };
       const styleBreakup = [...(row.styleBreakup || [])];
       const styleObj = { ...styleBreakup[styleIndex] };
-      const sizeBreakup = [...(styleObj.sizeBreakup || [])];
-      const sizeObj = { ...sizeBreakup[sizeIndex] };
+      const packingSizeBreakup = [...(styleObj.packingSizeBreakup || [])];
+      const sizeObj = { ...packingSizeBreakup[sizeIndex] };
 
-      sizeObj.packingBreakup = [...(sizeObj.packingBreakup || []), { bundle: "", pcs: "" }];
+      sizeObj.packingBreakup = [
+        ...(sizeObj.packingBreakup || []),
+        { bundle: "", pcs: "" },
+      ];
 
-      sizeBreakup[sizeIndex] = sizeObj;
-      styleObj.sizeBreakup = sizeBreakup;
+      packingSizeBreakup[sizeIndex] = sizeObj;
+      styleObj.packingSizeBreakup = packingSizeBreakup;
       styleBreakup[styleIndex] = styleObj;
       row.styleBreakup = styleBreakup;
       rows[rowIndex] = row;
@@ -344,29 +454,34 @@ let packingControlData
     });
   };
 
-  const deletePackingBreakupRow = (rowIndex, styleIndex, sizeIndex, breakupIndex) => {
-    setOrderItems((prev) => {
+  const deletePackingBreakupRow = (
+    rowIndex,
+    styleIndex,
+    sizeIndex,
+    breakupIndex,
+  ) => {
+    setPackingOrderItems((prev) => {
       const rows = [...prev];
       const row = { ...rows[rowIndex] };
       const styleBreakup = [...(row.styleBreakup || [])];
       const styleObj = { ...styleBreakup[styleIndex] };
-      const sizeBreakup = [...(styleObj.sizeBreakup || [])];
-      const sizeObj = { ...sizeBreakup[sizeIndex] };
+      const packingSizeBreakup = [...(styleObj.packingSizeBreakup || [])];
+      const sizeObj = { ...packingSizeBreakup[sizeIndex] };
 
       const packingBreakup = [...(sizeObj.packingBreakup || [])];
       packingBreakup.splice(breakupIndex, 1);
 
       let totalPackingQty = 0;
-      packingBreakup.forEach(item => {
+      packingBreakup.forEach((item) => {
         const bundle = Number(item.bundle) || 0;
         const pcs = Number(item.pcs) || 0;
-        totalPackingQty += (bundle * pcs);
+        totalPackingQty += bundle * pcs;
       });
 
       sizeObj.packingBreakup = packingBreakup;
       sizeObj.packingQty = totalPackingQty;
-      sizeBreakup[sizeIndex] = sizeObj;
-      styleObj.sizeBreakup = sizeBreakup;
+      packingSizeBreakup[sizeIndex] = sizeObj;
+      styleObj.packingSizeBreakup = packingSizeBreakup;
       styleBreakup[styleIndex] = styleObj;
       row.styleBreakup = styleBreakup;
       rows[rowIndex] = row;
@@ -379,260 +494,123 @@ let packingControlData
     setContextMenu({ mouseX: e.clientX, mouseY: e.clientY, rowId: rowIndex });
   };
 
+  // ── packingItems handlers ──────────────────────────────────────────────────
+  const EMPTY_PACKING_ITEM = () => ({
+    packingUomId: "",
+    noOfUnits: "",
+    qtyPerUnit: "",
+  });
+
+  const addPackingItem = (rowIndex, sizeIdx) => {
+    setPackingOrderItems((prev) => {
+      const rows = [...prev];
+      const row = { ...rows[rowIndex] };
+      const packingSizeBreakup = [...(row.packingSizeBreakup || [])];
+      const sizeObj = { ...packingSizeBreakup[sizeIdx] };
+      sizeObj.packingItems = [
+        ...(sizeObj.packingItems || []),
+        EMPTY_PACKING_ITEM(),
+      ];
+      packingSizeBreakup[sizeIdx] = sizeObj;
+      row.packingSizeBreakup = packingSizeBreakup;
+      rows[rowIndex] = row;
+      return rows;
+    });
+  };
+
+  const updatePackingItem = (rowIndex, sizeIdx, piIdx, field, value) => {
+    setPackingOrderItems((prev) => {
+      const rows = [...prev];
+      const row = { ...rows[rowIndex] };
+      const packingSizeBreakup = [...(row.packingSizeBreakup || [])];
+      const sizeObj = { ...packingSizeBreakup[sizeIdx] };
+      let packingItems = [...(sizeObj.packingItems || [])];
+
+      if (piIdx >= packingItems.length) {
+        const padding = Array.from(
+          { length: piIdx - packingItems.length + 1 },
+          () => EMPTY_PACKING_ITEM(),
+        );
+        packingItems = [...packingItems, ...padding];
+      }
+
+      packingItems[piIdx] = { ...packingItems[piIdx], [field]: value };
+
+      let totalPackingQty = 0;
+      packingItems.forEach((item) => {
+        const units = Number(item.noOfUnits) || 0;
+        const qty = Number(item.qtyPerUnit) || 0;
+        totalPackingQty += units * qty;
+      });
+
+      const currentQty = Number(sizeObj.qty) || 0;
+      const currentAlreadyPackingQty = Number(sizeObj.alreadyPackingQty) || 0;
+      const maxAllowed =
+        (currentQty * (Number(packingPercentage) || 0)) / 100 +
+        currentQty -
+        currentAlreadyPackingQty;
+
+      if (totalPackingQty > maxAllowed) {
+        Swal.fire({
+          icon: "warning",
+          title: "Invalid Packing Quantity",
+          text: `Total packing quantity cannot exceed ${maxAllowed}`,
+        });
+        return prev;
+      }
+
+      sizeObj.packingItems = packingItems;
+      sizeObj.packingQty = totalPackingQty;
+      packingSizeBreakup[sizeIdx] = sizeObj;
+      row.packingSizeBreakup = packingSizeBreakup;
+      rows[rowIndex] = row;
+      return rows;
+    });
+  };
+
+  const deletePackingItem = (rowIndex, sizeIdx, piIdx) => {
+    setPackingOrderItems((prev) => {
+      const rows = [...prev];
+      const row = { ...rows[rowIndex] };
+      const packingSizeBreakup = [...(row.packingSizeBreakup || [])];
+      const sizeObj = { ...packingSizeBreakup[sizeIdx] };
+      const packingItems = (sizeObj.packingItems || []).filter(
+        (_, i) => i !== piIdx,
+      );
+
+      let totalPackingQty = 0;
+      packingItems.forEach((item) => {
+        const units = Number(item.noOfUnits) || 0;
+        const qty = Number(item.qtyPerUnit) || 0;
+        totalPackingQty += units * qty;
+      });
+
+      sizeObj.packingItems = packingItems.length > 0 ? packingItems : [];
+      sizeObj.packingQty = totalPackingQty;
+      packingSizeBreakup[sizeIdx] = sizeObj;
+      row.packingSizeBreakup = packingSizeBreakup;
+      rows[rowIndex] = row;
+      return rows;
+    });
+  };
+
+  const deleteAllPackingItems = (rowIndex, sizeIdx) => {
+    setPackingOrderItems((prev) => {
+      const rows = [...prev];
+      const row = { ...rows[rowIndex] };
+      const packingSizeBreakup = [...(row.packingSizeBreakup || [])];
+      const sizeObj = { ...packingSizeBreakup[sizeIdx] };
+      sizeObj.packingItems = [];
+      sizeObj.packingQty = 0;
+      packingSizeBreakup[sizeIdx] = sizeObj;
+      row.packingSizeBreakup = packingSizeBreakup;
+      rows[rowIndex] = row;
+      return rows;
+    });
+  };
+
   return (
     <>
-      {/* <Modal
-        isOpen={Number.isInteger(currentSelectedIndex)}
-        onClose={() => {
-          setCurrentSelectedIndex("");
-        }}
-      >
-        <TaxDetailsFullTemplate
-          readOnly={readOnly || orderType === "AGAINSTPI"}
-          taxTypeId={taxTemplateId}
-          currentIndex={currentSelectedIndex}
-          setCurrentSelectedIndex={setCurrentSelectedIndex}
-          poItems={enrichedItems?.items || orderItems}
-          handleInputChange={handleInputChange}
-          id={id}
-          isNewVersion={false}
-          isSupplierOutside={isSupplierOutside}
-          currencyCode={currencyCode || isCurrencySymbol}
-        />
-      </Modal> */}
-
-      {/* Style & Size Breakup Modal */}
-      <Modal
-        isOpen={Number.isInteger(activeModalRowIndex)}
-        onClose={() => {
-          setActiveModalRowIndex(null);
-          setActiveStyleIndex(0);
-        }}
-        widthClass="w-[85vw]"
-      >
-        <div className="p-4 bg-white rounded-lg h-[75vh] flex flex-col">
-          <h2 className="text-lg font-bold mb-4">Style & Size Breakup</h2>
-          {activeModalRowIndex !== null && (
-            <div className="flex-1 flex gap-4 overflow-hidden border border-gray-200 rounded">
-              {/* LEFT PANE: Styles */}
-              <div className="w-1/3 bg-gray-50 flex flex-col border-r border-gray-200">
-                <div className="p-3 bg-gray-200 font-semibold text-gray-700 text-sm">
-                  Styles
-                </div>
-                <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                  {(orderItems[activeModalRowIndex]?.styleBreakup || []).map((styleRow, styleIdx) => (
-                    <div
-                      key={styleRow.rowId || styleIdx}
-                      onClick={() => setActiveStyleIndex(styleIdx)}
-                      className={`p-3 rounded border cursor-pointer transition-colors flex flex-col gap-2 ${activeStyleIndex === styleIdx
-                        ? "bg-indigo-50 border-indigo-300 shadow-sm"
-                        : "bg-white border-gray-200 hover:bg-gray-100"
-                        }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-gray-600 text-xs">Style {styleIdx + 1}</span>
-                        {!readOnly && orderType !== "AGAINSTPI" && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteStyleRow(activeModalRowIndex, styleIdx);
-                              if (activeStyleIndex === styleIdx) {
-                                setActiveStyleIndex(Math.max(0, styleIdx - 1));
-                              } else if (activeStyleIndex > styleIdx) {
-                                setActiveStyleIndex(activeStyleIndex - 1);
-                              }
-                            }}
-                            disabled={true}
-
-                            className="text-red-500 hover:bg-red-100 p-1 rounded"
-                          >
-                            <FaTrash size={10} />
-                          </button>
-                        )}
-                      </div>
-                      <div className="w-full" onClick={(e) => e.stopPropagation()}>
-                        <FxSelectWithAdd
-                          value={styleRow.styleId}
-                          onChange={(val) => handleStyleChange(activeModalRowIndex, styleIdx, "styleId", val)}
-                          options={(styleList?.data || [])
-                            .filter((i) => (id ? true : i.active))
-                            .map((i) => ({ label: i.name, value: i.id }))}
-                          readOnly={readOnly || childRecord?.current > 0 || orderType === "AGAINSTPI"}
-                          placeholder="Select Style"
-                          addNew={true}
-                          childComponent={StyleMaster}
-                          addNewModalWidth="w-[50%] h-[57%]"
-                          disabled={true}
-
-                        />
-                      </div>
-                    </div>
-                  ))}
-
-                  {!readOnly && orderType !== "AGAINSTPI" && (
-                    <button
-                      onClick={() => {
-                        addStyleRow(activeModalRowIndex);
-                        const newIndex = (orderItems[activeModalRowIndex]?.styleBreakup || []).length;
-                        setActiveStyleIndex(newIndex);
-                      }}
-                      disabled={true}
-
-                      className="w-full mt-2 bg-indigo-600 text-white px-3 py-1.5 rounded shadow-sm hover:bg-indigo-700 text-sm flex items-center justify-center gap-1"
-                    >
-                      <Plus size={14} /> Add Style
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* RIGHT PANE: Sizes */}
-              <div className="w-2/3 bg-white flex flex-col">
-                <div className="p-3 bg-gray-200 font-semibold text-gray-700 text-sm">
-                  Sizes for Style {activeStyleIndex + 1}
-                </div>
-                <div className="flex-1 overflow-y-auto p-4">
-                  {orderItems[activeModalRowIndex]?.styleBreakup?.[activeStyleIndex] ? (
-                    <table className="w-full text-left border-collapse border border-gray-300 bg-white text-sm">
-                      <thead className="bg-gray-100">
-                        <tr>
-                          <th className="border border-gray-300 px-2 py-1.5">Size</th>
-                          <th className="border border-gray-300 px-2 py-1.5 w-24">Order Qty</th>
-                          <th className="border border-gray-300 px-2 py-1.5 w-24">Already Packing Qty</th>
-
-                          <th className="border border-gray-300 px-2 py-1.5 w-24">Packing Qty</th>
-                          <th className="border border-gray-300 px-2 py-1.5 w-24">Gross Weight</th>
-                          <th className="border border-gray-300 px-2 py-1.5 w-24">Net Weight</th>
-                          <th className="border border-gray-300 px-2 py-1.5 w-24">Dimensions</th>
-
-                          <th className="border border-gray-300 px-2 py-1.5 w-16 text-center">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(orderItems[activeModalRowIndex].styleBreakup[activeStyleIndex].sizeBreakup || []).map((sizeRow, sizeIdx) => (
-                          <tr key={sizeRow.rowId || sizeIdx} className="hover:bg-gray-50">
-                            <td className="border border-gray-300 px-2 py-1">
-                              <FxSelectWithAdd
-                                value={sizeRow.sizeId}
-                                onChange={(val) => handleNestedSizeChange(activeModalRowIndex, activeStyleIndex, sizeIdx, "sizeId", val)}
-                                options={(sizeList?.data || [])
-                                  .filter((i) => (id ? true : i.active))
-                                  .map((i) => ({ label: i.name, value: i.id }))}
-                                readOnly={readOnly || childRecord?.current > 0 || orderType === "AGAINSTPI"}
-                                disabled={true}
-                                placeholder="Select Size"
-                              />
-                            </td>
-                            <td className="border border-gray-300 px-2 py-1">
-                              <input
-                                type="number"
-                                min="0"
-                                className="w-full text-right outline-none bg-transparent"
-                                value={sizeRow.qty}
-                                onChange={(e) => handleNestedSizeChange(activeModalRowIndex, activeStyleIndex, sizeIdx, "qty", e.target.value)}
-                                disabled={true}
-
-                              />
-                            </td>
-                            <td className="border border-gray-300 px-2 py-1">
-                              <input
-                                type="number"
-                                min="0"
-                                className="w-full text-right outline-none bg-transparent"
-                                value={sizeRow.alreadyPackingQty}
-                                onChange={(e) => handleNestedSizeChange(activeModalRowIndex, activeStyleIndex, sizeIdx, "alreadyPackingQty", e.target.value)}
-                                disabled={true}
-                              />
-                            </td>
-                            <td className="border border-gray-300 px-2 py-1">
-                              <div className="flex items-center gap-1">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  className="w-full text-right outline-none bg-transparent cursor-not-allowed"
-                                  value={sizeRow.packingQty}
-                                  readOnly
-                                  disabled={readOnly || childRecord?.current > 0 || orderType === "AGAINSTPI"}
-                                />
-                                {!readOnly && !childRecord?.current > 0 && orderType !== "AGAINSTPI" && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActivePackingBreakupInfo({ rowIndex: activeModalRowIndex, styleIndex: activeStyleIndex, sizeIndex: sizeIdx });
-                                      if (!(sizeRow.packingBreakup?.length > 0)) {
-                                        addPackingBreakupRow(activeModalRowIndex, activeStyleIndex, sizeIdx);
-                                      }
-                                    }}
-                                    className="text-indigo-600 hover:text-indigo-800"
-                                    title="Packing Breakup"
-                                  >
-                                    <FaEye size={14} />
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                            <td className="border border-gray-300 px-2 py-1">
-                              <input
-                                type="number"
-                                min="0"
-                                className="w-full text-right outline-none bg-transparent"
-                                value={sizeRow.grossWeight}
-                                onChange={(e) => handleNestedSizeChange(activeModalRowIndex, activeStyleIndex, sizeIdx, "grossWeight", e.target.value)}
-                                disabled={readOnly}
-                              />
-                            </td>
-                            <td className="border border-gray-300 px-2 py-1">
-                              <input
-                                type="number"
-                                min="0"
-                                className="w-full text-right outline-none bg-transparent"
-                                value={sizeRow.netWeight}
-                                onChange={(e) => handleNestedSizeChange(activeModalRowIndex, activeStyleIndex, sizeIdx, "netWeight", e.target.value)}
-                                disabled={readOnly}
-                              />
-                            </td>
-                            <td className="border border-gray-300 px-2 py-1">
-                              <input
-                                type="text"
-                                className="w-full text-right outline-none bg-transparent"
-                                value={sizeRow.dimensions}
-                                onChange={(e) => handleNestedSizeChange(activeModalRowIndex, activeStyleIndex, sizeIdx, "dimensions", e.target.value)}
-                                disabled={readOnly}
-                              />
-                            </td>
-                            <td className="border border-gray-300 px-2 py-1 text-center">
-                              {!readOnly && !childRecord?.current > 0 && orderType !== "AGAINSTPI" && (
-                                <div className="flex items-center justify-center gap-1">
-                                  <button onClick={() => addNestedSizeRow(activeModalRowIndex, activeStyleIndex)} className="p-1 bg-blue-100 rounded text-blue-700 hover:bg-blue-200"
-                                    disabled={true}
-
-                                  >
-                                    <Plus size={12} />
-                                  </button>
-                                  <button onClick={() => deleteNestedSizeRow(activeModalRowIndex, activeStyleIndex, sizeIdx)} className="p-1 bg-red-100 rounded text-red-700 hover:bg-red-200" disabled={true}
-
-                                  >
-                                    <FaTrash size={10} />
-                                  </button>
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <div className="h-full flex items-center justify-center text-gray-400">
-                      Select or add a style to view sizes
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </Modal>
-
       {/* Packing Breakup Modal */}
       <Modal
         isOpen={activePackingBreakupInfo !== null}
@@ -640,34 +618,73 @@ let packingControlData
         widthClass="w-[50vw]"
       >
         <div className="p-4 bg-white rounded-lg max-h-[75vh] flex flex-col">
-          <h2 className="text-lg font-bold mb-4">Packing Breakup  {'(Order Qty:- '}{orderItems?.[activePackingBreakupInfo?.rowIndex]?.styleBreakup?.[activePackingBreakupInfo?.styleIndex]?.sizeBreakup?.[activePackingBreakupInfo?.sizeIndex]?.qty}{' )'} </h2>
+          <h2 className="text-lg font-bold mb-4">
+            Packing Breakup {"(Order Qty:- "}
+            {
+              packingOrderItems?.[activePackingBreakupInfo?.rowIndex]
+                ?.styleBreakup?.[activePackingBreakupInfo?.styleIndex]
+                ?.packingSizeBreakup?.[activePackingBreakupInfo?.sizeIndex]?.qty
+            }
+            {" )"}{" "}
+          </h2>
           {activePackingBreakupInfo !== null && (
             <div className="flex-1 overflow-auto border border-gray-200 rounded">
               <table className="w-full text-left border-collapse border border-gray-300 bg-white text-sm">
                 <thead className="bg-gray-100 sticky top-0">
                   <tr>
-                    <th className="border border-gray-300 px-2 py-1.5 w-16 text-center">S.No</th>
-                    <th className="border border-gray-300 px-2 py-1.5 text-center">Unit</th>
+                    <th className="border border-gray-300 px-2 py-1.5 w-16 text-center">
+                      S.No
+                    </th>
+                    <th className="border border-gray-300 px-2 py-1.5 text-center">
+                      Unit
+                    </th>
 
-                    <th className="border border-gray-300 px-2 py-1.5 text-center">No. of Units</th>
-                    <th className="border border-gray-300 px-2 py-1.5 text-center">Qty per Unit</th>
-                    <th className="border border-gray-300 px-2 py-1.5 text-center">Total</th>
-                    <th className="border border-gray-300 px-2 py-1.5 w-16 text-center">Actions</th>
+                    <th className="border border-gray-300 px-2 py-1.5 text-center">
+                      No. of Units
+                    </th>
+                    <th className="border border-gray-300 px-2 py-1.5 text-center">
+                      Qty per Unit
+                    </th>
+                    <th className="border border-gray-300 px-2 py-1.5 text-center">
+                      Total
+                    </th>
+                    <th className="border border-gray-300 px-2 py-1.5 w-16 text-center">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(orderItems[activePackingBreakupInfo.rowIndex]?.styleBreakup?.[activePackingBreakupInfo.styleIndex]?.sizeBreakup?.[activePackingBreakupInfo.sizeIndex]?.packingBreakup || []).map((breakupRow, breakupIdx) => (
+                  {(
+                    packingOrderItems[activePackingBreakupInfo.rowIndex]
+                      ?.styleBreakup?.[activePackingBreakupInfo.styleIndex]
+                      ?.packingSizeBreakup?.[activePackingBreakupInfo.sizeIndex]
+                      ?.packingBreakup || []
+                  ).map((breakupRow, breakupIdx) => (
                     <tr key={breakupIdx} className="hover:bg-gray-50">
-                      <td className="border border-gray-300 px-2 py-1 text-center">{breakupIdx + 1}</td>
+                      <td className="border border-gray-300 px-2 py-1 text-center">
+                        {breakupIdx + 1}
+                      </td>
                       <td className="border border-gray-300 px-2 py-1">
                         <FxSelectWithAdd
                           value={breakupRow.packingUomId}
-                          onChange={(value) => handlePackingBreakupChange(activePackingBreakupInfo.rowIndex, activePackingBreakupInfo.styleIndex, activePackingBreakupInfo.sizeIndex, breakupIdx, "packingUomId", value)}
+                          onChange={(value) =>
+                            handlePackingBreakupChange(
+                              activePackingBreakupInfo.rowIndex,
+                              activePackingBreakupInfo.styleIndex,
+                              activePackingBreakupInfo.sizeIndex,
+                              breakupIdx,
+                              "packingUomId",
+                              value,
+                            )
+                          }
                           options={(uomList?.data || [])
                             .filter((i) => (id ? true : i.active))
                             .map((i) => ({ label: i.name, value: i.id }))}
-                          readOnly={readOnly || childRecord?.current > 0 || orderType === "AGAINSTPI"}
-
+                          readOnly={
+                            readOnly ||
+                            childRecord?.current > 0 ||
+                            orderType === "AGAINSTPI"
+                          }
                           placeholder="Select Uom"
                         />
                       </td>
@@ -677,7 +694,16 @@ let packingControlData
                           min="0"
                           className="w-full text-right outline-none bg-transparent"
                           value={breakupRow.noOfunits}
-                          onChange={(e) => handlePackingBreakupChange(activePackingBreakupInfo.rowIndex, activePackingBreakupInfo.styleIndex, activePackingBreakupInfo.sizeIndex, breakupIdx, "noOfunits", e.target.value)}
+                          onChange={(e) =>
+                            handlePackingBreakupChange(
+                              activePackingBreakupInfo.rowIndex,
+                              activePackingBreakupInfo.styleIndex,
+                              activePackingBreakupInfo.sizeIndex,
+                              breakupIdx,
+                              "noOfunits",
+                              e.target.value,
+                            )
+                          }
                         />
                       </td>
 
@@ -687,23 +713,46 @@ let packingControlData
                           min="0"
                           className="w-full text-right outline-none bg-transparent"
                           value={breakupRow.qty}
-                          onChange={(e) => handlePackingBreakupChange(activePackingBreakupInfo.rowIndex, activePackingBreakupInfo.styleIndex, activePackingBreakupInfo.sizeIndex, breakupIdx, "qty", e.target.value)}
+                          onChange={(e) =>
+                            handlePackingBreakupChange(
+                              activePackingBreakupInfo.rowIndex,
+                              activePackingBreakupInfo.styleIndex,
+                              activePackingBreakupInfo.sizeIndex,
+                              breakupIdx,
+                              "qty",
+                              e.target.value,
+                            )
+                          }
                         />
                       </td>
                       <td className="border border-gray-300 px-2 py-1 text-right bg-gray-50 font-semibold">
-                        {(Number(breakupRow.noOfunits) || 0) * (Number(breakupRow.qty) || 0)}
+                        {(Number(breakupRow.noOfunits) || 0) *
+                          (Number(breakupRow.qty) || 0)}
                       </td>
                       <td className="border border-gray-300 px-2 py-1 text-center">
                         <div className="flex items-center justify-center gap-1">
                           <button
-                            onClick={() => addPackingBreakupRow(activePackingBreakupInfo.rowIndex, activePackingBreakupInfo.styleIndex, activePackingBreakupInfo.sizeIndex)}
+                            onClick={() =>
+                              addPackingBreakupRow(
+                                activePackingBreakupInfo.rowIndex,
+                                activePackingBreakupInfo.styleIndex,
+                                activePackingBreakupInfo.sizeIndex,
+                              )
+                            }
                             className="p-1 bg-blue-100 rounded text-blue-700 hover:bg-blue-200"
                           >
                             <Plus size={12} />
                           </button>
                           {breakupIdx > 0 && (
                             <button
-                              onClick={() => deletePackingBreakupRow(activePackingBreakupInfo.rowIndex, activePackingBreakupInfo.styleIndex, activePackingBreakupInfo.sizeIndex, breakupIdx)}
+                              onClick={() =>
+                                deletePackingBreakupRow(
+                                  activePackingBreakupInfo.rowIndex,
+                                  activePackingBreakupInfo.styleIndex,
+                                  activePackingBreakupInfo.sizeIndex,
+                                  breakupIdx,
+                                )
+                              }
                               className="p-1 bg-red-100 rounded text-red-700 hover:bg-red-200"
                             >
                               <FaTrash size={10} />
@@ -720,412 +769,806 @@ let packingControlData
         </div>
       </Modal>
 
-       <div className="w-full h-full overflow-y-auto mb-2 bg-white border border-slate-200 rounded-md">
-             <table className="w-[90vw] border-collapse table-fixed">
-               <thead className="bg-gray-200 text-gray-800 sticky top-0 z-10 text-[12px]">
-                 <tr>
-                   <th className="w-6 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
-                     S.No
-                   </th>
-                   <th className="w-44 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
-                     Description of Goods
-                   </th>
-                   <th className="w-28 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
-                     Item Group
-                   </th>
-                   <th className="w-20 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
-                     HSN
-                   </th>
-                   <th className="w-28 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
-                     Type
-                   </th>
-                   <th className="w-16 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
-                     Size / Barcode
-                   </th>
-                   <th className="w-20 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
-                     UOM
-                   </th>
-                   <th className="w-16 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
-                     Qty
-                   </th>
-                   <th className="w-16 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
-                     Price
-                   </th>
-                   <th className="w-40 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
-                     Remarks
-                   </th>
-                 </tr>
-               </thead>
-               <tbody>
-                 {orderItems?.map((row, index) => (
-                   <tr
-                     key={index}
-                     className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50"} h-7 border border-gray-200 cursor-pointer hover:bg-indigo-50`}
-                     onContextMenu={(e) =>
-                       !readOnly && handleRightClick(e, index, "")
-                     }
-                   >
-                     <td className="text-[11px] text-center border border-gray-300">
-                       {index + 1}
-                     </td>
-     
-                     <td className="border border-gray-300 grid-editable-cell">
-                       <FxSelectWithAdd
-                         inputId={`styleItemId-input-${index}`}
-                         value={row.styleItemId}
-                         onChange={(val) => {
-                           handleInputChange(val, index, "styleItemId");
-                           // Automatically focus tracking type after style selection
-                           // Use a slightly longer timeout to avoid Enter bubbling
-                           setTimeout(() => {
-                             const nextEl = document.getElementById(
-                               `trackingType-input-${index}`,
-                             );
-                             if (nextEl) {
-                               nextEl.focus();
-                             }
-                           }, 100);
-                         }}
-                         onKeyDown={(e) => {
-                           if (e.key === "Enter" || e.key === "Tab") {
-                             if (!row.styleItemId) {
-                               e.preventDefault();
-                               const reqEl = document.getElementById(
-                                 "customerRequirements",
-                               );
-                               if (reqEl) {
-                                 reqEl.focus();
-                                 reqEl.select?.();
-                               }
-                             } else {
-                               // If value exists, move to Tracking Type
-                               e.preventDefault();
-                               const nextEl = document.getElementById(
-                                 `trackingType-input-${index}`,
-                               );
-                               if (nextEl) nextEl.focus();
-                             }
-                           }
-                         }}
-                         options={(styleItemList?.data || [])
-                           .filter((item) => (id ? true : item.active))
-                           .map((item) => ({ label: item.name, value: item.id }))}
-                         readOnly={readOnly}
-                         placeholder=""
-                         addNew={true}
-                         childComponent={StyleItemMaster}
-                         addNewModalWidth="w-[50%] h-[57%]"
-                       />
-                     </td>
-     
-                     <td className="border border-gray-300">
-                       <span className="w-full text-[11px] text-left pl-1 outline-none bg-transparent">
-                         {findFromList(
-                           row.itemGroupId,
-                           itemGroupList?.data,
-                           "name",
-                         ) || ""}
-                       </span>
-                     </td>
-                     <td className="border border-gray-300">
-                       <span className="w-full block text-[11px] text-right pr-1 outline-none bg-transparent">
-                         {findFromList(row.hsnId, hsnList?.data, "name") || ""}
-                       </span>
-                     </td>
-                     <td className="border border-gray-300 grid-editable-cell">
-                       <select
-                         id={`trackingType-input-${index}`}
-                         value={row.trackingType || "None"}
-                         onChange={(e) =>
-                           handleInputChange(e.target.value, index, "trackingType")
-                         }
-                         onKeyDown={(e) => {
-                           if (e.key === "Enter" || e.key === "Tab") {
-                             if (!row.styleItemId) {
-                               e.preventDefault();
-                               const reqEl = document.getElementById(
-                                 "customerRequirements",
-                               );
-                               if (reqEl) {
-                                 reqEl.focus();
-                                 reqEl.select?.();
-                               }
-                             } else if (e.key === "Enter") {
-                               e.preventDefault();
-                               if (row.trackingType === "None") {
-                                 const qtyEl = document.getElementById(
-                                   `orderQty-input-${index}`,
-                                 );
-                                 if (qtyEl) qtyEl.focus();
-                               } else {
-                                 const breakupEl = document.getElementById(
-                                   `breakup-btn-${index}`,
-                                 );
-                                 if (breakupEl) breakupEl.focus();
-                               }
-                             }
-                           }
-                         }}
-                         disabled={readOnly}
-                         className={`  pl-2 h-full text-[11px] cursor-pointer outline-none w-full bg-transparent   rounded-sm transition-all `}
-                       >
-                         <option value="None">None</option>
-                         <option value="Barcode">Barcode</option>
-                         <option value="Size Template">Size Template</option>
-                         <option value="Size Template + Barcode">
-                           Size Template + Barcode
-                         </option>
-                       </select>
-                     </td>
-                     <td className="border border-gray-300 text-center items-center">
-                       <button
-                         id={`breakup-btn-${index}`}
-                         type="button"
-                         onClick={() => handleOpenSizeModal(index)}
-                         onKeyDown={(e) => {
-                           if (e.key === "Enter" && !readOnly) {
-                             e.preventDefault();
-                             handleOpenSizeModal(index);
-                           }
-                         }}
-                         disabled={!row.styleItemId || row.trackingType === "None"}
-                         className="  text-indigo-600 hover:text-indigo-800 disabled:text-gray-400 transition-colors"
-                         title="View Sizes"
-                       >
-                         <FiEye size={18} />
-                       </button>
-                     </td>
-     
-                     <td className="border border-gray-300">
-                       <span className="w-full text-[11px] text-left pl-1 outline-none bg-transparent">
-                         {findFromList(row.uomId, uomList?.data, "name") || ""}
-                       </span>
-                     </td>
-     
-                     <td className="border border-gray-300 grid-editable-cell">
-                       <input
-                         id={`orderQty-input-${index}`}
-                         type="number"
-                         className="w-full h-full  text-[11px] text-right px-1 outline-none bg-transparent"
-                         onFocus={(e) => {
-                           e.target.select();
-                           setFocusedField(`${index}`);
-                         }}
-                         value={
-                           focusedField === `${index}`
-                             ? (row?.orderQty ?? "")
-                             : row?.orderQty !== undefined &&
-                                 row?.orderQty !== null &&
-                                 row?.orderQty !== ""
-                               ? Number(row.orderQty)
-                               : ""
-                         }
-                         onChange={(e) =>
-                           handleInputChange(e.target.value, index, "orderQty")
-                         }
-                         onBlur={(e) => {
-                           setFocusedField(null);
-                         }}
-                         onKeyDown={(e) => {
-                           if (e.key === "Enter" || e.key === "Tab") {
-                             if (!row.styleItemId) {
-                               e.preventDefault();
-                               const reqEl = document.getElementById(
-                                 "customerRequirements",
-                               );
-                               if (reqEl) {
-                                 reqEl.focus();
-                                 reqEl.select?.();
-                               }
-                             } else if (e.key === "Enter") {
-                               e.preventDefault();
-                               if (index === orderItems.length - 1) {
-                                 addRow();
-                               } else {
-                                 const nextStyleEl = document.getElementById(
-                                   `styleItemId-input-${index + 1}`,
-                                 );
-                                 if (nextStyleEl) nextStyleEl.focus();
-                               }
-                             }
-                           }
-                         }}
-                         disabled={
-                           readOnly ||
-                           [
-                             "Size Template",
-                             "Size Template + Barcode",
-                             "Barcode",
-                           ].includes(row.trackingType)
-                         }
-                         readOnly={
-                           readOnly ||
-                           [
-                             "Size Template",
-                             "Size Template + Barcode",
-                             "Barcode",
-                           ].includes(row.trackingType)
-                         }
-                       />
-                     </td>
-     
-                     <td className="border border-gray-300 grid-editable-cell">
-                       <input
-                         value={row?.price || ""}
-                         className="w-full text-[11px]  text-right pr-1 outline-none bg-transparent"
-                         onChange={(e) =>
-                           handleInputChange(e.target.value, index, "price")
-                         }
-                         onKeyDown={(e) => {
-                           if (e.key === "Enter" || e.key === "Tab") {
-                             if (!row.styleItemId) {
-                               e.preventDefault();
-                               const reqEl = document.getElementById(
-                                 "customerRequirements",
-                               );
-                               if (reqEl) {
-                                 reqEl.focus();
-                                 reqEl.select?.();
-                               }
-                             } else if (e.key === "Enter") {
-                               e.preventDefault();
-                               if (index === orderItems.length - 1) {
-                                 addRow();
-                               } else {
-                                 const nextStyleEl = document.getElementById(
-                                   `styleItemId-input-${index + 1}`,
-                                 );
-                                 if (nextStyleEl) nextStyleEl.focus();
-                               }
-                             }
-                           }
-                         }}
-                         onFocus={(e) => {
-                           e.target.select();
-                           setFocusedField(`${index}`);
-                         }}
-                         onBlur={(e) => {
-                           const val = e.target.value;
-                           handleInputChange(
-                             val ? Number(val).toFixed(2) : "",
-                             index,
-                             "price",
-                           );
-                           setFocusedField(null);
-                         }}
-                         disabled={readOnly}
-                       ></input>
-                     </td>
-     
-                     <td className="border border-gray-300 grid-editable-cell">
-                       <input
-                         id={`remarks-input-${index}`}
-                         type="text"
-                         className="w-full h-full text-[11px]  outline-none px-1 bg-transparent"
-                         value={row.remarks || ""}
-                         onChange={(e) =>
-                           handleInputChange(e.target.value, index, "remarks")
-                         }
-                         onKeyDown={(e) => {
-                           if (e.key === "Enter" || e.key === "Tab") {
-                             e.preventDefault();
-                             if (!row.styleItemId) {
-                               const reqEl = document.getElementById(
-                                 "customerRequirements",
-                               );
-                               if (reqEl) {
-                                 reqEl.focus();
-                                 reqEl.select?.();
-                               }
-                             } else {
-                               if (index === orderItems.length - 1) {
-                                 addRow();
-                               } else {
-                                 const nextStyleEl = document.getElementById(
-                                   `styleItemId-input-${index + 1}`,
-                                 );
-                                 if (nextStyleEl) nextStyleEl.focus();
-                               }
-                             }
-                           }
-                         }}
-                         disabled={readOnly}
-                         placeholder="Remarks"
-                       />
-                     </td>
-                   </tr>
-                 ))}
-               </tbody>
-               <tfoot className="sticky bottom-0 z-10">
-                 <tr className="bg-gray-100 h-7 font-bold text-gray-800 text-[12px]">
-                   <td
-                     className="text-right px-2 border border-gray-300"
-                     colSpan={7}
-                   >
-                     Total
-                   </td>
-                   <td className="text-right px-1 border border-gray-300 text-black">
-                     {orderItems?.reduce(
-                       (sum, row) => sum + (Number(row.orderQty) || 0),
-                       0,
-                     )}
-                   </td>
-                   <td className="text-right px-1 border border-gray-300 text-black">
-                     {orderItems
-                       ?.reduce((sum, row) => sum + (Number(row.price) || 0), 0)
-                       .toFixed(2)}
-                   </td>
-                   <td className="border border-gray-300"></td>
-                 </tr>
-               </tfoot>
-             </table>
-           </div>
-           {contextMenu && (
-             <div
-               style={{
-                 position: "fixed",
-                 top: `${contextMenu.mouseY}px`,
-                 left: `${contextMenu.mouseX}px`,
-                 boxShadow: "0px 0px 5px rgba(0,0,0,0.3)",
-                 padding: "4px",
-                 borderRadius: "4px",
-                 zIndex: 1000,
-               }}
-               className="bg-white border border-gray-200 shadow-xl"
-               onMouseLeave={handleCloseContextMenu}
-             >
-               <div className="flex flex-col min-w-[100px]">
-                 <button
-                   className="text-[12px] text-left px-3 py-1.5 hover:bg-red-50 text-red-600 font-medium rounded transition-colors"
-                   onClick={() => {
-                     if (contextMenu.type === "MODAL") {
-                       deleteModalRow(contextMenu.rowId);
-                     } else {
-                       deleteRow(contextMenu.rowId);
-                     }
-                     handleCloseContextMenu();
-                   }}
-                 >
-                   Delete
-                 </button>
-                 <button
-                   className="text-[12px] text-left px-3 py-1.5 hover:bg-gray-100 text-gray-700 font-medium rounded transition-colors"
-                   onClick={() => {
-                     if (contextMenu.type === "MODAL") {
-                       deleteModalAllRows();
-                     } else {
-                       handleDeleteAllRows();
-                     }
-                     handleCloseContextMenu();
-                   }}
-                 >
-                   Delete All
-                 </button>
-               </div>
-             </div>
-           )}
+      <div className="w-full h-full overflow-y-auto mb-2 bg-white border border-slate-200 rounded-md">
+        <table className="w-[60vw] border-collapse table-fixed">
+          <thead className="bg-gray-200 text-gray-800 sticky top-0 z-10 text-[12px]">
+            <tr>
+              <th className="w-6 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+                S.No
+              </th>
+              <th className="w-44 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+                Description of Goods
+              </th>
+              <th className="w-28 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+                Item Group
+              </th>
+
+              <th className="w-16 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+                Type
+              </th>
+              <th className="w-16 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+                UOM
+              </th>
+              <th className="w-16 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+                Qty
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {packingOrderItems?.map((row, index) => (
+              <React.Fragment key={index}>
+                <tr
+                  className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50"} h-7 border border-gray-200 cursor-pointer hover:bg-indigo-50`}
+                  onContextMenu={(e) =>
+                    !readOnly && handleRightClick(e, index, "")
+                  }
+                >
+                  <td className="text-[11px] text-center border border-gray-300">
+                    {index + 1}
+                  </td>
+
+                  <td className="border border-gray-300 grid-editable-cell">
+                    <FxSelectWithAdd
+                      inputId={`styleItemId-input-${index}`}
+                      value={row.styleItemId}
+                      onChange={(val) => {
+                        handleInputChange(val, index, "styleItemId");
+                        // Automatically focus tracking type after style selection
+                        // Use a slightly longer timeout to avoid Enter bubbling
+                        setTimeout(() => {
+                          const nextEl = document.getElementById(
+                            `trackingType-input-${index}`,
+                          );
+                          if (nextEl) {
+                            nextEl.focus();
+                          }
+                        }, 100);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === "Tab") {
+                          if (!row.styleItemId) {
+                            e.preventDefault();
+                            const reqEl = document.getElementById(
+                              "customerRequirements",
+                            );
+                            if (reqEl) {
+                              reqEl.focus();
+                              reqEl.select?.();
+                            }
+                          } else {
+                            // If value exists, move to Tracking Type
+                            e.preventDefault();
+                            const nextEl = document.getElementById(
+                              `trackingType-input-${index}`,
+                            );
+                            if (nextEl) nextEl.focus();
+                          }
+                        }
+                      }}
+                      options={(styleItemList?.data || [])
+                        .filter((item) => (id ? true : item.active))
+                        .map((item) => ({ label: item.name, value: item.id }))}
+                      readOnly={readOnly}
+                      placeholder=""
+                      addNew={true}
+                      childComponent={StyleItemMaster}
+                      addNewModalWidth="w-[50%] h-[57%]"
+                    />
+                  </td>
+
+                  <td className="border border-gray-300">
+                    <span className="w-full text-[11px] text-left pl-1 outline-none bg-transparent">
+                      {findFromList(
+                        row.itemGroupId,
+                        itemGroupList?.data,
+                        "name",
+                      ) || ""}
+                    </span>
+                  </td>
+
+                  <td className="border border-gray-300 grid-editable-cell">
+                    <select
+                      id={`trackingType-input-${index}`}
+                      value={row.trackingType || "None"}
+                      onChange={(e) =>
+                        handleInputChange(e.target.value, index, "trackingType")
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === "Tab") {
+                          if (!row.styleItemId) {
+                            e.preventDefault();
+                            const reqEl = document.getElementById(
+                              "customerRequirements",
+                            );
+                            if (reqEl) {
+                              reqEl.focus();
+                              reqEl.select?.();
+                            }
+                          } else if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (row.trackingType === "None") {
+                              const qtyEl = document.getElementById(
+                                `orderQty-input-${index}`,
+                              );
+                              if (qtyEl) qtyEl.focus();
+                            } else {
+                              const breakupEl = document.getElementById(
+                                `breakup-btn-${index}`,
+                              );
+                              if (breakupEl) breakupEl.focus();
+                            }
+                          }
+                        }
+                      }}
+                      disabled={readOnly}
+                      className={`  pl-2 h-full text-[11px] cursor-pointer outline-none w-full bg-transparent   rounded-sm transition-all `}
+                    >
+                      <option value="None">None</option>
+                      <option value="Barcode">Barcode</option>
+                      <option value="Size Template">Size Template</option>
+                      <option value="Size Template + Barcode">
+                        Size Template + Barcode
+                      </option>
+                    </select>
+                  </td>
+
+                  <td className="border border-gray-300">
+                    <span className="w-full text-[11px] text-left pl-1 outline-none bg-transparent">
+                      {findFromList(row.uomId, uomList?.data, "name") || ""}
+                    </span>
+                  </td>
+
+                  <td className="border border-gray-300 grid-editable-cell">
+                    <input
+                      id={`orderQty-input-${index}`}
+                      type="number"
+                      className="w-full h-full  text-[11px] text-right px-1 outline-none bg-transparent"
+                      onFocus={(e) => {
+                        e.target.select();
+                        setFocusedField(`${index}`);
+                      }}
+                      value={
+                        focusedField === `${index}`
+                          ? (row?.orderQty ?? "")
+                          : row?.orderQty !== undefined &&
+                              row?.orderQty !== null &&
+                              row?.orderQty !== ""
+                            ? Number(row.orderQty)
+                            : ""
+                      }
+                      onChange={(e) =>
+                        handleInputChange(e.target.value, index, "orderQty")
+                      }
+                      onBlur={(e) => {
+                        setFocusedField(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === "Tab") {
+                          if (!row.styleItemId) {
+                            e.preventDefault();
+                            const reqEl = document.getElementById(
+                              "customerRequirements",
+                            );
+                            if (reqEl) {
+                              reqEl.focus();
+                              reqEl.select?.();
+                            }
+                          } else if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (index === packingOrderItems.length - 1) {
+                              addRow();
+                            } else {
+                              const nextStyleEl = document.getElementById(
+                                `styleItemId-input-${index + 1}`,
+                              );
+                              if (nextStyleEl) nextStyleEl.focus();
+                            }
+                          }
+                        }
+                      }}
+                      disabled={
+                        readOnly ||
+                        [
+                          "Size Template",
+                          "Size Template + Barcode",
+                          "Barcode",
+                        ].includes(row.trackingType)
+                      }
+                      readOnly={
+                        readOnly ||
+                        [
+                          "Size Template",
+                          "Size Template + Barcode",
+                          "Barcode",
+                        ].includes(row.trackingType)
+                      }
+                    />
+                  </td>
+                </tr>
+
+                {row.trackingType !== "None" && row.styleItemId && (
+                  <tr>
+                    <td colSpan={6} className="p-0 bg-slate-50">
+                      <div
+                        className="mt-2 border border-slate-300 shadow-md rounded-lg mx-2 mb-4 packing-details-panel"
+                        data-row={index}
+                      >
+                        <div className="bg-slate-100 p-3 rounded-lg">
+                          <div className="bg-white p-2 rounded-lg flex justify-between items-center  shadow-sm">
+                            <h3 className="text-[14px] font-bold text-slate-800">
+                              Packing Details
+                            </h3>
+                            {activeSizeKey?.rowIndex === index &&
+                              activeSizeKey?.sizeIdx !== null && (
+                                <span className="text-[11px] text-indigo-600 font-semibold">
+                                  Packing Items for row{" "}
+                                  {activeSizeKey.sizeIdx + 1}
+                                </span>
+                              )}
+                          </div>
+
+                          {/* Side-by-side layout */}
+                          <div className="flex gap-3">
+                            {/* LEFT: packingSizeBreakup table */}
+                            <div className="flex-1 bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
+                              <table className="w-full border-separate border-spacing-0 border-t border-l border-slate-200">
+                                <thead>
+                                  <tr className="bg-slate-50">
+                                    <th className="border-b border-r border-slate-200 px-2 py-1 text-center text-[11px] font-bold uppercase w-10">
+                                      S.No
+                                    </th>
+                                    {row?.trackingType !== "Barcode" && (
+                                      <th className="w-28 border-b border-r border-slate-200 px-2 py-1 text-center text-[11px] font-bold uppercase">
+                                        Size
+                                      </th>
+                                    )}
+                                    {(row?.trackingType === "Barcode" ||
+                                      row?.trackingType ===
+                                        "Size Template + Barcode") && (
+                                      <>
+                                        <th className="border-b border-r border-slate-200 px-2 py-1 text-center text-[11px] font-bold uppercase w-24">
+                                          Barcode From
+                                        </th>
+                                        <th className="border-b border-r border-slate-200 px-2 py-1 text-center text-[11px] font-bold uppercase w-24">
+                                          Barcode To
+                                        </th>
+                                      </>
+                                    )}
+                                    <th className="border-b border-r border-slate-200 px-2 py-1 text-center text-[11px] font-bold uppercase w-20">
+                                      Order Qty
+                                    </th>
+                                    <th className="border-b border-r border-slate-200 px-2 py-1 text-center text-[11px] font-bold uppercase w-24">
+                                      Already Packed
+                                    </th>
+                                    <th className="border-b border-r border-slate-200 px-2 py-1 text-center text-[11px] font-bold uppercase w-20">
+                                      Packing Qty
+                                    </th>
+                                    <th className="border-b border-r border-slate-200 px-2 py-1 text-center text-[11px] font-bold uppercase w-20">
+                                      Gross Wt
+                                    </th>
+                                    <th className="border-b border-r border-slate-200 px-2 py-1 text-center text-[11px] font-bold uppercase w-20">
+                                      Net Wt
+                                    </th>
+                                    <th className="border-b border-r border-slate-200 px-2 py-1 text-center text-[11px] font-bold uppercase w-20">
+                                      Dimensions
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {(() => {
+                                    const actualRows = row?.packingSizeBreakup || [];
+                                    if (actualRows.length >= 5)
+                                      return actualRows;
+                                    return [
+                                      ...actualRows,
+                                      ...Array(5 - actualRows.length).fill({}),
+                                    ];
+                                  })().map((breakup, sizeIdx) => {
+                                    const isSelected =
+                                      (activeSizeKey?.rowIndex === index &&
+                                        activeSizeKey?.sizeIdx === sizeIdx &&
+                                        breakup.sizeId !== undefined) ||
+                                      breakup.barcodeFrom !== undefined;
+                                    const hasData =
+                                      breakup.sizeId || breakup.barcodeFrom;
+                                    const isActive =
+                                      activeSizeKey?.rowIndex === index &&
+                                      activeSizeKey?.sizeIdx === sizeIdx;
+                                    return (
+                                      <tr
+                                        key={sizeIdx}
+                                        className={`h-8 cursor-pointer transition-colors ${
+                                          isActive
+                                            ? "bg-indigo-100 ring-1 ring-inset ring-indigo-400"
+                                            : hasData
+                                              ? "hover:bg-indigo-50"
+                                              : ""
+                                        }`}
+                                        onClick={(e) => {
+                                          if (hasData) {
+                                            if (isActive) {
+                                              setActiveSizeKey(null);
+                                            } else {
+                                              setActiveSizeKey({
+                                                rowIndex: index,
+                                                sizeIdx,
+                                              });
+                                            }
+                                          }
+                                        }}
+                                      >
+                                        <td className="border-b border-r border-slate-200 text-center text-[11px]">
+                                          {sizeIdx + 1}
+                                        </td>
+                                        {row?.trackingType !== "Barcode" && (
+                                          <td className="border-b border-r border-slate-200 text-left pl-1 text-[11px]">
+                                            {findFromList(
+                                              breakup.sizeId,
+                                              sizeList?.data,
+                                              "name",
+                                            )}
+                                          </td>
+                                        )}
+                                        {(row?.trackingType === "Barcode" ||
+                                          row?.trackingType ===
+                                            "Size Template + Barcode") && (
+                                          <>
+                                            <td className="border-b border-r border-slate-200 text-left pl-1 text-[11px]">
+                                              {breakup.barcodeFrom}
+                                            </td>
+                                            <td className="border-b border-r border-slate-200 text-left pl-1 text-[11px]">
+                                              {breakup.barcodeTo}
+                                            </td>
+                                          </>
+                                        )}
+                                        <td className="border-b border-r border-slate-200 text-right px-2 text-[11px]">
+                                          {breakup.qty !== undefined
+                                            ? Number(breakup.qty)
+                                            : ""}
+                                        </td>
+                                        <td className="border-b border-r border-slate-200 text-right px-2 text-[11px]">
+                                          {breakup.alreadyPackingQty !==
+                                          undefined
+                                            ? Number(breakup.alreadyPackingQty)
+                                            : ""}
+                                        </td>
+                                        <td className="border-b border-r border-slate-200 text-right px-2 text-[11px] h-full">
+                                          {breakup.packingQty !== undefined &&
+                                          breakup.packingQty !== 0
+                                            ? Number(breakup.packingQty)
+                                            : ""}
+                                        </td>
+                                        <td className="border-b border-r border-slate-200 text-right p-0 text-[11px] h-full">
+                                          <input
+                                            type="text"
+                                            className="w-full h-8 text-right px-2 outline-none bg-transparent"
+                                            value={breakup.grossWeight ?? ""}
+                                            onChange={(e) => {
+                                              const val =
+                                                e.target.value.replace(
+                                                  /[^0-9.]/g,
+                                                  "",
+                                                );
+                                              handleSizeBreakupChange(
+                                                index,
+                                                sizeIdx,
+                                                "grossWeight",
+                                                val,
+                                              );
+                                            }}
+                                            onBlur={(e) => {
+                                              if (e.target.value) {
+                                                const parsed = parseFloat(
+                                                  e.target.value,
+                                                );
+                                                if (!isNaN(parsed)) {
+                                                  handleSizeBreakupChange(
+                                                    index,
+                                                    sizeIdx,
+                                                    "grossWeight",
+                                                    parsed.toFixed(3),
+                                                  );
+                                                }
+                                              }
+                                            }}
+                                            disabled={readOnly}
+                                          />
+                                        </td>
+                                        <td className="border-b border-r border-slate-200 text-right p-0 text-[11px] h-full">
+                                          <input
+                                            type="text"
+                                            className="w-full h-8 text-right px-2 outline-none bg-transparent"
+                                            value={breakup.netWeight ?? ""}
+                                            onChange={(e) => {
+                                              const val =
+                                                e.target.value.replace(
+                                                  /[^0-9.]/g,
+                                                  "",
+                                                );
+                                              handleSizeBreakupChange(
+                                                index,
+                                                sizeIdx,
+                                                "netWeight",
+                                                val,
+                                              );
+                                            }}
+                                            onBlur={(e) => {
+                                              if (e.target.value) {
+                                                const parsed = parseFloat(
+                                                  e.target.value,
+                                                );
+                                                if (!isNaN(parsed)) {
+                                                  handleSizeBreakupChange(
+                                                    index,
+                                                    sizeIdx,
+                                                    "netWeight",
+                                                    parsed.toFixed(3),
+                                                  );
+                                                }
+                                              }
+                                            }}
+                                            disabled={readOnly}
+                                          />
+                                        </td>
+                                        <td className="border-b border-r border-slate-200 text-right p-0 text-[11px] h-full">
+                                          <input
+                                            type="text"
+                                            className="w-full h-8 text-left px-2 outline-none bg-transparent"
+                                            value={breakup.dimensions ?? ""}
+                                            onChange={(e) => {
+                                              handleSizeBreakupChange(
+                                                index,
+                                                sizeIdx,
+                                                "dimensions",
+                                                e.target.value,
+                                              );
+                                            }}
+                                            disabled={readOnly}
+                                          />
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                                <tfoot>
+                                  <tr className="bg-slate-50 font-bold">
+                                    <td
+                                      colSpan={
+                                        row?.trackingType === "Barcode"
+                                          ? 3
+                                          : row?.trackingType ===
+                                              "Size Template + Barcode"
+                                            ? 4
+                                            : 2
+                                      }
+                                      className="border-b border-r border-slate-200 px-2 py-1 text-right text-[11px]"
+                                    >
+                                      Total
+                                    </td>
+                                    <td className="border-b border-r border-slate-200 px-2 py-1 text-right text-[11px]">
+                                      {(row?.packingSizeBreakup || []).reduce(
+                                        (sum, b) => sum + (Number(b.qty) || 0),
+                                        0,
+                                      )}
+                                    </td>
+                                    <td
+                                      colSpan={4}
+                                      className="border-b border-r border-slate-200"
+                                    ></td>
+                                  </tr>
+                                </tfoot>
+                              </table>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+
+                {/* Placeholder hidden row: no-op, packing items panel is rendered outside the table */}
+
+                {/* Packing Items right-click context menu */}
+                {packingItemsContextMenu && (
+                  <tr style={{ display: "none" }}>
+                    <td></td>
+                  </tr>
+                )}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {/* ── Packing Items fixed panel — completely outside all tables ── */}
+      {activeSizeKey !== null &&
+        (() => {
+          const piRow = packingOrderItems[activeSizeKey.rowIndex];
+          const sizeEntry = piRow?.packingSizeBreakup?.[activeSizeKey.sizeIdx];
+          const piRows = sizeEntry?.packingItems || [];
+          const display =
+            piRows.length >= 4
+              ? piRows
+              : [
+                  ...piRows,
+                  ...Array.from({ length: 5 - piRows.length }, () =>
+                    EMPTY_PACKING_ITEM(),
+                  ),
+                ];
+          return (
+            <div
+              style={{
+                position: "fixed",
+                top: `${panelTop}px`,
+                left: `${panelLeft}px`,
+                zIndex: 1100,
+              }}
+              className="w-[35vw] border border-slate-300 shadow-md rounded-lg"
+            >
+              {/* Same outer bg as Packing Details */}
+              <div className="bg-slate-100 p-3 rounded-lg">
+                {/* Same title bar as Packing Details */}
+                <div className="bg-white p-2 rounded-lg flex justify-between items-center  shadow-sm">
+                  <h3 className="text-[14px] font-bold text-slate-800">
+                    Packing Items
+                  </h3>
+                  <button
+                    className="text-slate-500 hover:text-red-500 text-[18px] leading-none"
+                    onClick={() => setActiveSizeKey(null)}
+                    title="Close"
+                  >
+                    ×
+                  </button>
+                </div>
+                {/* Same table wrapper as Packing Details */}
+                <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-visible">
+                  <table className="w-full table-fixed border-separate border-spacing-0 border-t border-l border-slate-200">
+                    <thead>
+                      <tr className="bg-slate-50">
+                        <th className="border-b border-r border-slate-200 px-2 py-1 text-center text-[11px] font-bold uppercase w-8">
+                          S.No
+                        </th>
+                        <th className="w-16 border-b border-r border-slate-200 px-2 py-1 text-center text-[11px] font-bold uppercase">
+                          UOM
+                        </th>
+                        <th className="w-16  border-b border-r border-slate-200 px-2 py-1 text-center text-[11px] font-bold uppercase ">
+                          No. of Units
+                        </th>
+                        <th className="border-b border-r border-slate-200 px-2 py-1 text-center text-[11px] font-bold uppercase w-20">
+                          Qty / Unit
+                        </th>
+                        <th className="border-b border-r border-slate-200 px-2 py-1 text-center text-[11px] font-bold uppercase w-20">
+                          Total
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {display.map((pi, piIdx) => (
+                        <tr
+                          key={piIdx}
+                          className="h-8 hover:bg-slate-50"
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            setPackingItemsContextMenu({
+                              mouseX: e.clientX,
+                              mouseY: e.clientY,
+                              rowIndex: activeSizeKey.rowIndex,
+                              sizeIdx: activeSizeKey.sizeIdx,
+                              piIdx,
+                            });
+                          }}
+                        >
+                          <td className="border-b border-r border-slate-200 text-center text-[11px] text-slate-500">
+                            {piIdx + 1}
+                          </td>
+                          <td className="border-b border-r border-slate-200 text-[11px] p-0">
+                            <FxSelectWithAdd
+                              value={pi.packingUomId || ""}
+                              onChange={(val) => {
+                                updatePackingItem(
+                                  activeSizeKey.rowIndex,
+                                  activeSizeKey.sizeIdx,
+                                  piIdx,
+                                  "packingUomId",
+                                  val,
+                                );
+                              }}
+                              options={(uomList?.data || [])
+                                .filter((i) => (id ? true : i.active))
+                                .map((i) => ({ label: i.name, value: i.id }))}
+                              readOnly={readOnly}
+                              placeholder="Select UOM"
+                              menuPortalTarget={document.body}
+                            />
+                          </td>
+                          <td className="border-b border-r border-slate-200 text-[11px] p-0">
+                            <input
+                              type="number"
+                              min="0"
+                              className="w-full h-full text-right px-2 text-[11px] outline-none bg-transparent"
+                              value={pi.noOfUnits || ""}
+                              onChange={(e) => {
+                                updatePackingItem(
+                                  activeSizeKey.rowIndex,
+                                  activeSizeKey.sizeIdx,
+                                  piIdx,
+                                  "noOfUnits",
+                                  e.target.value,
+                                );
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  if (
+                                    piIdx === piRows.length - 1 ||
+                                    piRows.length === 0
+                                  ) {
+                                    addPackingItem(
+                                      activeSizeKey.rowIndex,
+                                      activeSizeKey.sizeIdx,
+                                    );
+                                  }
+                                }
+                              }}
+                              disabled={readOnly}
+                            />
+                          </td>
+                          <td className="border-b border-r border-slate-200 text-[11px] p-0">
+                            <input
+                              type="number"
+                              min="0"
+                              className="w-full h-full text-right px-2 text-[11px] outline-none bg-transparent"
+                              value={pi.qtyPerUnit || ""}
+                              onChange={(e) => {
+                                updatePackingItem(
+                                  activeSizeKey.rowIndex,
+                                  activeSizeKey.sizeIdx,
+                                  piIdx,
+                                  "qtyPerUnit",
+                                  e.target.value,
+                                );
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  if (
+                                    piIdx === piRows.length - 1 ||
+                                    piRows.length === 0
+                                  ) {
+                                    addPackingItem(
+                                      activeSizeKey.rowIndex,
+                                      activeSizeKey.sizeIdx,
+                                    );
+                                  }
+                                }
+                              }}
+                              disabled={readOnly}
+                            />
+                          </td>
+                          <td className="border-b border-r border-slate-200 text-right px-2 text-[11px] font-semibold bg-slate-50">
+                            {(Number(pi.noOfUnits) || 0) *
+                              (Number(pi.qtyPerUnit) || 0) || ""}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-slate-50 font-bold">
+                        <td
+                          colSpan={4}
+                          className="border-b border-r border-slate-200 px-2 py-1 text-right text-[11px]"
+                        >
+                          Total
+                        </td>
+                        <td className="border-b border-r border-slate-200 px-2 py-1 text-right text-[11px]">
+                          {piRows.reduce(
+                            (sum, pi) =>
+                              sum +
+                              (Number(pi.noOfUnits) || 0) *
+                                (Number(pi.qtyPerUnit) || 0),
+                            0,
+                          )}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+      {contextMenu && (
+        <div
+          style={{
+            position: "fixed",
+            top: `${contextMenu.mouseY}px`,
+            left: `${contextMenu.mouseX}px`,
+            boxShadow: "0px 0px 5px rgba(0,0,0,0.3)",
+            padding: "4px",
+            borderRadius: "4px",
+            zIndex: 1000,
+          }}
+          className="bg-white border border-gray-200 shadow-xl"
+          onMouseLeave={handleCloseContextMenu}
+        >
+          <div className="flex flex-col min-w-[100px]">
+            <button
+              className="text-[12px] text-left px-3 py-1.5 hover:bg-red-50 text-red-600 font-medium rounded transition-colors"
+              onClick={() => {
+                if (contextMenu.type === "MODAL") {
+                  deleteModalRow(contextMenu.rowId);
+                } else {
+                  deleteRow(contextMenu.rowId);
+                }
+                handleCloseContextMenu();
+              }}
+            >
+              Delete
+            </button>
+            <button
+              className="text-[12px] text-left px-3 py-1.5 hover:bg-gray-100 text-gray-700 font-medium rounded transition-colors"
+              onClick={() => {
+                if (contextMenu.type === "MODAL") {
+                  deleteModalAllRows();
+                } else {
+                  handleDeleteAllRows();
+                }
+                handleCloseContextMenu();
+              }}
+            >
+              Delete All
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Packing Items context menu */}
+      {packingItemsContextMenu && (
+        <div
+          style={{
+            position: "fixed",
+            top: `${packingItemsContextMenu.mouseY}px`,
+            left: `${packingItemsContextMenu.mouseX}px`,
+            boxShadow: "0px 0px 5px rgba(0,0,0,0.3)",
+            padding: "4px",
+            borderRadius: "4px",
+            zIndex: 1001,
+          }}
+          className="bg-white border border-gray-200 shadow-xl"
+          onMouseLeave={() => setPackingItemsContextMenu(null)}
+        >
+          <div className="flex flex-col min-w-[120px]">
+            <button
+              className="text-[12px] text-left px-3 py-1.5 hover:bg-red-50 text-red-600 font-medium rounded transition-colors"
+              onClick={() => {
+                deletePackingItem(
+                  packingItemsContextMenu.rowIndex,
+                  packingItemsContextMenu.sizeIdx,
+                  packingItemsContextMenu.piIdx,
+                );
+                setPackingItemsContextMenu(null);
+              }}
+            >
+              Delete Row
+            </button>
+            <button
+              className="text-[12px] text-left px-3 py-1.5 hover:bg-gray-100 text-gray-700 font-medium rounded transition-colors"
+              onClick={() => {
+                deleteAllPackingItems(
+                  packingItemsContextMenu.rowIndex,
+                  packingItemsContextMenu.sizeIdx,
+                );
+                setPackingItemsContextMenu(null);
+              }}
+            >
+              Delete All
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 };
 
 export default PackingItems;
+

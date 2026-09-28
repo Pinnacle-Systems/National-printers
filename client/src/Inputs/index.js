@@ -3425,6 +3425,7 @@ export const ShowInvoicPendingCustomers = forwardRef(
 );
 
 export const customStyles = {
+  menuPortal: (base) => ({ ...base, zIndex: 99999 }),
   control: (base) => ({
     ...base,
     border: "none",
@@ -3661,6 +3662,7 @@ export function FxSelectWithAdd({
   nextRef,
   advanceOnEnter = false,
   advanceOnSelect = true,
+  menuPortalTarget = null,
 }) {
   const [showAddNewModal, setShowAddNewModal] = useState(false);
   const [searchValue, setSearchValue] = useState("");
@@ -3749,6 +3751,7 @@ export function FxSelectWithAdd({
       <Select
         ref={selectRef}
         styles={customStyles}
+        menuPortalTarget={menuPortalTarget}
         tabSelectsValue={!!value}
         onInputChange={(value, { action }) => {
           if (action === "input-change") {
@@ -3815,7 +3818,6 @@ export function FxSelectWithAdd({
           }
         }}
         placeholder={placeholder}
-        menuPortalTarget={document.body}
         inputId={inputId}
         noOptionsMessage={() => "No options"}
         onMenuOpen={() => setMenuIsOpen(true)}

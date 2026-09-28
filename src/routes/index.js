@@ -65,3 +65,4 @@ export { default as board } from "./board.route.js";
 export { default as proformaInvoice } from "./ProformaInvoice.route.js";
 export { default as productionalallocation } from "./productionAllocation.route.js";
 export { default as machine } from "./machine.route.js";
+export { default as packing } from "./packing.route.js";

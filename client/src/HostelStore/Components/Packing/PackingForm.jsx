@@ -51,7 +51,7 @@ import { PDFViewer } from "@react-pdf/renderer";
 import OrderEntryPrintFormat from "./OrderEntryPrintFormat.jsx";
 import { FiFileText, FiPrinter, FiEye } from "react-icons/fi";
 import PackingItems from "./PackingItems.jsx";
-import { padRows } from "./OrderItemsUtils.js";
+import { makeEmptyRow } from "./OrderItemsUtils.js";
 import { useGetStyleItemMasterQuery } from "../../../redux/services/StyleItemMasterService.js";
 import { useGetStyleMasterQuery } from "../../../redux/services/StyleMasterService.js";
 import { useGetSizeMasterQuery } from "../../../redux/services/SizemasterService.js";
@@ -60,8 +60,7 @@ import { MdKeyboardDoubleArrowLeft } from "react-icons/md";
 import { useAddApprovalStausMutation } from "../../../redux/uniformService/PoServices.js";
 import { useGetUomQuery } from "../../../redux/services/UomMasterService.js";
 import { useGetGsmMasterQuery } from "../../../redux/services/GsmMasterService.js";
-import ProformaInvoiceApi from // useLazyGetProformaInvoiceByIdQuery, // useGetPIListQuery,
-"../../../redux/uniformService/ProformaInvoiceService.js";
+import ProformaInvoiceApi from "../../../redux/uniformService/ProformaInvoiceService.js"; // useLazyGetProformaInvoiceByIdQuery, // useGetPIListQuery,
 import { useGetItemGroupMasterQuery } from "../../../redux/services/ItemGroupMasterService.js";
 import { useGetSizeTemplateQuery } from "../../../redux/services/SizeTemplateMaster.js";
 import { useGetHsnMasterQuery } from "../../../redux/services/HsnMasterServices.js";
@@ -129,7 +128,7 @@ const PackingForm = ({
   const [termsId, setTermsId] = useState("");
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState("");
-  const [orderItems, setOrderItems] = useState([]);
+  const [packingOrderItems, setPackingOrderItems] = useState([makeEmptyRow()]);
   const [approvalModal, setApprovalModal] = useState(false);
   const [actionType, setActionType] = useState("");
   const [approvalRemarks, setApprovalRemarks] = useState("");
@@ -203,10 +202,10 @@ const PackingForm = ({
     isFetching: isSinglejobCardFetching,
     isLoading: isSinglejobCardLoading,
   } = useGetJobCardByIdQuery(jobCardId, { params, skip: !jobCardId || id });
-console.log('====================================');
-console.log(singlejobCardData,"singlejobCardData");
-console.log('====================================');
-  console.log(orderItems, "orderItems");
+  console.log("====================================");
+  console.log(singlejobCardData, "singlejobCardData");
+  console.log("====================================");
+  console.log(packingOrderItems, "packingOrderItems");
 
   const { data: styleItemList } = useGetStyleItemMasterQuery({
     params: { ...params },
@@ -262,7 +261,9 @@ console.log('====================================');
       );
       setOrderId(data?.orderId ? data?.orderId : "");
       setJobCardId(data?.jobCardId ? data?.jobCardId : "");
-      setOrderItems(padRows(data?.PackingItems || []));
+      setPackingOrderItems(
+        data?.PackingItems?.length ? data.PackingItems : [makeEmptyRow()],
+      );
       setCustomerId(
         data?.OrderEntry?.customerId ? data?.OrderEntry?.customerId : "",
       );
@@ -303,20 +304,24 @@ console.log('====================================');
 
   const syncFormWithDbForJobCard = useCallback(
     (data) => {
-      console.log(data,"syncFormWithDbForJobCard");
-      
-      const orderItemsRaw =  data?.OrderEntry.orderItems?.filter((i) => i.id === data?.orderEntryItemId) || [];
-      console.log(orderItemsRaw,"orderItemsRaw");
-      
+      console.log(data, "syncFormWithDbForJobCard");
+
+      const orderItemsRaw =
+        data?.OrderEntry.orderItems?.filter(
+          (i) => i.id === data?.orderEntryItemId,
+        ) || [];
+      console.log(orderItemsRaw, "orderItemsRaw");
+
       const mappedItems = orderItemsRaw?.map((item) => ({
         ...item,
-        sizeBreakup: (item.sizeBreakup || []).map((style) => ({
+        packingSizeBreakup: (item.sizeBreakup || []).map((style) => ({
           ...style,
-        
         })),
       }));
-      console.log(mappedItems,"mappedItems");
-      setOrderItems(padRows(mappedItems));
+      console.log(mappedItems, "mappedItems");
+      setPackingOrderItems(
+        mappedItems?.length ? mappedItems : [makeEmptyRow()],
+      );
       const lastProcessRoute =
         data?.processRoute?.[data?.processRoute?.length - 1];
       setActualQty(lastProcessRoute?.actualQty);
@@ -358,7 +363,7 @@ console.log('====================================');
     termsAndCondition,
     termsId,
     docId,
-    orderItems: orderItems?.filter((i) => i.styleItemId),
+    packingOrderItems: packingOrderItems?.filter((i) => i.styleItemId),
     proFormaId,
     refNo,
     isRepeatedPI,
@@ -378,7 +383,7 @@ console.log('====================================');
     orderId,
     jobCardId,
   };
-
+  console.log(data, "payloaddata");
   const handleSubmitCustom = async (callback, data, text, nextProcess) => {
     try {
       const formData = new FormData();
@@ -489,9 +494,7 @@ console.log('====================================');
       if (!item.itemGroupId) {
         errors.push(`Row ${index + 1}: Item Group is required`);
       }
-      if (!item.hsnId) {
-        errors.push(`Row ${index + 1}: HSN is required`);
-      }
+
       if (!item.uomId) {
         errors.push(`Row ${index + 1}: UOM is required`);
       }
@@ -502,73 +505,81 @@ console.log('====================================');
       } else {
         seen.add(key);
       }
-      if (item.styleBreakup?.length) {
+      if (item.packingSizeBreakup?.length) {
         let sizeSum = 0;
-        item.styleBreakup.forEach((style, styleIndex) => {
-          if (!style.styleId) {
+        const sizeSeen = new Set();
+        let hasValidSize = false;
+
+        item.packingSizeBreakup.forEach((size, sizeIndex) => {
+          const hasData = size.sizeId || size.barcodeFrom || size.qty;
+          if (!hasData) return;
+          hasValidSize = true;
+
+          if (item.trackingType !== "Barcode" && !size.sizeId) {
             errors.push(
-              `Row ${index + 1}, Style Row ${styleIndex + 1}: Style is required`,
+              `Row ${index + 1}, Size Row ${sizeIndex + 1}: Size is required`,
             );
           }
 
-          if (style.sizeBreakup?.length) {
-            const sizeSeen = new Set();
-            style.sizeBreakup.forEach((size, sizeIndex) => {
-              if (!size.sizeId) {
+          if (
+            (item.trackingType === "Barcode" ||
+              item.trackingType === "Size Template + Barcode") &&
+            !size.barcodeFrom
+          ) {
+            errors.push(
+              `Row ${index + 1}, Size Row ${sizeIndex + 1}: Barcode From is required`,
+            );
+          }
+
+          const qty = Number(size.qty || 0);
+          sizeSum += qty;
+
+          if (qty <= 0) {
+            errors.push(
+              `Row ${index + 1}, Size Row ${sizeIndex + 1}: Qty must be greater than 0`,
+            );
+          }
+
+          if (size.sizeId && item.trackingType !== "Barcode") {
+            if (sizeSeen.has(size.sizeId)) {
+              errors.push(`Row ${index + 1}: Duplicate size found`);
+            } else {
+              sizeSeen.add(size.sizeId);
+            }
+          }
+
+          if (size.packingItems?.length) {
+            size.packingItems.forEach((pi, piIndex) => {
+              const hasPiData =
+                pi.packingUomId || pi.noOfUnits || pi.qtyPerUnit;
+              if (!hasPiData) return;
+
+              if (!pi.packingUomId) {
                 errors.push(
-                  `Row ${index + 1}, Style ${styleIndex + 1}, Size Row ${sizeIndex + 1}: Size is required`,
+                  `Row ${index + 1}, Size Row ${sizeIndex + 1}, Packing Item ${piIndex + 1}: Unit is required`,
                 );
               }
-
-              const qty = Number(size.qty || 0);
-              sizeSum += qty;
-
-              if (qty <= 0) {
+              if (!pi.noOfUnits || Number(pi.noOfUnits) <= 0) {
                 errors.push(
-                  `Row ${index + 1}, Style ${styleIndex + 1}, Size Row ${sizeIndex + 1}: Qty must be greater than 0`,
+                  `Row ${index + 1}, Size Row ${sizeIndex + 1}, Packing Item ${piIndex + 1}: No. of Units must be greater than 0`,
                 );
               }
-
-              if (size.sizeId) {
-                if (sizeSeen.has(size.sizeId)) {
-                  errors.push(
-                    `Row ${index + 1}, Style ${styleIndex + 1}: Duplicate size found`,
-                  );
-                } else {
-                  sizeSeen.add(size.sizeId);
-                }
-              }
-
-              if (size.packingBreakup?.length) {
-                size.packingBreakup.forEach((pb, pbIndex) => {
-                  if (!pb.packingUomId) {
-                    errors.push(
-                      `Row ${index + 1}, Style ${styleIndex + 1}, Size Row ${sizeIndex + 1}, Packing Breakup ${pbIndex + 1}: Unit is required`,
-                    );
-                  }
-                  if (!pb.noOfunits || Number(pb.noOfunits) <= 0) {
-                    errors.push(
-                      `Row ${index + 1}, Style ${styleIndex + 1}, Size Row ${sizeIndex + 1}, Packing Breakup ${pbIndex + 1}: No. of Units must be greater than 0`,
-                    );
-                  }
-                  if (!pb.qty || Number(pb.qty) <= 0) {
-                    errors.push(
-                      `Row ${index + 1}, Style ${styleIndex + 1}, Size Row ${sizeIndex + 1}, Packing Breakup ${pbIndex + 1}: Qty per Unit must be greater than 0`,
-                    );
-                  }
-                });
+              if (!pi.qtyPerUnit || Number(pi.qtyPerUnit) <= 0) {
+                errors.push(
+                  `Row ${index + 1}, Size Row ${sizeIndex + 1}, Packing Item ${piIndex + 1}: Qty per Unit must be greater than 0`,
+                );
               }
             });
-          } else {
-            errors.push(
-              `Row ${index + 1}, Style Row ${styleIndex + 1}: Size Breakup is required`,
-            );
           }
         });
+
+        if (!hasValidSize) {
+          errors.push(
+            `Row ${index + 1}: At least one valid Size Breakup is required`,
+          );
+        }
       } else {
-        errors.push(
-          `Row ${index + 1}: Style Breakup is required for Order Qty`,
-        );
+        errors.push(`Row ${index + 1}: Size Breakup is required for Order Qty`);
       }
       // if (isCustomerExport && !loadingId) {
       //   errors.push(`Loading Port is required`);
@@ -583,7 +594,7 @@ console.log('====================================');
   };
 
   const validateData = (data) => {
-    const items = data?.orderItems || [];
+    const items = data?.packingOrderItems || [];
     const checks = [
       { condition: !data.orderId, title: "Order No is required!" },
       { condition: !data.jobCardId, title: "Job Card is required!" },
@@ -768,7 +779,7 @@ console.log('====================================');
   //         orderQty: "",
   //         itemGroupId: "",
   //         type: "",
-  //         sizeBreakup: [],
+  //         packingSizeBreakup: [],
   //     };
 
   //     const filled = [...items];
@@ -785,7 +796,7 @@ console.log('====================================');
 
   // useEffect(() => {
   //     if (!id) {
-  //         setOrderItems(fillWithDefaultRows([]));
+  //         setPackingOrderItems(fillWithDefaultRows([]));
   //     }
   const fillWithDefaultRows = (items = []) => padRows(items);
 
@@ -794,7 +805,7 @@ console.log('====================================');
   }, [supplierData]);
 
   // const enrichedData = useMemo(() => {
-  //   const filteredItems = orderItems
+  //   const filteredItems = packingOrderItems
   //     .filter((i) => i.styleItemId)
   //     .map((i) => ({
   //       ...i,
@@ -818,7 +829,7 @@ console.log('====================================');
   //     conversionType === "DOZEN" ? true : false,
   //   );
   // }, [
-  //   orderItems,
+  //   packingOrderItems,
   //   isSupplierOutside,
   //   discountType,
   //   discountValue,
@@ -826,7 +837,7 @@ console.log('====================================');
   // ]);
   // const handleConversionChange = (newVal) => {
   //   setConversionType(newVal);
-  //   setOrderItems((prev) =>
+  //   setPackingOrderItems((prev) =>
   //     prev.map((row) => {
   //       const qty = parseFloat(row.orderQty) || 0;
   //       const price = parseFloat(row.price) || 0;
@@ -848,14 +859,14 @@ console.log('====================================');
   //   );
   // };
 
-  const jobcards = singleorderData?.data?.JobCard
+  const jobcards = singleorderData?.data?.JobCard;
   console.log(jobcards, "jobcardsjobcards");
 
   return (
     <>
       {/* <Modal isOpen={summary} onClose={() => setSummary(false)} widthClass="">
         <PoSummary
-          poItems={orderItems}
+          poItems={packingOrderItems}
           totals={enrichedData}
           readOnly={readOnly || isDisabled || childRecord.current > 0}
           discountType={discountType}
@@ -1356,7 +1367,7 @@ console.log('====================================');
                     />
                   </div>
 
-                      {/* JobCard No  */}
+                  {/* JobCard No  */}
 
                   {id ? (
                     <div className="col-span-1">
@@ -1390,8 +1401,8 @@ console.log('====================================');
         detailsLayouts={["default"]}
         gridItems={
           <PackingItems
-            orderItems={orderItems}
-            setOrderItems={setOrderItems}
+            packingOrderItems={packingOrderItems}
+            setPackingOrderItems={setPackingOrderItems}
             readOnly={readOnly || childRecord?.current > 0}
             styleItemList={styleItemList}
             sizeList={sizeList}
@@ -1571,3 +1582,4 @@ console.log('====================================');
   );
 };
 export default PackingForm;
+
