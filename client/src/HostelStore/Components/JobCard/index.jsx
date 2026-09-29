@@ -16,10 +16,11 @@ import { useGetGsmMasterQuery } from "../../../redux/services/GsmMasterService.j
 import { useGetPlateMasterQuery } from "../../../redux/services/PlateMasterService.js";
 import { useGetDieMasterQuery } from "../../../redux/services/DieMasterService.js";
 import OrderEntryApi from "../../../redux/uniformService/OrderEntryService.js";
-import { invalidateOrderEntryModule } from "../../../redux/Dispatch/OrderInvalidateTags.js";
 import { useIsApprover } from "../../../CustomHooks/userIsApprover.js";
 import { UserPermissions } from "../../../Utils/UserPermissions.js";
 import { useGetEmployeeQuery } from "../../../redux/services/EmployeeMasterService.js";
+import { invalidateOrderEntryModule } from "../../../redux/Dispatch/OrderInvalidateTags.js";
+import { invalidateProformaInvoiceModule } from "../../../redux/Dispatch/proformaInvoiveInvalidateTags.js";
 
 const index = () => {
   const [showForm, setShowForm] = useState(false);
@@ -76,6 +77,7 @@ const index = () => {
       try {
         let deldata = await removeData(id).unwrap();
         invalidateOrderEntryModule();
+        invalidateProformaInvoiceModule();
         if (deldata?.statusCode == 1) {
           Swal.fire({
             icon: "error",

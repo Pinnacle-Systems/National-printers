@@ -170,6 +170,7 @@ const BoardDetails = ({
                     addNew={true}
                     childComponent={ProcessMaster}
                     addNewModalWidth="w-[38%] h-[50%]"
+                    menuPortalTarget={document.body}
                   />
                 </td>
                 <td
@@ -194,6 +195,7 @@ const BoardDetails = ({
                     addNew={true}
                     childComponent={Gsm}
                     addNewModalWidth="w-[38%] h-[50%]"
+                    menuPortalTarget={document.body}
                   />
                 </td>
                 <td
@@ -225,6 +227,7 @@ const BoardDetails = ({
                     addNew={true}
                     childComponent={Size}
                     addNewModalWidth="w-[38%] h-[50%]"
+                    menuPortalTarget={document.body}
                   />
                 </td>
                 <td className="text-[11px] border border-gray-300 text-left">

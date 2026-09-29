@@ -3540,6 +3540,7 @@ export function CustomInput({
       onKeyDown={onKeyDown}
       placeholder={placeholder}
       menuPortalTarget={document.body}
+      menuPosition="fixed"
       inputId={inputId}
     />
   );
@@ -3752,6 +3753,7 @@ export function FxSelectWithAdd({
         ref={selectRef}
         styles={customStyles}
         menuPortalTarget={menuPortalTarget}
+        menuPosition={menuPortalTarget ? "fixed" : "absolute"}
         tabSelectsValue={!!value}
         onInputChange={(value, { action }) => {
           if (action === "input-change") {

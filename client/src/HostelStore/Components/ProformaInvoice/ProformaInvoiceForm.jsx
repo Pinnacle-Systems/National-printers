@@ -35,7 +35,7 @@ import {
 import { calculateTaxWithHSNBreakupAndInsertIntoPoItems } from "../../../Utils/taxSummary";
 import PoSummary from "../PurchaseOrder/PoSummary";
 import { useGetPartyByIdQuery } from "../../../redux/services/PartyMasterService";
-
+import { invalidateOrderEntryModule } from "../../../redux/Dispatch/OrderInvalidateTags";
 const EMPTY_ROW = {
   styleItemId: "",
   trackingType: "None",
@@ -403,6 +403,7 @@ const ProformaInvoiceForm = ({
       } else if (pendingAction === "close") {
         onClose();
       }
+      invalidateOrderEntryModule();
     } catch (error) {
       Swal.fire({
         title: "Error",
@@ -461,7 +462,6 @@ const ProformaInvoiceForm = ({
 
   const actionButtonClass =
     "px-3 py-2 rounded-md flex items-center justify-center text-sm text-white transition";
-
 
   const headerContent = (
     <div className="flex flex-wrap gap-1 items-stretch">
@@ -788,7 +788,7 @@ const ProformaInvoiceForm = ({
                 <HiX className="w-3.5 h-3.5 mr-2" />
                 Save & Close
               </button>
-              
+
               <button
                 onClick={() => handleSave("new")}
                 className="bg-indigo-500 text-white px-2 py-1 rounded hover:bg-indigo-600 flex items-center text-xs font-medium"
@@ -811,7 +811,7 @@ const ProformaInvoiceForm = ({
               Edit
             </button>
           )}
-          
+
           <button
             onClick={() => {
               if (!taxTemplateId) {
