@@ -132,6 +132,7 @@ async function get(req) {
     searchOrderType,
     finYearId,
     searchCustomer,
+    searchBranch,
     isTakeOnlyFinshedJobCards,
   } = req.query;
 
@@ -179,6 +180,9 @@ async function get(req) {
       customer: {
         name: searchCustomer ? { contains: searchCustomer } : undefined,
       },
+      orderBranch: {
+        branchName: searchBranch ? { contains: searchBranch } : undefined,
+      },
     },
     include: {
       customer: {
@@ -186,6 +190,9 @@ async function get(req) {
           id: true,
           name: true,
         },
+      },
+      orderBranch: {
+        select: { id: true, branchName: true },
       },
       _count: {
         select: {

@@ -324,7 +324,7 @@ const PackingForm = ({
           alreadyPackingQty:
             style.packingSizeBreakups?.reduce(
               (acc, s) => acc + (s.packingQty || 0),
-              0
+              0,
             ) || 0,
           packingItems: [],
         })),
@@ -382,7 +382,7 @@ const PackingForm = ({
           ?.map((size) => ({
             ...size,
             packingItems: size.packingItems?.filter(
-              (pItem) => Number(pItem.qty) > 0
+              (pItem) => Number(pItem.qty) > 0,
             ),
           }))
           ?.filter((size) => Number(size.packingQty) > 0),
@@ -1453,14 +1453,14 @@ const PackingForm = ({
           <>
             <ReusableFormFooterNew
               sections={[
-                {
-                  title: "Terms & Condtions",
-                  value: requirements,
-                  onChange: setRequirements,
-                  placeholder: "Enter Terms & Condtions...",
-                  readOnly: readOnly || childRecord.current > 0,
-                  ref: requirementRef,
-                },
+                // {
+                //   title: "Terms & Condtions",
+                //   value: requirements,
+                //   onChange: setRequirements,
+                //   placeholder: "Enter Terms & Condtions...",
+                //   readOnly: readOnly || childRecord.current > 0,
+                //   ref: requirementRef,
+                // },
                 {
                   title: "Remarks",
                   value: remarks,

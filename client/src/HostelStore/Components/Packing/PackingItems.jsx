@@ -1074,10 +1074,10 @@ const PackingItems = ({
                                     const isSelected =
                                       (activeSizeKey?.rowIndex === index &&
                                         activeSizeKey?.sizeIdx === sizeIdx &&
-                                        breakup.sizeId !== undefined) ||
-                                      breakup.barcodeFrom !== undefined;
+                                        breakup?.sizeId !== undefined) ||
+                                      breakup?.barcodeFrom !== undefined;
                                     const hasData =
-                                      breakup.sizeId || breakup.barcodeFrom;
+                                      breakup?.sizeId || breakup?.barcodeFrom;
                                     const isActive =
                                       activeSizeKey?.rowIndex === index &&
                                       activeSizeKey?.sizeIdx === sizeIdx;
@@ -1121,35 +1121,35 @@ const PackingItems = ({
                                             "Size Template + Barcode") && (
                                           <>
                                             <td className="border-b border-r border-slate-200 text-left pl-1 text-[11px]">
-                                              {breakup.barcodeFrom}
+                                              {breakup?.barcodeFrom}
                                             </td>
                                             <td className="border-b border-r border-slate-200 text-left pl-1 text-[11px]">
-                                              {breakup.barcodeTo}
+                                              {breakup?.barcodeTo}
                                             </td>
                                           </>
                                         )}
                                         <td className="border-b border-r border-slate-200 text-right px-2 text-[11px]">
-                                          {breakup.qty !== undefined
-                                            ? Number(breakup.qty)
+                                          {breakup?.qty !== undefined
+                                            ? Number(breakup?.qty)
                                             : ""}
                                         </td>
                                         <td className="border-b border-r border-slate-200 text-right px-2 text-[11px]">
-                                          {breakup.alreadyPackingQty !==
+                                          {breakup?.alreadyPackingQty !==
                                           undefined
-                                            ? Number(breakup.alreadyPackingQty)
+                                            ? Number(breakup?.alreadyPackingQty)
                                             : ""}
                                         </td>
                                         <td className="border-b border-r border-slate-200 text-right px-2 text-[11px] h-full">
-                                          {breakup.packingQty !== undefined &&
-                                          breakup.packingQty !== 0
-                                            ? Number(breakup.packingQty)
+                                          {breakup?.packingQty !== undefined &&
+                                          breakup?.packingQty !== 0
+                                            ? Number(breakup?.packingQty)
                                             : ""}
                                         </td>
                                         <td className="border-b border-r border-slate-200 text-right p-0 text-[11px] h-full">
                                           <input
                                             type="text"
                                             className="w-full h-8 text-right px-2 outline-none bg-transparent"
-                                            value={breakup.grossWeight ?? ""}
+                                            value={breakup?.grossWeight ?? ""}
                                             onChange={(e) => {
                                               const val =
                                                 e.target.value.replace(
@@ -1258,10 +1258,35 @@ const PackingItems = ({
                                         0,
                                       )}
                                     </td>
-                                    <td
-                                      colSpan={4}
-                                      className="border-b border-r border-slate-200"
-                                    ></td>
+                                    <td className="border-b border-r border-slate-200 px-2 py-1 text-right text-[11px]">
+                                      {(row?.packingSizeBreakup || []).reduce(
+                                        (sum, b) => sum + (Number(b.alreadyPackingQty) || 0),
+                                        0,
+                                      )}
+                                    </td>
+                                    <td className="border-b border-r border-slate-200 px-2 py-1 text-right text-[11px]">
+                                      {(row?.packingSizeBreakup || []).reduce(
+                                        (sum, b) => sum + (Number(b.packingQty) || 0),
+                                        0,
+                                      )}
+                                    </td>
+                                    <td className="border-b border-r border-slate-200 px-2 py-1 text-right text-[11px]">
+                                      {Number(
+                                        (row?.packingSizeBreakup || []).reduce(
+                                          (sum, b) => sum + (Number(b.grossWeight) || 0),
+                                          0,
+                                        ).toFixed(3)
+                                      )}
+                                    </td>
+                                    <td className="border-b border-r border-slate-200 px-2 py-1 text-right text-[11px]">
+                                      {Number(
+                                        (row?.packingSizeBreakup || []).reduce(
+                                          (sum, b) => sum + (Number(b.netWeight) || 0),
+                                          0,
+                                        ).toFixed(3)
+                                      )}
+                                    </td>
+                                    <td className="border-b border-r border-slate-200"></td>
                                   </tr>
                                 </tfoot>
                               </table>

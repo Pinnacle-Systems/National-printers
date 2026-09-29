@@ -1478,10 +1478,162 @@ const PurchaseOrderForm = ({
         // extraTotalsContent={taxBreakdownContent}
         // extraTotalsContentColumn="right"
       />
-      <TransactionActions
-        leftActions={leftActions}
-        rightActions={rightActions}
-      />
+      <div className="flex flex-col md:flex-row gap-2 justify-between mt-4 pb-4 px-2">
+        {/* Left Buttons */}
+        <div className="flex gap-2 flex-wrap">
+          {!isFullyLocked && (
+            <>
+              <button
+                onClick={() => saveData("close")}
+                disabled={readOnly || status === "APPROVED"}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    saveData("close");
+                    e.stopPropagation();
+                  }
+                }}
+                className={`bg-indigo-500 text-white px-2 py-1 rounded hover:bg-indigo-600 flex items-center text-xs font-medium ${
+                  readOnly || status === "APPROVED" ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+              >
+                <HiX className="w-3.5 h-3.5 mr-2" />
+                Save & Close
+              </button>
+              
+              {status !== "APPROVED" && (
+                <button
+                  onClick={() => saveData("new")}
+                  disabled={readOnly}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      saveData("new");
+                    }
+                  }}
+                  className={`bg-indigo-500 text-white px-2 py-1 rounded hover:bg-indigo-600 flex items-center text-xs font-medium ${
+                    readOnly ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                >
+                  <HiOutlineRefresh className="w-3.5 h-3.5 mr-2" />
+                  Save & New
+                </button>
+              )}
+            </>
+          )}
+
+          {!(!id || status === "PENDING" || status === "APPROVED" || status === "SUPERSEDED" || status === "NOT_CONFIGURED") && (
+            <button
+              onClick={() => saveData("close", { submitApprovalOverride: true })}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  saveData("close", { submitApprovalOverride: true });
+                }
+              }}
+              className="bg-green-700 text-white px-2 py-1 rounded hover:bg-green-800 flex items-center text-xs font-medium"
+            >
+              <FiSend className="w-3.5 h-3.5 mr-2" />
+              Submit Approval
+            </button>
+          )}
+
+          {((id && status === "PENDING") || status === "SUPERSEDED") && (
+            <>
+              <button
+                onClick={() => handleApprovalAction("REJECT")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleApprovalAction("REJECT");
+                  }
+                }}
+                className="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 flex items-center text-xs font-medium"
+              >
+                <MdKeyboardDoubleArrowLeft className="w-3.5 h-3.5 mr-2" />
+                Send Back for Review
+              </button>
+              
+              <button
+                onClick={() => handleApprovalAction("APPROVE")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleApprovalAction("APPROVE");
+                  }
+                }}
+                className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 flex items-center text-xs font-medium"
+              >
+                <FiCheck className="w-3.5 h-3.5 mr-2" />
+                Approve
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Right Buttons */}
+        <div className="flex gap-2 flex-wrap">
+          {!(!id || !readOnly || status === "PENDING" || status === "SUPERSEDED") && (!(!readOnly || !id || isOldVersion)) && (
+            <button
+              onClick={() => setReadOnly(false)}
+              className="bg-yellow-600 text-white px-2 py-1 rounded hover:bg-yellow-700 flex items-center text-xs font-medium"
+            >
+              <FiEdit2 className="w-3.5 h-3.5 mr-2" />
+              Edit
+            </button>
+          )}
+
+          <button
+            onClick={() => {
+              if (!taxTemplateId) {
+                toast.info("Please Select Tax Template !", {
+                  position: "top-center",
+                });
+                return;
+              }
+              setSummary(true);
+            }}
+            onKeyDown={(e) => {
+              if (!taxTemplateId) {
+                e.preventDefault();
+                e.stopPropagation();
+                toast.info("Please Select Tax Template !", {
+                  position: "top-center",
+                });
+                return;
+              }
+              if (e.key === "Enter") {
+                e.preventDefault();
+                e.stopPropagation();
+                setSummary(true);
+              }
+            }}
+            className="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-800 flex items-center text-xs font-medium transition"
+          >
+            <FiEye className="w-3.5 h-3.5 mr-2" />
+            View PO Summary
+          </button>
+
+          <button
+            onClick={() => setPrintModalOpen(true)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                e.stopPropagation();
+                setPrintModalOpen(true);
+              }
+            }}
+            className="bg-slate-600 text-white px-2 py-1 rounded hover:bg-slate-700 flex items-center text-xs font-medium"
+          >
+            <FiPrinter className="w-3.5 h-3.5 mr-2" />
+            Print
+          </button>
+        </div>
+      </div>
     </>
   );
 

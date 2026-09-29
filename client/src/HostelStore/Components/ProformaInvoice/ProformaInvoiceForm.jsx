@@ -462,78 +462,6 @@ const ProformaInvoiceForm = ({
   const actionButtonClass =
     "px-3 py-2 rounded-md flex items-center justify-center text-sm text-white transition";
 
-  const leftActions = [
-    ...(!effectiveReadOnly
-      ? [
-          {
-            key: "saveAndClose",
-            icon: (
-              <span className="flex items-center gap-1">
-                <FiSave className="h-4 w-4" />
-                <HiX className="h-4 w-4" />
-              </span>
-            ),
-            hoverLabel: "Save & Close",
-            iconOnly: true,
-            onClick: () => handleSave("close"),
-            className: `bg-indigo-500 hover:bg-indigo-600 ${actionButtonClass}`,
-          },
-          {
-            key: "saveAndNew",
-            icon: (
-              <span className="flex items-center gap-1">
-                <FiSave className="h-4 w-4" />
-                <HiOutlineRefresh className="h-4 w-4" />
-              </span>
-            ),
-            hoverLabel: "Save & New",
-            iconOnly: true,
-            onClick: () => handleSave("new"),
-            className: `bg-indigo-600 hover:bg-indigo-700 ${actionButtonClass}`,
-          },
-        ]
-      : []),
-  ];
-
-  const rightActions = [
-    {
-      key: "edit",
-      icon: <FiEdit2 className="h-4 w-4" />,
-      hoverLabel: "Edit",
-      iconOnly: true,
-      onClick: () => setReadOnly(false),
-      className: `bg-yellow-600 hover:bg-yellow-700 ${actionButtonClass}`,
-      hidden: !readOnly || !id || isOldVersion,
-    },
-    {
-      key: "summary",
-      icon: <FiEye className="h-4 w-4" />,
-      hoverLabel: "View Summary",
-      iconOnly: true,
-      onClick: () => {
-        if (!taxTemplateId) {
-          Swal.fire({
-            title: "Information",
-            text: "Please Select Tax Template !",
-            icon: "info",
-            confirmButtonColor: "#3085d6",
-          });
-          return;
-        }
-        setSummary(true);
-      },
-      className:
-        "bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-md transition",
-    },
-    {
-      key: "print",
-      icon: <FiPrinter className="h-4 w-4" />,
-      hoverLabel: "Print",
-      iconOnly: true,
-      onClick: () => setPrintModalOpen(true),
-      className: `bg-slate-600 hover:bg-slate-700 ${actionButtonClass}`,
-    },
-  ].filter((a) => !a.hidden);
 
   const headerContent = (
     <div className="flex flex-wrap gap-1 items-stretch">
@@ -848,10 +776,70 @@ const ProformaInvoiceForm = ({
         extraTotalsContent={taxBreakdownContent}
         extraTotalsContentColumn="right"
       />
-      <TransactionActions
-        leftActions={leftActions}
-        rightActions={rightActions}
-      />
+      <div className="flex flex-col md:flex-row gap-2 justify-between mt-4 pb-4 px-2">
+        {/* Left Buttons */}
+        <div className="flex gap-2 flex-wrap">
+          {!effectiveReadOnly && (
+            <>
+              <button
+                onClick={() => handleSave("close")}
+                className="bg-indigo-500 text-white px-2 py-1 rounded hover:bg-indigo-600 flex items-center text-xs font-medium"
+              >
+                <HiX className="w-3.5 h-3.5 mr-2" />
+                Save & Close
+              </button>
+              
+              <button
+                onClick={() => handleSave("new")}
+                className="bg-indigo-500 text-white px-2 py-1 rounded hover:bg-indigo-600 flex items-center text-xs font-medium"
+              >
+                <HiOutlineRefresh className="w-3.5 h-3.5 mr-2" />
+                Save & New
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Right Buttons */}
+        <div className="flex gap-2 flex-wrap">
+          {!(!readOnly || !id || isOldVersion) && (
+            <button
+              onClick={() => setReadOnly(false)}
+              className="bg-yellow-600 text-white px-2 py-1 rounded hover:bg-yellow-700 flex items-center text-xs font-medium"
+            >
+              <FiEdit2 className="w-3.5 h-3.5 mr-2" />
+              Edit
+            </button>
+          )}
+          
+          <button
+            onClick={() => {
+              if (!taxTemplateId) {
+                Swal.fire({
+                  title: "Information",
+                  text: "Please Select Tax Template !",
+                  icon: "info",
+                  confirmButtonColor: "#3085d6",
+                });
+                return;
+              }
+              setSummary(true);
+            }}
+            className="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 flex items-center text-xs font-medium"
+          >
+            <FiEye className="w-3.5 h-3.5 mr-2" />
+            View Summary
+          </button>
+
+          <button
+            onClick={() => setPrintModalOpen(true)}
+            className="bg-slate-600 text-white px-2 py-1 rounded hover:bg-slate-700 flex items-center text-xs font-medium"
+          >
+            <FiPrinter className="w-3.5 h-3.5 mr-2" />
+            Print
+          </button>
+        </div>
+      </div>
     </>
   );
 

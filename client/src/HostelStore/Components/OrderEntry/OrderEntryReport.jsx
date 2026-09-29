@@ -34,6 +34,7 @@ const OrderEntryReport = ({
   const [serachDocNo, setSerachDocNo] = useState("");
   const [searchDocDate, setSearchDocDate] = useState("");
   const [searchCustomer, setSearchCustomer] = useState("");
+  const [searchBranch, setSearchBranch] = useState("");
   const [searchOrderType, setSearchOrderType] = useState("");
 
   const [totalCount, setTotalCount] = useState(0);
@@ -51,11 +52,18 @@ const OrderEntryReport = ({
     searchDocDate,
     searchCustomer,
     searchOrderType,
+    searchBranch,
   };
 
   useEffect(() => {
     setCurrentPageNumber(1);
-  }, [serachDocNo, searchDocDate, searchCustomer, searchOrderType]);
+  }, [
+    serachDocNo,
+    searchDocDate,
+    searchCustomer,
+    searchOrderType,
+    searchBranch,
+  ]);
 
   const companyId = secureLocalStorage.getItem(
     sessionStorage.getItem("sessionId") + "userCompanyId",
@@ -383,7 +391,10 @@ const OrderEntryReport = ({
                     </th>
 
                     <th className="w-80  px-3   font-medium text-[13px] text-gray-900  text-center ">
-                      <div>Customer</div>
+                      <div>Customer Name</div>
+                    </th>
+                    <th className="w-80  px-3   font-medium text-[13px] text-gray-900  text-center ">
+                      <div>Branch Name</div>
                     </th>
                     {/* <th
                       className=" px-3 w-36  font-medium text-[13px]  text-gray-900  text-center "
@@ -462,6 +473,17 @@ const OrderEntryReport = ({
                         }}
                       />
                     </th>
+                    <th className="w-80  px-1 font-medium text-[13px]  text-gray-900  text-center ">
+                      <input
+                        type="text"
+                        className="text-black h-5   w-full   px-1 focus:outline-none border  border-gray-400 rounded-md"
+                        placeholder="Search"
+                        value={searchBranch}
+                        onChange={(e) => {
+                          setSearchBranch(e.target.value);
+                        }}
+                      />
+                    </th>
                   </tr>
                 </thead>
                 {isLoadingIndicator ? (
@@ -512,6 +534,10 @@ const OrderEntryReport = ({
                             <td className="py-1.5 text-left">
                               {" "}
                               {dataObj?.customer?.name}
+                            </td>
+                            <td className="py-1.5 text-left">
+                              {" "}
+                              {dataObj?.orderBranch?.branchName}
                             </td>
                             {/* <td className="py-1.5 text-left">
                               <ApprovalBadge

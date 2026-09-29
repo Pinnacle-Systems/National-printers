@@ -236,7 +236,8 @@ const OrderEntryForm = ({
       .map((item, idx) => ({
         ...item,
         itemOrder: idx,
-        sizeBreakup: item.sizeBreakup?.filter((size) => Number(size.qty) > 0) || [],
+        sizeBreakup:
+          item.sizeBreakup?.filter((size) => Number(size.qty) > 0) || [],
       })),
   };
   console.log(data.orderItems, "payloadcheck");
@@ -709,6 +710,7 @@ const OrderEntryForm = ({
                   setValue={setOrderBranchId}
                   required={true}
                   readOnly={isReadOnly}
+                  disabled={childRecord.current > 0 || isReadOnly}
                 />
               </div>
             </>
@@ -720,114 +722,6 @@ const OrderEntryForm = ({
 
   const actionButtonClass =
     "px-3 py-1.5 rounded-md flex items-center justify-center text-sm text-white transition";
-
-  const leftActions = [
-    {
-      key: "saveAndClose",
-      icon: (
-        <span className="flex items-center gap-1">
-          <FiSave className="h-4 w-4" />
-          <HiX className="h-4 w-4" />
-        </span>
-      ),
-      hoverLabel: "Save & Close",
-      iconOnly: true,
-      onClick: () => saveData("close"),
-      className: `bg-indigo-500 hover:bg-indigo-600 ${actionButtonClass} ${
-        isReadOnly || isDisabled || childRecord?.current > 0
-          ? "cursor-not-allowed"
-          : "cursor-pointer"
-      }`,
-      disabled: isReadOnly || isDisabled || childRecord?.current > 0,
-    },
-    {
-      key: "saveAndNew",
-      icon: (
-        <span className="flex items-center gap-1">
-          <FiSave className="h-4 w-4" />
-          <HiOutlineRefresh className="h-4 w-4" />
-        </span>
-      ),
-      hoverLabel: "Save & New",
-      iconOnly: true,
-      onClick: () => saveData("new"),
-      className: `bg-indigo-500 hover:bg-indigo-600 ${actionButtonClass} ${
-        isReadOnly || isDisabled || childRecord?.current > 0
-          ? "cursor-not-allowed"
-          : "cursor-pointer"
-      }`,
-      disabled: isReadOnly || isDisabled || childRecord?.current > 0,
-    },
-    ...(status === "REJECTED"
-      ? [
-          {
-            key: "submitApproval",
-            icon: <FiSend className="w-4 h-4" />,
-            hoverLabel: "Submit Approval",
-            iconOnly: true,
-            onClick: () => saveData("close", { submitApproval: true }),
-            className: `bg-green-700 hover:bg-green-800 ${actionButtonClass}`,
-            disabled: isReadOnly,
-          },
-        ]
-      : []),
-    ...(id && status === "PENDING" && canApprove
-      ? [
-          {
-            key: "sendBack",
-            icon: <MdKeyboardDoubleArrowLeft className="w-4 h-4" />,
-            hoverLabel: "Send Back for Review",
-            iconOnly: true,
-            onClick: () => handleApprovalAction("REJECT"),
-            className: `bg-blue-600 hover:bg-blue-700 ${actionButtonClass}`,
-            disabled: isReadOnly,
-          },
-          {
-            key: "approve",
-            icon: <FiCheck className="w-4 h-4" />,
-            hoverLabel: "Approve",
-            iconOnly: true,
-            onClick: () => handleApprovalAction("APPROVE"),
-            className: `bg-green-600 hover:bg-green-700 ${actionButtonClass}`,
-            disabled: isReadOnly,
-          },
-        ]
-      : []),
-  ];
-
-  const rightActions = [
-    {
-      key: "edit",
-      icon: <FiEdit2 className="w-4 h-4 mr-1" />,
-      label: "Edit",
-      onClick: () => setReadOnly(false),
-      className: `bg-yellow-600 hover:bg-yellow-700 ${actionButtonClass}`,
-      hidden:
-        !id ||
-        (parentReadOnly && !(singleData?.data?.childRecord > 0)) === false ||
-        isDisabled,
-    },
-    {
-      key: "pdf",
-      icon: <FiPrinter className="h-5 w-4" />,
-      label: "",
-      onClick: () => {
-        setPrintModalOpen(true);
-      },
-      className: `bg-slate-600 hover:bg-slate-700 ${actionButtonClass}`,
-      hidden: !id,
-    },
-    {
-      key: "upload",
-      icon: "📎",
-      label: "Upload",
-      onClick: () => {
-        setSelectedAttachmentIndex(null);
-        setAttachmentModal(true);
-      },
-      className: `bg-red-600 hover:bg-red-700 ${actionButtonClass}`,
-    },
-  ].filter((a) => !a.hidden);
 
   const footerContent = (
     <>
@@ -856,10 +750,94 @@ const OrderEntryForm = ({
           },
         ]}
       />
-      <TransactionActions
-        leftActions={leftActions}
-        rightActions={rightActions}
-      />
+      <div className="flex flex-col md:flex-row gap-2 justify-between mt-4 pb-4 px-2">
+        {/* Left Buttons */}
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => saveData("close")}
+            disabled={isReadOnly || isDisabled || childRecord?.current > 0}
+            className={`bg-indigo-500 text-white px-2 py-1 rounded hover:bg-indigo-600 flex items-center text-xs font-medium ${isReadOnly || isDisabled || childRecord?.current > 0 ? "cursor-not-allowed opacity-50" : ""}`}
+          >
+            <HiX className="w-3.5 h-3.5 mr-2" />
+            Save & Close
+          </button>
+
+          <button
+            onClick={() => saveData("new")}
+            disabled={isReadOnly || isDisabled || childRecord?.current > 0}
+            className={`bg-indigo-500 text-white px-2 py-1 rounded hover:bg-indigo-600 flex items-center text-xs font-medium ${isReadOnly || isDisabled || childRecord?.current > 0 ? "cursor-not-allowed opacity-50" : ""}`}
+          >
+            <HiOutlineRefresh className="w-3.5 h-3.5 mr-2" />
+            Save & New
+          </button>
+
+          {status === "REJECTED" && (
+            <button
+              onClick={() => saveData("close", { submitApproval: true })}
+              disabled={isReadOnly}
+              className={`bg-green-700 text-white px-2 py-1 rounded hover:bg-green-800 flex items-center text-xs font-medium ${isReadOnly ? "cursor-not-allowed opacity-50" : ""}`}
+            >
+              <FiSend className="w-3.5 h-3.5 mr-2" />
+              Submit Approval
+            </button>
+          )}
+
+          {id && status === "PENDING" && canApprove && (
+            <>
+              <button
+                onClick={() => handleApprovalAction("REJECT")}
+                disabled={isReadOnly}
+                className={`bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 flex items-center text-xs font-medium ${isReadOnly ? "cursor-not-allowed opacity-50" : ""}`}
+              >
+                <MdKeyboardDoubleArrowLeft className="w-3.5 h-3.5 mr-2" />
+                Send Back for Review
+              </button>
+              <button
+                onClick={() => handleApprovalAction("APPROVE")}
+                disabled={isReadOnly}
+                className={`bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 flex items-center text-xs font-medium ${isReadOnly ? "cursor-not-allowed opacity-50" : ""}`}
+              >
+                <FiCheck className="w-3.5 h-3.5 mr-2" />
+                Approve
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Right Buttons */}
+        <div className="flex gap-2 flex-wrap">
+          {(!(!id || (parentReadOnly && !(singleData?.data?.childRecord > 0)) === false || isDisabled)) && (
+            <button
+              onClick={() => setReadOnly(false)}
+              className="bg-yellow-600 text-white px-2 py-1 rounded hover:bg-yellow-700 flex items-center text-xs font-medium"
+            >
+              <FiEdit2 className="w-3.5 h-3.5 mr-2" />
+              Edit
+            </button>
+          )}
+
+          {id && (
+            <button
+              onClick={() => setPrintModalOpen(true)}
+              className="bg-slate-600 text-white px-2 py-1 rounded hover:bg-slate-700 flex items-center text-xs font-medium"
+            >
+              <FiPrinter className="w-3.5 h-3.5 mr-2" />
+              Print
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedAttachmentIndex(null);
+              setAttachmentModal(true);
+            }}
+            className="flex items-center font-medium gap-1 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            📎 Upload
+          </button>
+        </div>
+      </div>
     </>
   );
 

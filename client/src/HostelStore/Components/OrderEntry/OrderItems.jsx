@@ -327,7 +327,7 @@ const OrderItems = ({
       currentRow.sizeBreakup = newBreakup;
       currentRow.orderQty = newBreakup.reduce(
         (sum, item) => sum + (Number(item.qty) || 0),
-        0
+        0,
       );
       newRows[activeRowIndex] = currentRow;
       return newRows;
@@ -394,37 +394,37 @@ const OrderItems = ({
   return (
     <>
       <div className="w-full h-full overflow-y-auto mb-2 bg-white border border-slate-200 rounded-md">
-        <table className="w-[90vw] border-collapse table-fixed">
+        <table className="w-[98vw] border-collapse table-fixed">
           <thead className="bg-gray-200 text-gray-800 sticky top-0 z-10 text-[12px]">
             <tr>
               <th className="w-6 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 S.No
               </th>
-              <th className="w-44 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="w-80 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Description of Goods
               </th>
-              <th className="w-28 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="w-36 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Item Group
               </th>
-              <th className="w-20 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="w-24 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 HSN
               </th>
               <th className="w-28 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Type
               </th>
-              <th className="w-16 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="w-24 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Size / Barcode
               </th>
-              <th className="w-20 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="w-24 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 UOM
               </th>
-              <th className="w-16 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="w-24 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Qty
               </th>
-              <th className="w-16 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="w-24 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Price
               </th>
-              <th className="w-40 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="w-full px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Remarks
               </th>
             </tr>
@@ -542,11 +542,12 @@ const OrderItems = ({
                     disabled={readOnly}
                     className={`  pl-2 h-full text-[11px] cursor-pointer outline-none w-full bg-transparent   rounded-sm transition-all `}
                   >
-                    <option value="None">None</option>
+                    {/* <option value="None">None</option> */}
+
+                    <option value="Size Template">Size</option>
                     <option value="Barcode">Barcode</option>
-                    <option value="Size Template">Size Template</option>
                     <option value="Size Template + Barcode">
-                      Size Template + Barcode
+                      Size + Barcode
                     </option>
                   </select>
                 </td>
