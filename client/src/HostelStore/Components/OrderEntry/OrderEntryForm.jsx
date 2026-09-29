@@ -233,9 +233,13 @@ const OrderEntryForm = ({
     orderItems: orderItems
       ?.map((item, idx) => ({ ...item, uiIndex: idx + 1 }))
       ?.filter((i) => i.styleItemId)
-      .map((item, idx) => ({ ...item, itemOrder: idx })),
+      .map((item, idx) => ({
+        ...item,
+        itemOrder: idx,
+        sizeBreakup: item.sizeBreakup?.filter((size) => Number(size.qty) > 0) || [],
+      })),
   };
-
+  console.log(data.orderItems, "payloadcheck");
   const handleSubmitCustom = async (callback, data, text, nextProcess) => {
     try {
       const formData = new FormData();

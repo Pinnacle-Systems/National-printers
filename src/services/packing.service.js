@@ -196,25 +196,19 @@ async function get(req) {
       },
     },
     include: {
-      PackingItems: {
-        include: {
-          PackingStyleBreakup: {
-            include: {
-              PackingSizeBreakup: {
-                include: {
-                  PackingBreakup: true,
-                },
-              },
-            },
-          },
-        },
-      },
+      // PackingOrderItems: {
+      //   include: {
+      //     PackingSizeBreakup: {
+      //       include: {
+      //         PackingItems: true,
+      //       },
+      //     },
+      //   },
+      // },
       OrderEntry: {
-        include: {
-          customer: true,
-        },
+        select: { id: true, docId: true, customer: true },
       },
-      JobCard: true,
+      JobCard: { select: { id: true, docId: true } },
     },
     orderBy: {
       id: "desc",
@@ -433,25 +427,26 @@ async function getOne(id) {
       id: parseInt(id),
     },
     include: {
-      PackingItems: {
+      PackingOrderItems: {
         include: {
-          PackingStyleBreakup: {
+          PackingSizeBreakup: {
             include: {
-              PackingSizeBreakup: {
+              PackingItems: true,
+              OrderSizeBreakup: {
                 include: {
-                  PackingBreakup: true,
-                  OrderSizeBreakup: {
-                    include: {
-                      PackingSizeBreakup: true,
-                    },
-                  },
+                  packingSizeBreakups: true,
                 },
               },
             },
           },
         },
       },
-      OrderEntry: true,
+      OrderEntry: {
+        include: {
+          customer: true,
+        },
+      },
+      JobCard: true,
     },
   });
 
@@ -461,20 +456,25 @@ async function getOne(id) {
     statusCode: 0,
     data: {
       ...data,
-      PackingItems: data.PackingItems.map((item) => ({
-        ...item,
-        styleBreakup: item.PackingStyleBreakup.map((size) => ({
-          ...size,
-          sizeBreakup: size.PackingSizeBreakup?.map((breakup) => ({
-            ...breakup,
-            packingBreakup: breakup.PackingBreakup || [],
-            alreadyPackingQty:
-              breakup.OrderSizeBreakup?.PackingSizeBreakup?.filter(
-                (i) => i?.id !== breakup?.id,
-              )?.reduce((acc, size) => acc + (size.packingQty || 0), 0),
-          })),
-        })),
-      })),
+      packingOrderItems: data.PackingOrderItems.map((item) => {
+        const { PackingSizeBreakup, ...restItem } = item;
+        return {
+          ...restItem,
+          packingSizeBreakup: (PackingSizeBreakup || []).map((size) => {
+            const { PackingItems, OrderSizeBreakup, ...restSize } = size;
+            return {
+              ...restSize,
+              alreadyPackingQty:
+                OrderSizeBreakup?.packingSizeBreakups
+                  ?.filter((i) => i?.id !== size.id)
+                  ?.reduce((acc, s) => acc + (s.packingQty || 0), 0) || 0,
+              packingItems: (PackingItems || []).map((breakup) => ({
+                ...breakup,
+              })),
+            };
+          }),
+        };
+      }),
     },
   };
 }
@@ -558,6 +558,8 @@ async function create(body) {
               ? {
                   create: item.packingSizeBreakup.map((s) => ({
                     sizeId: s.sizeId ? parseInt(s.sizeId) : null,
+                    barcodeFrom: s.barcodeFrom || "",
+                    barcodeTo: s.barcodeTo || "",
                     packingQty: s.packingQty ? parseInt(s.packingQty) : null,
                     qty: s.qty ? parseInt(s.qty) : null,
                     grossWeight: s.grossWeight
@@ -632,7 +634,7 @@ async function create(body) {
         createdById: parseInt(userId),
         branchId: branchId ? parseInt(branchId) : null,
 
-        PackingItems:
+        PackingOrderItems:
           packingItems.length > 0
             ? {
                 create: packingItems,
@@ -658,8 +660,7 @@ async function update(id, body, files) {
   const {
     userId,
     attachments,
-
-    orderItems,
+    packingOrderItems,
   } = await body;
 
   const parseAttachments = JSON.parse(attachments || "[]");
@@ -668,9 +669,9 @@ async function update(id, body, files) {
     .map((i) => parseInt(i.id));
 
   const parsedItems =
-    typeof orderItems === "string"
-      ? JSON.parse(orderItems || "[]")
-      : orderItems || [];
+    typeof packingOrderItems === "string"
+      ? JSON.parse(packingOrderItems || "[]")
+      : packingOrderItems || [];
   const incomingItemIds = parsedItems
     ?.filter((i) => i.id)
     .map((i) => parseInt(i.id));
@@ -682,12 +683,12 @@ async function update(id, body, files) {
       id: parseInt(id),
     },
     include: {
-      PackingItems: true,
+      PackingOrderItems: true,
     },
   });
   if (!dataFound) return NoRecordFound("Packing");
 
-  const removedItemIds = dataFound.PackingItems.filter(
+  const removedItemIds = dataFound.PackingOrderItems.filter(
     (item) => !incomingItemIds.includes(item.id),
   ).map((item) => item.id);
 
@@ -707,29 +708,18 @@ async function update(id, body, files) {
         hsnId: item?.hsnId ? parseInt(item.hsnId) : null,
       };
 
-      if (item?.styleBreakup?.length > 0) {
-        item.styleBreakup.forEach((st) => {
-          if (st?.sizeBreakup?.length > 0) {
-            st.sizeBreakup.forEach((s) => {
-              stockEntries.push({
-                ...baseStock,
-                styleId: st.styleId ? parseInt(st.styleId) : null,
-                sizeId: s.sizeId ? parseInt(s.sizeId) : null,
-                qty: s?.packingQty ? parseFloat(s.packingQty) : null,
-              });
-            });
-          } else {
-            stockEntries.push({
-              ...baseStock,
-              styleId: st.styleId ? parseInt(st.styleId) : null,
-              qty: st?.packingQty ? parseFloat(st.packingQty) : null,
-            });
-          }
+      if (item?.packingSizeBreakup?.length > 0) {
+        item.packingSizeBreakup.forEach((s) => {
+          stockEntries.push({
+            ...baseStock,
+            sizeId: s.sizeId ? parseInt(s.sizeId) : null,
+            qty: s?.packingQty ? parseFloat(s.packingQty) : null,
+          });
         });
       } else {
         stockEntries.push({
           ...baseStock,
-          qty: item?.packingQty ? parseFloat(item.packingQty) : null,
+          qty: item?.orderQty ? parseFloat(item.orderQty) : null,
         });
       }
     });
@@ -741,7 +731,7 @@ async function update(id, body, files) {
         id: parseInt(id),
       },
       data: {
-        PackingItems: {
+        PackingOrderItems: {
           deleteMany: incomingItemIds.length
             ? { id: { notIn: incomingItemIds } }
             : {},
@@ -750,64 +740,33 @@ async function update(id, body, files) {
             .map((item) => ({
               where: { id: parseInt(item.id) },
               data: {
-                styleItemId: item.styleItemId
-                  ? parseInt(item.styleItemId)
-                  : null,
-                itemGroupId: item.itemGroupId
-                  ? parseInt(item.itemGroupId)
-                  : null,
-                itemSubGroupId: item?.itemSubGroupId
-                  ? parseInt(item?.itemSubGroupId)
-                  : null,
-                labelWidth: item?.labelWidth ?? "",
-                trackingType: item.trackingType,
-                price: item?.price ? parseFloat(item.price) : null,
-                amount: item?.amount ? parseFloat(item.amount) : null,
-                dozen: item?.dozen ? parseFloat(item.dozen) : null,
-                uomId: item.uomId ? parseInt(item.uomId) : null,
-                gsmId: item.gsmId ? parseInt(item.gsmId) : null,
-                PackingStyleBreakup: {
+                styleItemId: item?.styleItemId ? parseInt(item.styleItemId) : null,
+                itemGroupId: item?.itemGroupId ? parseInt(item.itemGroupId) : null,
+                trackingType: item?.trackingType,
+                uomId: item?.uomId ? parseInt(item.uomId) : null,
+                hsnId: item?.hsnId ? parseInt(item.hsnId) : null,
+                orderQty: item?.orderQty ? parseInt(item.orderQty) : null,
+                PackingSizeBreakup: {
                   deleteMany: {},
                   create:
-                    item?.styleBreakup?.length > 0
-                      ? item.styleBreakup.map((st) => ({
-                          styleId: st.styleId ? parseInt(st.styleId) : null,
-                          PackingSizeBreakup:
-                            st?.sizeBreakup?.length > 0
+                    item?.packingSizeBreakup?.length > 0
+                      ? item.packingSizeBreakup.map((s) => ({
+                          sizeId: s.sizeId ? parseInt(s.sizeId) : null,
+                          barcodeFrom: s.barcodeFrom || "",
+                          barcodeTo: s.barcodeTo || "",
+                          packingQty: s.packingQty ? parseInt(s.packingQty) : null,
+                          qty: s.qty ? parseInt(s.qty) : null,
+                          grossWeight: s.grossWeight ? parseFloat(s.grossWeight) : null,
+                          netWeight: s.netWeight ? parseFloat(s.netWeight) : null,
+                          dimensions: s.dimensions ?? "",
+                          orderSizeBreakupId: s.orderSizeBreakupId ? parseInt(s.orderSizeBreakupId) : null,
+                          PackingItems:
+                            s?.packingItems?.length > 0
                               ? {
-                                  create: st.sizeBreakup.map((s) => ({
-                                    sizeId: s.sizeId
-                                      ? parseInt(s.sizeId)
-                                      : null,
-                                    packingQty: s.packingQty
-                                      ? parseInt(s.packingQty)
-                                      : null,
-                                    qty: s.qty ? parseInt(s.qty) : null,
-                                    grossWeight: s.grossWeight
-                                      ? String(s.grossWeight)
-                                      : null,
-                                    netWeight: s.netWeight
-                                      ? String(s.netWeight)
-                                      : null,
-                                    dimensions: s.dimensions ?? "",
-                                    PackingBreakup:
-                                      s?.packingBreakup?.length > 0
-                                        ? {
-                                            create: s.packingBreakup.map(
-                                              (b) => ({
-                                                packingUomId: b.packingUomId
-                                                  ? parseInt(b.packingUomId)
-                                                  : null,
-                                                noOfunits: b.noOfunits
-                                                  ? String(b.noOfunits)
-                                                  : null,
-                                                qty: b.qty
-                                                  ? String(b.qty)
-                                                  : null,
-                                              }),
-                                            ),
-                                          }
-                                        : undefined,
+                                  create: s.packingItems.map((b) => ({
+                                    packingUomId: b.packingUomId ? parseInt(b.packingUomId) : null,
+                                    noOfunits: b.noOfunits ? parseFloat(b.noOfunits) : null,
+                                    qty: b.qty ? parseFloat(b.qty) : null,
                                   })),
                                 }
                               : undefined,
@@ -816,66 +775,41 @@ async function update(id, body, files) {
                 },
               },
             })),
-
           create: parsedItems
             .filter((item) => !item.id)
             .map((item) => ({
-              styleItemId: item.styleItemId ? parseInt(item.styleItemId) : null,
-              itemGroupId: item.itemGroupId ? parseInt(item.itemGroupId) : null,
-              itemSubGroupId: item?.itemSubGroupId
-                ? parseInt(item?.itemSubGroupId)
-                : null,
-              labelWidth: item?.labelWidth ?? "",
-              trackingType: item.trackingType,
-              price: item?.price ? parseFloat(item.price) : null,
-              amount: item?.amount ? parseFloat(item.amount) : null,
-              dozen: item?.dozen ? parseFloat(item.dozen) : null,
-              uomId: item.uomId ? parseInt(item.uomId) : null,
-              gsmId: item.gsmId ? parseInt(item.gsmId) : null,
-              PackingStyleBreakup:
-                item?.styleBreakup?.length > 0
-                  ? {
-                      create: item.styleBreakup.map((st) => ({
-                        styleId: st.styleId ? parseInt(st.styleId) : null,
-                        PackingSizeBreakup:
-                          st?.sizeBreakup?.length > 0
-                            ? {
-                                create: st.sizeBreakup.map((s) => ({
-                                  sizeId: s.sizeId ? parseInt(s.sizeId) : null,
-                                  packingQty: s.packingQty
-                                    ? parseInt(s.packingQty)
-                                    : null,
-                                  qty: s.qty ? parseInt(s.qty) : null,
-                                  grossWeight: s.grossWeight
-                                    ? String(s.grossWeight)
-                                    : null,
-                                  netWeight: s.netWeight
-                                    ? String(s.netWeight)
-                                    : null,
-                                  dimensions: s.dimensions ?? "",
-                                  orderSizeBreakupId: s.id
-                                    ? parseInt(s.id)
-                                    : null,
-                                  PackingBreakup:
-                                    s?.packingBreakup?.length > 0
-                                      ? {
-                                          create: s.packingBreakup.map((b) => ({
-                                            packingUomId: b.packingUomId
-                                              ? parseInt(b.packingUomId)
-                                              : null,
-                                            noOfunits: b.noOfunits
-                                              ? String(b.noOfunits)
-                                              : null,
-                                            qty: b.qty ? String(b.qty) : null,
-                                          })),
-                                        }
-                                      : undefined,
-                                })),
-                              }
-                            : undefined,
-                      })),
-                    }
-                  : undefined,
+                styleItemId: item?.styleItemId ? parseInt(item.styleItemId) : null,
+                itemGroupId: item?.itemGroupId ? parseInt(item.itemGroupId) : null,
+                trackingType: item?.trackingType,
+                uomId: item?.uomId ? parseInt(item.uomId) : null,
+                hsnId: item?.hsnId ? parseInt(item.hsnId) : null,
+                orderQty: item?.orderQty ? parseInt(item.orderQty) : null,
+                PackingSizeBreakup:
+                  item?.packingSizeBreakup?.length > 0
+                    ? {
+                        create: item.packingSizeBreakup.map((s) => ({
+                          sizeId: s.sizeId ? parseInt(s.sizeId) : null,
+                          barcodeFrom: s.barcodeFrom || "",
+                          barcodeTo: s.barcodeTo || "",
+                          packingQty: s.packingQty ? parseInt(s.packingQty) : null,
+                          qty: s.qty ? parseInt(s.qty) : null,
+                          grossWeight: s.grossWeight ? parseFloat(s.grossWeight) : null,
+                          netWeight: s.netWeight ? parseFloat(s.netWeight) : null,
+                          dimensions: s.dimensions ?? "",
+                          orderSizeBreakupId: s.orderSizeBreakupId ? parseInt(s.orderSizeBreakupId) : null,
+                          PackingItems:
+                            s?.packingItems?.length > 0
+                              ? {
+                                  create: s.packingItems.map((b) => ({
+                                    packingUomId: b.packingUomId ? parseInt(b.packingUomId) : null,
+                                    noOfunits: b.noOfunits ? parseFloat(b.noOfunits) : null,
+                                    qty: b.qty ? parseFloat(b.qty) : null,
+                                  })),
+                                }
+                              : undefined,
+                        })),
+                      }
+                    : undefined,
             })),
         },
       },
@@ -907,7 +841,7 @@ async function remove(id) {
   const dataFound = await prisma.packing.findUnique({
     where: { id: packingId },
     include: {
-      PackingItems: { select: { id: true } },
+      PackingOrderItems: { select: { id: true } },
     },
   });
 

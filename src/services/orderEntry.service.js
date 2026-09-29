@@ -523,6 +523,7 @@ async function getOne(id) {
           sizeBreakup: {
             include: {
               Size: true,
+              packingSizeBreakups: true,
             },
           },
         },

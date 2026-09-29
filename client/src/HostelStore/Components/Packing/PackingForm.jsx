@@ -261,8 +261,12 @@ const PackingForm = ({
       );
       setOrderId(data?.orderId ? data?.orderId : "");
       setJobCardId(data?.jobCardId ? data?.jobCardId : "");
+      console.log(data?.packingOrderItems, "data?.packingOrderItems");
+
       setPackingOrderItems(
-        data?.PackingItems?.length ? data.PackingItems : [makeEmptyRow()],
+        data?.packingOrderItems?.length
+          ? data.packingOrderItems
+          : [makeEmptyRow()],
       );
       setCustomerId(
         data?.OrderEntry?.customerId ? data?.OrderEntry?.customerId : "",
@@ -316,6 +320,13 @@ const PackingForm = ({
         ...item,
         packingSizeBreakup: (item.sizeBreakup || []).map((style) => ({
           ...style,
+          orderSizeBreakupId: style.id,
+          alreadyPackingQty:
+            style.packingSizeBreakups?.reduce(
+              (acc, s) => acc + (s.packingQty || 0),
+              0
+            ) || 0,
+          packingItems: [],
         })),
       }));
       console.log(mappedItems, "mappedItems");
@@ -363,7 +374,19 @@ const PackingForm = ({
     termsAndCondition,
     termsId,
     docId,
-    packingOrderItems: packingOrderItems?.filter((i) => i.styleItemId),
+    packingOrderItems: packingOrderItems
+      ?.filter((i) => i.styleItemId)
+      ?.map((item) => ({
+        ...item,
+        packingSizeBreakup: item.packingSizeBreakup
+          ?.map((size) => ({
+            ...size,
+            packingItems: size.packingItems?.filter(
+              (pItem) => Number(pItem.qty) > 0
+            ),
+          }))
+          ?.filter((size) => Number(size.packingQty) > 0),
+      })),
     proFormaId,
     refNo,
     isRepeatedPI,
@@ -551,7 +574,7 @@ const PackingForm = ({
           if (size.packingItems?.length) {
             size.packingItems.forEach((pi, piIndex) => {
               const hasPiData =
-                pi.packingUomId || pi.noOfUnits || pi.qtyPerUnit;
+                pi.packingUomId || pi.noOfunits || pi.qtyPerUnit;
               if (!hasPiData) return;
 
               if (!pi.packingUomId) {
@@ -559,12 +582,12 @@ const PackingForm = ({
                   `Row ${index + 1}, Size Row ${sizeIndex + 1}, Packing Item ${piIndex + 1}: Unit is required`,
                 );
               }
-              if (!pi.noOfUnits || Number(pi.noOfUnits) <= 0) {
+              if (!pi.noOfunits || Number(pi.noOfunits) <= 0) {
                 errors.push(
                   `Row ${index + 1}, Size Row ${sizeIndex + 1}, Packing Item ${piIndex + 1}: No. of Units must be greater than 0`,
                 );
               }
-              if (!pi.qtyPerUnit || Number(pi.qtyPerUnit) <= 0) {
+              if (!pi.qty || Number(pi.qty) <= 0) {
                 errors.push(
                   `Row ${index + 1}, Size Row ${sizeIndex + 1}, Packing Item ${piIndex + 1}: Qty per Unit must be greater than 0`,
                 );
@@ -1582,4 +1605,3 @@ const PackingForm = ({
   );
 };
 export default PackingForm;
-

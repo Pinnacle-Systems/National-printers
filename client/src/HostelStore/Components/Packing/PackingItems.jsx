@@ -148,7 +148,10 @@ const PackingItems = ({
         }
       }
 
-      packingSizeBreakup[sizeIndex] = { ...packingSizeBreakup[sizeIndex], [field]: value };
+      packingSizeBreakup[sizeIndex] = {
+        ...packingSizeBreakup[sizeIndex],
+        [field]: value,
+      };
       row.packingSizeBreakup = packingSizeBreakup;
       rows[rowIndex] = row;
       return rows;
@@ -324,7 +327,10 @@ const PackingItems = ({
         });
       }
 
-      packingSizeBreakup[sizeIndex] = { ...packingSizeBreakup[sizeIndex], [field]: value };
+      packingSizeBreakup[sizeIndex] = {
+        ...packingSizeBreakup[sizeIndex],
+        [field]: value,
+      };
       styleObj.packingSizeBreakup = packingSizeBreakup;
       styleBreakup[styleIndex] = styleObj;
       row.styleBreakup = styleBreakup;
@@ -497,8 +503,8 @@ const PackingItems = ({
   // ── packingItems handlers ──────────────────────────────────────────────────
   const EMPTY_PACKING_ITEM = () => ({
     packingUomId: "",
-    noOfUnits: "",
-    qtyPerUnit: "",
+    noOfunits: "",
+    qty: "",
   });
 
   const addPackingItem = (rowIndex, sizeIdx) => {
@@ -538,8 +544,8 @@ const PackingItems = ({
 
       let totalPackingQty = 0;
       packingItems.forEach((item) => {
-        const units = Number(item.noOfUnits) || 0;
-        const qty = Number(item.qtyPerUnit) || 0;
+        const units = Number(item.noOfunits) || 0;
+        const qty = Number(item.qty) || 0;
         totalPackingQty += units * qty;
       });
 
@@ -580,8 +586,8 @@ const PackingItems = ({
 
       let totalPackingQty = 0;
       packingItems.forEach((item) => {
-        const units = Number(item.noOfUnits) || 0;
-        const qty = Number(item.qtyPerUnit) || 0;
+        const units = Number(item.noOfunits) || 0;
+        const qty = Number(item.qty) || 0;
         totalPackingQty += units * qty;
       });
 
@@ -1056,7 +1062,8 @@ const PackingItems = ({
                                 </thead>
                                 <tbody>
                                   {(() => {
-                                    const actualRows = row?.packingSizeBreakup || [];
+                                    const actualRows =
+                                      row?.packingSizeBreakup || [];
                                     if (actualRows.length >= 5)
                                       return actualRows;
                                     return [
@@ -1385,13 +1392,13 @@ const PackingItems = ({
                               type="number"
                               min="0"
                               className="w-full h-full text-right px-2 text-[11px] outline-none bg-transparent"
-                              value={pi.noOfUnits || ""}
+                              value={pi.noOfunits || ""}
                               onChange={(e) => {
                                 updatePackingItem(
                                   activeSizeKey.rowIndex,
                                   activeSizeKey.sizeIdx,
                                   piIdx,
-                                  "noOfUnits",
+                                  "noOfunits",
                                   e.target.value,
                                 );
                               }}
@@ -1417,13 +1424,13 @@ const PackingItems = ({
                               type="number"
                               min="0"
                               className="w-full h-full text-right px-2 text-[11px] outline-none bg-transparent"
-                              value={pi.qtyPerUnit || ""}
+                              value={pi.qty || ""}
                               onChange={(e) => {
                                 updatePackingItem(
                                   activeSizeKey.rowIndex,
                                   activeSizeKey.sizeIdx,
                                   piIdx,
-                                  "qtyPerUnit",
+                                  "qty",
                                   e.target.value,
                                 );
                               }}
@@ -1445,8 +1452,8 @@ const PackingItems = ({
                             />
                           </td>
                           <td className="border-b border-r border-slate-200 text-right px-2 text-[11px] font-semibold bg-slate-50">
-                            {(Number(pi.noOfUnits) || 0) *
-                              (Number(pi.qtyPerUnit) || 0) || ""}
+                            {(Number(pi.noOfunits) || 0) *
+                              (Number(pi.qty) || 0) || ""}
                           </td>
                         </tr>
                       ))}
@@ -1463,8 +1470,8 @@ const PackingItems = ({
                           {piRows.reduce(
                             (sum, pi) =>
                               sum +
-                              (Number(pi.noOfUnits) || 0) *
-                                (Number(pi.qtyPerUnit) || 0),
+                              (Number(pi.noOfunits) || 0) *
+                                (Number(pi.qty) || 0),
                             0,
                           )}
                         </td>
@@ -1571,4 +1578,3 @@ const PackingItems = ({
 };
 
 export default PackingItems;
-

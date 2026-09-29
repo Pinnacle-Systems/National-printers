@@ -631,7 +631,8 @@ const JobCardForm = ({
   const validateData = (d) => {
     const checks = [
       { condition: !d.docDate, title: "Document Date is required!" },
-      { condition: !d.customerId, title: "Customer is required!" },
+      { condition: d.jobCardType === "ORDER" && !d.customerId, title: "Customer is required!" },
+      { condition: d.jobCardType === "GENERAL" && !d.orderBranchId, title: "Order Branch is required!" },
       { condition: !d.orderEntryId, title: "Order No is required!" },
       { condition: !d.productionType, title: "Production Type is required!" },
       { condition: !d.styleItemId, title: "Item Description is required!" },

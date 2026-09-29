@@ -240,7 +240,10 @@ async function getOne(id) {
               StyleItem: { select: { name: true } },
               ItemGroup: { select: { name: true } },
               sizeBreakup: {
-                include: { Size: { select: { id: true, name: true } } },
+                include: { 
+                  Size: { select: { id: true, name: true } },
+                  packingSizeBreakups: true,
+                },
               },
             },
           },

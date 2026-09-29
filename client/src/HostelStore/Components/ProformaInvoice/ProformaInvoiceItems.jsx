@@ -156,7 +156,7 @@ const ProformaInvoiceItems = ({
             </div>
 
             <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-              {items[activeRowIndex]?.trackingType !== "Barcode" && (
+              {/* {items[activeRowIndex]?.trackingType !== "Barcode" && (
                 <div className="mb-3 bg-slate-50 p-2 border border-slate-200 rounded flex items-center gap-3">
                   <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     Size Template
@@ -167,7 +167,7 @@ const ProformaInvoiceItems = ({
                     )?.name || "No Template Selected"}
                   </span>
                 </div>
-              )}
+              )} */}
               <div className="max-h-[300px] overflow-y-auto">
                 <table className="w-full border-separate border-spacing-0 border-t border-l border-slate-200">
                   <thead>
