@@ -76,6 +76,7 @@ import { useLazyGetBoardQtyQuery } from "../../../redux/services/StockService.js
 import { useGetColorMasterQuery } from "../../../redux/services/ColorMasterService.js";
 import { invalidateProformaInvoiceModule } from "../../../redux/Dispatch/proformaInvoiveInvalidateTags";
 import { invalidateOrderEntryModule } from "../../../redux/Dispatch/OrderInvalidateTags.js";
+import { invalidateStockModule } from "../../../redux/Dispatch/stockReportInvalidateTags.js";
 
 const DEFAULT_BOARD_ROWS = 2;
 
@@ -623,6 +624,7 @@ const JobCardForm = ({
       });
       invalidateOrderEntryModule();
       invalidateProformaInvoiceModule();
+      invalidateStockModule();
     } catch (error) {
       console.error("submit error", error);
     }

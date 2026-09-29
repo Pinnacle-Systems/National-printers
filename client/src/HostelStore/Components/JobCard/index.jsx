@@ -21,6 +21,7 @@ import { UserPermissions } from "../../../Utils/UserPermissions.js";
 import { useGetEmployeeQuery } from "../../../redux/services/EmployeeMasterService.js";
 import { invalidateOrderEntryModule } from "../../../redux/Dispatch/OrderInvalidateTags.js";
 import { invalidateProformaInvoiceModule } from "../../../redux/Dispatch/proformaInvoiveInvalidateTags.js";
+import { invalidateStockModule } from "../../../redux/Dispatch/stockReportInvalidateTags.js";
 
 const index = () => {
   const [showForm, setShowForm] = useState(false);
@@ -78,6 +79,7 @@ const index = () => {
         let deldata = await removeData(id).unwrap();
         invalidateOrderEntryModule();
         invalidateProformaInvoiceModule();
+        invalidateStockModule();
         if (deldata?.statusCode == 1) {
           Swal.fire({
             icon: "error",
