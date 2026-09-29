@@ -87,7 +87,7 @@ const ProformaInvoiceForm = ({
   const [items, setItems] = useState(padItems([]));
   const [taxTemplateId, setTaxTemplateId] = useState("");
   const [summary, setSummary] = useState(false);
-  const [discountType, setDiscountType] = useState("Percentage");
+  const [discountType, setDiscountType] = useState("");
   const [discountValue, setDiscountValue] = useState(0);
   const [printModalOpen, setPrintModalOpen] = useState(false);
 
@@ -180,7 +180,6 @@ const ProformaInvoiceForm = ({
       }
       setAvailableVersions(loadedVersions);
       setSelectedQuoteVersion("Latest");
-
       const targetVersion =
         loadedVersions.length > 0 ? Math.max(...loadedVersions, 1) : 1;
       const filteredItems = (data.items || []).filter(
@@ -192,7 +191,8 @@ const ProformaInvoiceForm = ({
       }));
       console.log("filteredItems", filteredItems);
       setItems(padItems(formattedItems));
-
+      setDiscountValue(data?.discountValue);
+      setDiscountType(data?.discountType);
       const cust = data.customer || data.OrderEntry?.customer;
       if (cust) {
         setCustomerDetails({
@@ -275,7 +275,7 @@ const ProformaInvoiceForm = ({
                   qty: parseFloat(oi.orderQty) || 0,
                   price: oi.price || "",
                   taxPercent: parseFloat(oi.Hsn?.tax) || 0,
-                  discountType: "Percentage",
+                  discountType: "",
                   discountValue: 0,
                   amount:
                     (parseFloat(oi.orderQty) || 0) *
@@ -370,6 +370,8 @@ const ProformaInvoiceForm = ({
       modeOfPayment,
       deliveryCharge: Number(deliveryCharge) || 0,
       items: JSON.stringify(filteredItems),
+      discountType,
+      discountValue,
     };
 
     try {

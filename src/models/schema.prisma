@@ -1968,6 +1968,8 @@ model ProformaInvoice {
   deliveryType       String?
   modeOfPayment      String?
   deliveryCharge     Float?
+  discountType       String?
+  discountValue      Float?
   JobCards           JobCard[]
 }
 
