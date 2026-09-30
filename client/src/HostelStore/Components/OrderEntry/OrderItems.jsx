@@ -92,6 +92,26 @@ const OrderItems = ({
   const handleCloseSizeModal = () => {
     if (activeRowIndex !== null && orderItems[activeRowIndex]) {
       const currentRow = orderItems[activeRowIndex];
+
+      const selectedSizes = currentRow.sizeBreakup
+        ?.map((item) => item.sizeId)
+        ?.filter(
+          (sizeId) => sizeId !== undefined && sizeId !== null && sizeId !== "",
+        );
+
+      if (selectedSizes && selectedSizes.length > 0) {
+        const uniqueSizes = new Set(selectedSizes);
+        if (selectedSizes.length !== uniqueSizes.size) {
+          Swal.fire({
+            icon: "warning",
+            title: "Duplicate Size",
+            text: "You have selected the same size multiple times. Each row must have a unique size.",
+            timer: 3000,
+          });
+          return;
+        }
+      }
+
       if (
         currentRow?.trackingType === "Barcode" ||
         currentRow?.trackingType === "Size Template + Barcode"
@@ -134,74 +154,30 @@ const OrderItems = ({
     setSizeModalOpen(true);
     setPendingFocus(index);
 
-    const currentRow = orderItems[index];
-    const hasEmptyBreakup =
-      !currentRow.sizeBreakup || currentRow.sizeBreakup.length === 0;
+    setOrderItems((prev) => {
+      const newRows = [...prev];
+      if (newRows[index]) {
+        let currentBreakup = [...(newRows[index].sizeBreakup || [])];
 
-    let targetTemplateId = currentRow.sizeTemplateId;
-
-    if (!targetTemplateId) {
-      const selectedItem = styleItemList?.data?.find(
-        (item) => item.id === currentRow.styleItemId,
-      );
-      targetTemplateId = selectedItem?.sizeTemplateId;
-    }
-
-    if (targetTemplateId && hasEmptyBreakup) {
-      try {
-        const response =
-          await triggerGetTemplateById(targetTemplateId).unwrap();
-        const template = response?.data;
-        if (template && template.SizeTemplateList) {
-          const initialBreakup = template.SizeTemplateList.map((t) => ({
-            sizeId: t.sizeId,
-            qty: "",
-            barcodeFrom: "",
-            barcodeTo: "",
-          }));
-
-          setOrderItems((prev) => {
-            const newRows = [...prev];
-            if (newRows[index]) {
-              newRows[index] = {
-                ...newRows[index],
-                sizeTemplateId: targetTemplateId,
-                sizeBreakup: initialBreakup,
-              };
-            }
-            return newRows;
-          });
+        // Ensure at least 5 rows initially
+        const minRows = 5;
+        if (currentBreakup.length < minRows) {
+          const padding = Array.from(
+            { length: minRows - currentBreakup.length },
+            () => ({
+              sizeId: null,
+              qty: "",
+              barcodeFrom: "",
+              barcodeTo: "",
+            }),
+          );
+          currentBreakup = [...currentBreakup, ...padding];
         }
-      } catch (e) {
-        console.error("Failed to fetch size template details", e);
+
+        newRows[index].sizeBreakup = currentBreakup;
       }
-    } else if (currentRow.trackingType === "Barcode") {
-      // For Barcode tracking, ensure at least 5 rows and they reflect the current order quantity distribution
-      setOrderItems((prev) => {
-        const newRows = [...prev];
-        if (newRows[index]) {
-          let currentBreakup = [...(newRows[index].sizeBreakup || [])];
-
-          // Ensure at least 5 rows initially
-          const minRows = 5;
-          if (currentBreakup.length < minRows) {
-            const padding = Array.from(
-              { length: minRows - currentBreakup.length },
-              () => ({
-                sizeId: null,
-                qty: "",
-                barcodeFrom: "",
-                barcodeTo: "",
-              }),
-            );
-            currentBreakup = [...currentBreakup, ...padding];
-          }
-
-          newRows[index].sizeBreakup = currentBreakup;
-        }
-        return newRows;
-      });
-    }
+      return newRows;
+    });
   };
 
   const handleTemplateChange = async (templateId) => {
@@ -329,16 +305,23 @@ const OrderItems = ({
     setOrderItems((prev) => {
       const newRows = [...prev];
       const currentRow = { ...newRows[activeRowIndex] };
-      let newBreakup = currentRow.sizeBreakup.filter((_, i) => i !== index);
+      const currentBreakup = currentRow.sizeBreakup || [];
 
-      // Keep min 5 rows for Barcode type
-      if (currentRow.trackingType === "Barcode" && newBreakup.length < 5) {
-        newBreakup.push({
-          sizeId: null,
-          qty: "",
-          barcodeFrom: "",
-          barcodeTo: "",
+      let newBreakup;
+      if (currentBreakup.length <= 5) {
+        newBreakup = currentBreakup.map((item, i) => {
+          if (i === index) {
+            return {
+              sizeId: null,
+              qty: "",
+              barcodeFrom: "",
+              barcodeTo: "",
+            };
+          }
+          return item;
         });
+      } else {
+        newBreakup = currentBreakup.filter((_, i) => i !== index);
       }
 
       currentRow.sizeBreakup = newBreakup;
@@ -356,16 +339,12 @@ const OrderItems = ({
       const newRows = [...prev];
       const currentRow = { ...newRows[activeRowIndex] };
 
-      if (currentRow.trackingType === "Barcode") {
-        currentRow.sizeBreakup = Array.from({ length: 5 }, () => ({
-          sizeId: null,
-          qty: "",
-          barcodeFrom: "",
-          barcodeTo: "",
-        }));
-      } else {
-        currentRow.sizeBreakup = [];
-      }
+      currentRow.sizeBreakup = Array.from({ length: 5 }, () => ({
+        sizeId: null,
+        qty: "",
+        barcodeFrom: "",
+        barcodeTo: "",
+      }));
 
       currentRow.orderQty = 0;
       newRows[activeRowIndex] = currentRow;
@@ -388,13 +367,7 @@ const OrderItems = ({
 
   const handleRightClick = (event, rowIndex, type) => {
     event.preventDefault();
-    // If it's a modal row, only allow right-click for Barcode type
-    if (
-      type === "MODAL" &&
-      orderItems[activeRowIndex]?.trackingType !== "Barcode"
-    ) {
-      return;
-    }
+    // If it's a modal row, allow right-click for any tracking type
     setContextMenu({
       mouseX: event.clientX,
       mouseY: event.clientY,
@@ -421,37 +394,37 @@ const OrderItems = ({
   return (
     <>
       <div className="w-full h-full overflow-y-auto mb-2 bg-white border border-slate-200 rounded-md">
-        <table className="w-[90vw] border-collapse table-fixed">
+        <table className="w-[98vw] border-collapse table-fixed">
           <thead className="bg-gray-200 text-gray-800 sticky top-0 z-10 text-[12px]">
             <tr>
               <th className="w-6 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 S.No
               </th>
-              <th className="w-44 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="w-80 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Description of Goods
               </th>
-              <th className="w-28 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="w-36 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Item Group
               </th>
-              <th className="w-20 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="w-24 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 HSN
               </th>
               <th className="w-28 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Type
               </th>
-              <th className="w-16 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="w-24 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Size / Barcode
               </th>
-              <th className="w-20 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="w-24 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 UOM
               </th>
-              <th className="w-16 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="w-24 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Qty
               </th>
-              <th className="w-16 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="w-24 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Price
               </th>
-              <th className="w-40 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="w-full px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Remarks
               </th>
             </tr>
@@ -569,11 +542,12 @@ const OrderItems = ({
                     disabled={readOnly}
                     className={`  pl-2 h-full text-[11px] cursor-pointer outline-none w-full bg-transparent   rounded-sm transition-all `}
                   >
-                    <option value="None">None</option>
+                    {/* <option value="None">None</option> */}
+
+                    <option value="Size Template">Size</option>
                     <option value="Barcode">Barcode</option>
-                    <option value="Size Template">Size Template</option>
                     <option value="Size Template + Barcode">
-                      Size Template + Barcode
+                      Size + Barcode
                     </option>
                   </select>
                 </td>
@@ -854,7 +828,7 @@ const OrderItems = ({
 
             {/* Main content area */}
             <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-              {orderItems[activeRowIndex]?.trackingType !== "Barcode" && (
+              {/* {orderItems[activeRowIndex]?.trackingType !== "Barcode" && (
                 <div className="mb-3 bg-slate-50 p-2 border border-slate-200 rounded flex items-center gap-3">
                   <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     Size Template
@@ -866,7 +840,7 @@ const OrderItems = ({
                     )?.name || "No Template Selected"}
                   </span>
                 </div>
-              )}
+              )} */}
               <div className="h-[220px] overflow-y-auto">
                 {/* --- BARCODE TYPE TABLE --- */}
                 {orderItems[activeRowIndex]?.trackingType === "Barcode" && (
@@ -1011,13 +985,33 @@ const OrderItems = ({
                           <tr
                             key={idx}
                             className="h-8 hover:bg-slate-50 transition-colors"
+                            onContextMenu={(e) =>
+                              !readOnly && handleRightClick(e, idx, "MODAL")
+                            }
                           >
                             <td className="border-b border-r border-slate-200 px-1 py-0 text-center text-[11px] text-black">
                               {idx + 1}
                             </td>
-                            <td className="border-b border-r border-slate-200 px-3 py-0 text-[11px] text-black">
-                              {sizeList?.data?.find((s) => s.id === item.sizeId)
-                                ?.name || "All Items"}
+                            <td className="border-b border-r border-slate-200 px-1 py-0 text-[11px] text-black">
+                              <select
+                                className="w-full h-7 border-none bg-transparent px-1 text-[11px] text-black outline-none focus:bg-white"
+                                value={item.sizeId || ""}
+                                onChange={(e) =>
+                                  handleSizeBreakupChange(
+                                    idx,
+                                    "sizeId",
+                                    e.target.value,
+                                  )
+                                }
+                                disabled={readOnly}
+                              >
+                                <option value="">Select Size</option>
+                                {sizeList?.data?.map((s) => (
+                                  <option key={s.id} value={s.id}>
+                                    {s.name}
+                                  </option>
+                                ))}
+                              </select>
                             </td>
                             <td className="border-b border-r border-slate-200 px-1 py-0">
                               <input
@@ -1038,6 +1032,19 @@ const OrderItems = ({
                                     e.target.value,
                                   )
                                 }
+                                onKeyDown={(e) => {
+                                  if (
+                                    e.key === "Enter" &&
+                                    !readOnly &&
+                                    idx ===
+                                      orderItems[activeRowIndex]?.sizeBreakup
+                                        ?.length -
+                                        1
+                                  ) {
+                                    e.preventDefault();
+                                    addModalRow();
+                                  }
+                                }}
                                 disabled={readOnly}
                                 placeholder="0"
                               />
@@ -1078,13 +1085,33 @@ const OrderItems = ({
                           <tr
                             key={idx}
                             className="h-8 hover:bg-slate-50 transition-colors"
+                            onContextMenu={(e) =>
+                              !readOnly && handleRightClick(e, idx, "MODAL")
+                            }
                           >
                             <td className="border-b border-r border-slate-200 px-1 py-0 text-center text-[11px] text-black ">
                               {idx + 1}
                             </td>
-                            <td className="border-b border-r border-slate-200 px-2 py-0 text-[11px]  text-black truncate ">
-                              {sizeList?.data?.find((s) => s.id === item.sizeId)
-                                ?.name || "All Items"}
+                            <td className="border-b border-r border-slate-200 px-1 py-0 text-[11px] text-black">
+                              <select
+                                className="w-full h-7 border-none bg-transparent px-1 text-[11px] text-black outline-none focus:bg-white"
+                                value={item.sizeId || ""}
+                                onChange={(e) =>
+                                  handleSizeBreakupChange(
+                                    idx,
+                                    "sizeId",
+                                    e.target.value,
+                                  )
+                                }
+                                disabled={readOnly}
+                              >
+                                <option value="">Select Size</option>
+                                {sizeList?.data?.map((s) => (
+                                  <option key={s.id} value={s.id}>
+                                    {s.name}
+                                  </option>
+                                ))}
+                              </select>
                             </td>
                             <td className="border-b border-r border-slate-200 px-1 py-0">
                               <input
@@ -1137,6 +1164,19 @@ const OrderItems = ({
                                     e.target.value,
                                   )
                                 }
+                                onKeyDown={(e) => {
+                                  if (
+                                    e.key === "Enter" &&
+                                    !readOnly &&
+                                    idx ===
+                                      orderItems[activeRowIndex]?.sizeBreakup
+                                        ?.length -
+                                        1
+                                  ) {
+                                    e.preventDefault();
+                                    addModalRow();
+                                  }
+                                }}
                                 disabled={readOnly}
                                 placeholder="0"
                               />

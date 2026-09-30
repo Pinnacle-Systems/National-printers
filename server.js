@@ -68,6 +68,7 @@ import {
   proformaInvoice,
   productionalallocation,
   machine,
+  packing,
 } from "./src/routes/index.js";
 import { setIo } from "./src/utils/notificationHelper.js";
 import { socketMain } from "./src/sockets/socket.js";
@@ -170,13 +171,14 @@ apiRouter.use("/board", board);
 apiRouter.use("/proformaInvoice", proformaInvoice);
 apiRouter.use("/productionAllocation", productionalallocation);
 apiRouter.use("/machine", machine);
+apiRouter.use("/packing", packing);
 
 apiRouter.get("/retreiveFile/:fileName", (req, res) => {
   const { fileName } = req.params;
   res.sendFile(__dirname + "/uploads/" + fileName);
 });
 
-app.use("/api", apiRouter);
+app.use("/", apiRouter);
 
 const httpServer = createServer(app);
 export const io = new Server(httpServer, {

@@ -43,7 +43,6 @@ import {
   useGetRefListQuery,
   useLazyGetOrderEntryByIdQuery,
 } from "../../../redux/uniformService/OrderEntryService.js";
-import { invalidateOrderEntryModule } from "../../../redux/Dispatch/OrderInvalidateTags.js";
 import {
   ProcessRoutePanel,
   routeKeysToDb,
@@ -75,6 +74,9 @@ import BoardDetails, { emptyRow } from "./BoardDetails.jsx";
 import { useGetStyleItemMasterQuery } from "../../../redux/services/StyleItemMasterService.js";
 import { useLazyGetBoardQtyQuery } from "../../../redux/services/StockService.js";
 import { useGetColorMasterQuery } from "../../../redux/services/ColorMasterService.js";
+import { invalidateProformaInvoiceModule } from "../../../redux/Dispatch/proformaInvoiveInvalidateTags";
+import { invalidateOrderEntryModule } from "../../../redux/Dispatch/OrderInvalidateTags.js";
+import { invalidateStockModule } from "../../../redux/Dispatch/stockReportInvalidateTags.js";
 
 const DEFAULT_BOARD_ROWS = 2;
 
@@ -621,6 +623,8 @@ const JobCardForm = ({
         },
       });
       invalidateOrderEntryModule();
+      invalidateProformaInvoiceModule();
+      invalidateStockModule();
     } catch (error) {
       console.error("submit error", error);
     }
@@ -631,7 +635,14 @@ const JobCardForm = ({
   const validateData = (d) => {
     const checks = [
       { condition: !d.docDate, title: "Document Date is required!" },
-      { condition: !d.customerId, title: "Customer is required!" },
+      {
+        condition: d.jobCardType === "ORDER" && !d.customerId,
+        title: "Customer is required!",
+      },
+      {
+        condition: d.jobCardType === "GENERAL" && !d.orderBranchId,
+        title: "Order Branch is required!",
+      },
       { condition: !d.orderEntryId, title: "Order No is required!" },
       { condition: !d.productionType, title: "Production Type is required!" },
       { condition: !d.styleItemId, title: "Item Description is required!" },

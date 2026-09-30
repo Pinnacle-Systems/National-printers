@@ -196,6 +196,8 @@ async function create(body) {
     deliveryCustomerId,
     modeOfPayment,
     deliveryCharge,
+    discountType,
+    discountValue,
   } = body;
 
   let finYearDate = await getFinYearStartTimeEndTime(finYearId);
@@ -235,6 +237,11 @@ async function create(body) {
         deliveryCharge && deliveryCharge !== ""
           ? parseFloat(deliveryCharge)
           : null,
+      discountValue:
+        discountValue && discountValue !== ""
+          ? parseFloat(discountValue)
+          : null,
+      discountType: discountType,
       remarks,
       termsAndCondition,
       termsId: termsId ? parseInt(termsId) : null,
@@ -319,6 +326,8 @@ async function update(id, body, files) {
     deliveryCustomerId,
     modeOfPayment,
     deliveryCharge,
+    discountValue,
+    discountType,
   } = body;
 
   const parseItems = JSON.parse(items || "[]");
@@ -454,6 +463,11 @@ async function update(id, body, files) {
         deliveryCharge && deliveryCharge !== ""
           ? parseFloat(deliveryCharge)
           : null,
+      discountValue:
+        discountValue && discountValue !== ""
+          ? parseFloat(discountValue)
+          : null,
+      discountType: discountType,
       quoteVersion: nextQuoteVersion,
       ...(isApproved !== undefined && {
         isApproved: isApproved === "true" || isApproved === true,

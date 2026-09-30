@@ -1,18 +1,18 @@
 import { useDispatch } from "react-redux";
-import { getCommonParams } from "../../../Utils/helper";
-import { useGetTermsandCondtionsQuery } from "../../../redux/uniformService/TermsAndContionService";
-import { useGetUserByIdQuery } from "../../../redux/services/UsersMasterService";
-import { useDeleteProformaInvoiceMutation } from "../../../redux/uniformService/ProformaInvoiceService";
+import { getCommonParams } from "../../../Utils/helper.js";
+import { useGetTermsandCondtionsQuery } from "../../../redux/uniformService/TermsAndContionService.js";
+import { useGetUserByIdQuery } from "../../../redux/services/UsersMasterService.js";
+import { useDeleteProformaInvoiceMutation } from "../../../redux/uniformService/ProformaInvoiceService.js";
 import { useGetPartyQuery } from "../../../redux/services/PartyMasterService.js";
 import { useGetBranchQuery } from "../../../redux/services/BranchMasterService.js";
 import { useState } from "react";
 import { FaPlus } from "react-icons/fa";
-import ProformaInvoiceReport from "./ProformaInvoiceReport.jsx";
-import ProformaInvoiceForm from "./ProformaInvoiceForm.jsx";
+import SaleOrderReport from "./SaleOrderReport.jsx";
+import SaleOrderForm from "./SaleOrderForm.jsx";
 import Swal from "sweetalert2";
-import { invalidateOrderEntryModule } from "../../../redux/Dispatch/OrderInvalidateTags";
+import { invalidateOrderEntryModule } from "../../../redux/Dispatch/OrderInvalidateTags.js";
 
-const ProformaInvoice = () => {
+const SaleOrder = () => {
   const [showForm, setShowForm] = useState(false);
   const [id, setId] = useState("");
   const [readOnly, setReadOnly] = useState(false);
@@ -91,7 +91,7 @@ const ProformaInvoice = () => {
         <div className="flex flex-col sm:flex-row justify-between bg-white py-1 px-1 items-start sm:items-center mb-4 gap-x-4 rounded-tl-lg rounded-tr-lg shadow-sm border border-gray-200">
           <div>
             <h1 className="text-lg font-bold text-gray-800">
-              Proforma Invoice Report
+              Sale Order Report
             </h1>
           </div>
 
@@ -106,7 +106,7 @@ const ProformaInvoice = () => {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <ProformaInvoiceReport
+          <SaleOrderReport
             onView={handleView}
             onEdit={handleEdit}
             onDelete={handleDelete}
@@ -118,7 +118,7 @@ const ProformaInvoice = () => {
 
       {showForm && (
         <div className="h-[93vh] overflow-hidden">
-          <ProformaInvoiceForm
+          <SaleOrderForm
             readOnly={readOnly}
             setReadOnly={setReadOnly}
             id={id}
@@ -137,4 +137,4 @@ const ProformaInvoice = () => {
   );
 };
 
-export default ProformaInvoice;
+export default SaleOrder;

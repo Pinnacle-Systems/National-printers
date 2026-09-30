@@ -1,41 +1,49 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import Swal from "sweetalert2";
-import { TextInput, DropdownInput, DateInputNew } from "../../../Inputs";
+import {
+  TextInput,
+  DropdownInput,
+  DateInputNew,
+} from "../../../Inputs/index.js";
 import {
   useAddProformaInvoiceMutation,
   useUpdateProformaInvoiceMutation,
   useDeleteProformaInvoiceMutation,
   useGetProformaInvoiceByIdQuery,
   useGetProformaInvoiceQuery,
-} from "../../../redux/uniformService/ProformaInvoiceService";
-import { findFromList, getCommonParams, ModeChip } from "../../../Utils/helper";
-import { dropDownListObject } from "../../../Utils/contructObject";
-import ProformaInvoiceItems from "./ProformaInvoiceItems.jsx";
+} from "../../../redux/uniformService/ProformaInvoiceService.js";
+import {
+  findFromList,
+  getCommonParams,
+  ModeChip,
+} from "../../../Utils/helper.js";
+import { dropDownListObject } from "../../../Utils/contructObject.js";
+import SaleOrderItems from "./SaleOrderItems.jsx";
 import moment from "moment";
 import { PDFViewer } from "@react-pdf/renderer";
-import Modal from "../../../UiComponents/Modal";
-import ProformaInvoicePrintFormat from "./ProformaInvoicePrintFormat.jsx";
-import tw from "../../../Utils/tailwind-react-pdf";
+import Modal from "../../../UiComponents/Modal/index.js";
+import SaleOrderPrintFormat from "./SaleOrderPrintFormat.jsx";
+import tw from "../../../Utils/tailwind-react-pdf.js";
 import { IoArrowBackCircleSharp } from "react-icons/io5";
 import { FiEdit2, FiSave, FiPrinter, FiEye } from "react-icons/fi";
 import { HiOutlineRefresh, HiX } from "react-icons/hi";
 import {
   useGetOrderEntryQuery,
   useLazyGetOrderEntryByIdQuery,
-} from "../../../redux/uniformService/OrderEntryService";
+} from "../../../redux/uniformService/OrderEntryService.js";
 import {
   CommonFormFooter,
   TransactionActions,
   TransactionLayout,
-} from "../../../Basic/components/Reuseable";
+} from "../../../Basic/components/Reuseable/index.js";
 import {
   useGetTaxTemplateQuery,
   useGetTaxTemplateByIdQuery,
 } from "../../../redux/services/TaxTemplateServices.js";
-import { calculateTaxWithHSNBreakupAndInsertIntoPoItems } from "../../../Utils/taxSummary";
-import PoSummary from "../PurchaseOrder/PoSummary";
-import { useGetPartyByIdQuery } from "../../../redux/services/PartyMasterService";
-import { invalidateOrderEntryModule } from "../../../redux/Dispatch/OrderInvalidateTags";
+import { calculateTaxWithHSNBreakupAndInsertIntoPoItems } from "../../../Utils/taxSummary.js";
+import PoSummary from "../PurchaseOrder/PoSummary.js";
+import { useGetPartyByIdQuery } from "../../../redux/services/PartyMasterService.js";
+import { invalidateOrderEntryModule } from "../../../redux/Dispatch/OrderInvalidateTags.js";
 const EMPTY_ROW = {
   styleItemId: "",
   trackingType: "None",
@@ -65,7 +73,7 @@ const padItems = (itemsArray = []) => {
   return itemsArray;
 };
 
-const ProformaInvoiceForm = ({
+const SaleOrderForm = ({
   readOnly,
   setReadOnly,
   id,
@@ -473,11 +481,11 @@ const ProformaInvoiceForm = ({
         </h2>
         <div className="flex gap-2">
           <div className="w-32">
-            <TextInput name="PI No" value={docId} disabled={true} />
+            <TextInput name="Sale Order No" value={docId} disabled={true} />
           </div>
           <div className="w-24">
             <DateInputNew
-              name="PI Date"
+              name="Sale Order Date"
               value={docDate}
               setValue={setDocDate}
               disabled={true}
@@ -870,7 +878,7 @@ const ProformaInvoiceForm = ({
         widthClass={"w-[90%] h-[90%]"}
       >
         <PDFViewer style={tw("w-full h-full")}>
-          <ProformaInvoicePrintFormat
+          <SaleOrderPrintFormat
             data={{
               ...singleData?.data,
               items: items.filter((i) => i.styleItemId),
@@ -882,7 +890,7 @@ const ProformaInvoiceForm = ({
       </Modal>
 
       <TransactionLayout
-        title="Proforma Invoice"
+        title="Sale Order"
         badge={<ModeChip id={id} readOnly={readOnly} />}
         closeIcon={<IoArrowBackCircleSharp className="w-7 h-7" />}
         onClose={onClose}
@@ -891,7 +899,7 @@ const ProformaInvoiceForm = ({
         detailsLayout="default"
         detailsLayouts={["default"]}
         gridItems={
-          <ProformaInvoiceItems
+          <SaleOrderItems
             items={items}
             enrichedItems={enrichedData}
             setItems={setItems}
@@ -908,4 +916,4 @@ const ProformaInvoiceForm = ({
   );
 };
 
-export default ProformaInvoiceForm;
+export default SaleOrderForm;

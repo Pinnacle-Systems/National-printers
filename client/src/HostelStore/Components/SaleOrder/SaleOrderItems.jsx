@@ -12,7 +12,7 @@ import TaxDetailsFullTemplate from "../TaxDetailsCompleteTemplate";
 import Swal from "sweetalert2";
 import Modal from "../../../UiComponents/Modal";
 
-const ProformaInvoiceItems = ({
+const SaleOrderItems = ({
   items,
   enrichedItems,
   setItems,
@@ -536,4 +536,4 @@ const ProformaInvoiceItems = ({
   );
 };
 
-export default ProformaInvoiceItems;
+export default SaleOrderItems;
