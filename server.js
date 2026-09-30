@@ -178,8 +178,7 @@ apiRouter.get("/retreiveFile/:fileName", (req, res) => {
   res.sendFile(__dirname + "/uploads/" + fileName);
 });
 
-app.use("/", apiRouter);
-
+app.use("/api", apiRouter);
 const httpServer = createServer(app);
 export const io = new Server(httpServer, {
   cors: {
