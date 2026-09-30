@@ -57,3 +57,4 @@ export { default as ProductionAllocation } from "./ProductionAllocation/index";
 export { default as MachineMaster } from "./MachineMaster";
 export { default as Packing } from "./Packing/index";
 export { default as SaleOrder } from "./SaleOrder/SaleOrder";
+export { default as SalesDelivery } from "./SalesDelivery/SalesDelivery";

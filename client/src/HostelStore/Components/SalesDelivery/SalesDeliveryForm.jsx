@@ -18,11 +18,11 @@ import {
   ModeChip,
 } from "../../../Utils/helper.js";
 import { dropDownListObject } from "../../../Utils/contructObject.js";
-import SaleOrderItems from "./SaleOrderItems.jsx";
+import SalesDeliveryItems from "./SalesDeliveryItems.jsx";
 import moment from "moment";
 import { PDFViewer } from "@react-pdf/renderer";
 import Modal from "../../../UiComponents/Modal/index.js";
-import SaleOrderPrintFormat from "./SaleOrderPrintFormat.jsx";
+import SalesDeliveryPrintFormat from "./SalesDeliveryPrintFormat.jsx";
 import tw from "../../../Utils/tailwind-react-pdf.js";
 import { IoArrowBackCircleSharp } from "react-icons/io5";
 import { FiEdit2, FiSave, FiPrinter, FiEye } from "react-icons/fi";
@@ -74,7 +74,7 @@ const padItems = (itemsArray = []) => {
   return itemsArray;
 };
 
-const SaleOrderForm = ({
+const SalesDeliveryForm = ({
   readOnly,
   setReadOnly,
   id,
@@ -882,7 +882,7 @@ const SaleOrderForm = ({
         widthClass={"w-[90%] h-[90%]"}
       >
         <PDFViewer style={tw("w-full h-full")}>
-          <SaleOrderPrintFormat
+          <SalesDeliveryPrintFormat
             data={{
               ...singleData?.data,
               items: items.filter((i) => i.styleItemId),
@@ -903,7 +903,7 @@ const SaleOrderForm = ({
         detailsLayout="default"
         detailsLayouts={["default"]}
         gridItems={
-          <SaleOrderItems
+          <SalesDeliveryItems
             items={items}
             enrichedItems={enrichedData}
             setItems={setItems}
@@ -920,4 +920,4 @@ const SaleOrderForm = ({
   );
 };
 
-export default SaleOrderForm;
+export default SalesDeliveryForm;
