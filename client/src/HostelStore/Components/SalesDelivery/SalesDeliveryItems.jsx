@@ -13,15 +13,15 @@ import Swal from "sweetalert2";
 import Modal from "../../../UiComponents/Modal";
 
 const SalesDeliveryItems = ({
-  items,
+  salesDeliveryItems,
   enrichedItems,
-  setItems,
+  setSalesDeliveryItems,
   readOnly,
   taxTemplateId,
   id,
   isSupplierOutside,
 }) => {
-  console.log("items", items);
+  console.log("salesDeliveryItems", salesDeliveryItems);
   const { companyId } = getCommonParams();
   const { data: styleItemList } = useGetStyleItemMasterQuery({
     params: { companyId },
@@ -53,15 +53,15 @@ const SalesDeliveryItems = ({
   const [focusedField, setFocusedField] = useState(null);
 
   const addRow = () => {
-    setItems([...items, EMPTY_ROW]);
+    setSalesDeliveryItems([...salesDeliveryItems, EMPTY_ROW]);
   };
 
   const deleteRow = (index) => {
-    setItems(items.filter((_, i) => i !== index));
+    setSalesDeliveryItems(salesDeliveryItems.filter((_, i) => i !== index));
   };
 
   const handleInputChange = (value, index, field) => {
-    const newItems = [...items];
+    const newItems = [...salesDeliveryItems];
     newItems[index] = {
       ...newItems[index],
       [field]: value,
@@ -72,12 +72,90 @@ const SalesDeliveryItems = ({
     const price = parseFloat(newItems[index].price) || 0;
     newItems[index].amount = (qty * price).toFixed(2);
 
-    setItems(newItems);
+    setSalesDeliveryItems(newItems);
   };
 
   const handleOpenSizeModal = (index) => {
     setActiveRowIndex(index);
     setSizeModalOpen(true);
+  };
+
+  const handleContextMenu = (event, index) => {
+    event.preventDefault();
+    if (readOnly) return;
+    setContextMenu({
+      mouseX: event.clientX - 2,
+      mouseY: event.clientY - 4,
+      rowId: index,
+    });
+  };
+
+  const handleCloseContextMenu = () => {
+    setContextMenu(null);
+  };
+
+  const [sizeContextMenu, setSizeContextMenu] = useState(null);
+
+  const handleSizeContextMenu = (event, breakupIndex) => {
+    event.preventDefault();
+    if (readOnly) return;
+    setSizeContextMenu({
+      mouseX: event.clientX - 2,
+      mouseY: event.clientY - 4,
+      breakupIndex,
+    });
+  };
+
+  const handleCloseSizeContextMenu = () => {
+    setSizeContextMenu(null);
+  };
+
+  const handleSizeBreakupChange = (value, rowIndex, breakupIndex, field) => {
+    const newItems = [...salesDeliveryItems];
+    const newBreakup = [...(newItems[rowIndex].salesDeliveryBreakUp || [])];
+
+    if (breakupIndex >= newBreakup.length) {
+      for (let i = newBreakup.length; i <= breakupIndex; i++) {
+        newBreakup.push({});
+      }
+    }
+
+    newBreakup[breakupIndex] = {
+      ...newBreakup[breakupIndex],
+      [field]: field === "deliveryQty" ? (value === "" ? "" : Number(value)) : value,
+    };
+
+    newItems[rowIndex].salesDeliveryBreakUp = newBreakup;
+
+    const totalDeliveryQty = newBreakup.reduce(
+      (sum, b) => sum + (parseFloat(b.deliveryQty) || 0),
+      0,
+    );
+    newItems[rowIndex].qty = totalDeliveryQty;
+
+    const price = parseFloat(newItems[rowIndex].price) || 0;
+    newItems[rowIndex].amount = (totalDeliveryQty * price).toFixed(2);
+
+    setSalesDeliveryItems(newItems);
+  };
+
+  const deleteSizeBreakupRow = (breakupIndex) => {
+    const newItems = [...salesDeliveryItems];
+    const newBreakup = [
+      ...(newItems[activeRowIndex].salesDeliveryBreakUp || []),
+    ];
+    newBreakup.splice(breakupIndex, 1);
+    newItems[activeRowIndex].salesDeliveryBreakUp = newBreakup;
+
+    const totalDeliveryQty = newBreakup.reduce(
+      (sum, b) => sum + (parseFloat(b.deliveryQty) || 0),
+      0,
+    );
+    newItems[activeRowIndex].qty = totalDeliveryQty;
+    const price = parseFloat(newItems[activeRowIndex].price) || 0;
+    newItems[activeRowIndex].amount = (totalDeliveryQty * price).toFixed(2);
+
+    setSalesDeliveryItems(newItems);
   };
 
   // The padding to 14 elements is now handled synchronously in the parent (ProformaInvoiceForm)
@@ -98,11 +176,11 @@ const SalesDeliveryItems = ({
         }}
       >
         <TaxDetailsFullTemplate
-          readOnly={readOnly}
+          readOnly={true}
           taxTypeId={taxTemplateId}
           currentIndex={currentSelectedIndex}
           setCurrentSelectedIndex={setCurrentSelectedIndex}
-          poItems={enrichedItems?.items || items}
+          poItems={enrichedItems?.items || salesDeliveryItems}
           handleInputChange={handleInputChange}
           id={id}
           isNewVersion={false}
@@ -135,14 +213,14 @@ const SalesDeliveryItems = ({
               document.getElementById(`price-input-${index}`)?.focus();
             }, 0);
           }}
-          widthClass="w-[750px]"
+          widthClass="w-[850px]"
         >
           <div className="bg-slate-100 p-3 rounded-lg">
             <div className="bg-white p-3 rounded-lg flex justify-between items-center mb-3 shadow-sm">
               <h3 className="text-[16px] font-bold text-slate-800">
-                {items[activeRowIndex]?.trackingType === "Barcode"
+                {salesDeliveryItems[activeRowIndex]?.trackingType === "Barcode"
                   ? "Barcode Wise Breakup"
-                  : items[activeRowIndex]?.trackingType ===
+                  : salesDeliveryItems[activeRowIndex]?.trackingType ===
                       "Size Template + Barcode"
                     ? "Size + Barcode Wise Breakup"
                     : "Size Wise Breakup"}
@@ -156,32 +234,34 @@ const SalesDeliveryItems = ({
             </div>
 
             <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-              {/* {items[activeRowIndex]?.trackingType !== "Barcode" && (
-                <div className="mb-3 bg-slate-50 p-2 border border-slate-200 rounded flex items-center gap-3">
+              {/* {salesDeliveryItems[activeRowIndex]?.trackingType !== "Barcode" && (
+                <div className="mb-3 bg-slate-50 p-2 border border-slate-200 rounded flex salesDeliveryItems-center gap-3">
                   <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     Size Template
                   </span>
                   <span className="text-[12px] font-bold text-slate-700">
                     {sizeTemplateList?.data?.find(
-                      (t) => t.id === items[activeRowIndex]?.sizeTemplateId,
+                      (t) => t.id === salesDeliveryItems[activeRowIndex]?.sizeTemplateId,
                     )?.name || "No Template Selected"}
                   </span>
                 </div>
               )} */}
               <div className="max-h-[300px] overflow-y-auto">
-                <table className="w-full border-separate border-spacing-0 border-t border-l border-slate-200">
+                <table className="w-full table-fixed border-separate border-spacing-0 border-t border-l border-slate-200">
                   <thead>
                     <tr className="bg-slate-50">
                       <th className="border-b border-r border-slate-200 px-2 py-1 text-center text-[11px] font-bold uppercase w-12">
                         S.No
                       </th>
-                      {items[activeRowIndex]?.trackingType !== "Barcode" && (
+                      {salesDeliveryItems[activeRowIndex]?.trackingType !==
+                        "Barcode" && (
                         <th className="border-b border-r border-slate-200 px-2 py-1 text-center text-[11px] font-bold uppercase">
                           Size
                         </th>
                       )}
-                      {(items[activeRowIndex]?.trackingType === "Barcode" ||
-                        items[activeRowIndex]?.trackingType ===
+                      {(salesDeliveryItems[activeRowIndex]?.trackingType ===
+                        "Barcode" ||
+                        salesDeliveryItems[activeRowIndex]?.trackingType ===
                           "Size Template + Barcode") && (
                         <>
                           <th className="border-b border-r border-slate-200 px-2 py-1 text-center text-[11px] font-bold uppercase">
@@ -193,25 +273,37 @@ const SalesDeliveryItems = ({
                         </>
                       )}
                       <th className="border-b border-r border-slate-200 px-2 py-1 text-center text-[11px] font-bold uppercase w-24">
-                        Qty
+                        Order Qty
+                      </th>
+                      <th className="border-b border-r border-slate-200 px-2 py-1 text-center text-[11px] font-bold uppercase w-36">
+                        Already Deliverd Qty
+                      </th>
+                      <th className="border-b border-r border-slate-200 px-2 py-1 text-center text-[11px] font-bold uppercase w-24">
+                        Delivery Qty
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     {(() => {
                       const actualRows =
-                        items[activeRowIndex]?.sizeBreakup || [];
+                        salesDeliveryItems[activeRowIndex]
+                          ?.salesDeliveryBreakUp || [];
                       if (actualRows.length >= 5) return actualRows;
                       return [
                         ...actualRows,
                         ...Array(5 - actualRows.length).fill({}),
                       ];
                     })().map((breakup, idx) => (
-                      <tr key={idx} className="h-8">
+                      <tr
+                        key={idx}
+                        className="h-8"
+                        onContextMenu={(e) => handleSizeContextMenu(e, idx)}
+                      >
                         <td className="border-b border-r border-slate-200 text-center text-[11px]">
                           {idx + 1}
                         </td>
-                        {items[activeRowIndex]?.trackingType !== "Barcode" && (
+                        {salesDeliveryItems[activeRowIndex]?.trackingType !==
+                          "Barcode" && (
                           <td className="border-b border-r border-slate-200 text-left pl-1 text-[11px]">
                             {findFromList(
                               breakup.sizeId,
@@ -220,8 +312,9 @@ const SalesDeliveryItems = ({
                             )}
                           </td>
                         )}
-                        {(items[activeRowIndex]?.trackingType === "Barcode" ||
-                          items[activeRowIndex]?.trackingType ===
+                        {(salesDeliveryItems[activeRowIndex]?.trackingType ===
+                          "Barcode" ||
+                          salesDeliveryItems[activeRowIndex]?.trackingType ===
                             "Size Template + Barcode") && (
                           <>
                             <td className="border-b border-r border-slate-200 text-left pl-1  text-[11px]">
@@ -235,6 +328,27 @@ const SalesDeliveryItems = ({
                         <td className="border-b border-r border-slate-200 text-right px-2 text-[11px]">
                           {breakup.qty !== undefined ? Number(breakup.qty) : ""}
                         </td>
+                        <td className="border-b border-r border-slate-200 text-right px-2 text-[11px]">
+                          {breakup.alreadyDeliveredQty !== undefined
+                            ? Number(breakup.alreadyDeliveredQty)
+                            : ""}
+                        </td>
+                        <td className="border-b border-r border-slate-200 text-right px-1 text-[11px]">
+                          <input
+                            type="number"
+                            className="w-full text-right outline-none bg-transparent"
+                            value={breakup.deliveryQty ?? ""}
+                            onChange={(e) =>
+                              handleSizeBreakupChange(
+                                e.target.value,
+                                activeRowIndex,
+                                idx,
+                                "deliveryQty",
+                              )
+                            }
+                            readOnly={readOnly}
+                          />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -242,10 +356,11 @@ const SalesDeliveryItems = ({
                     <tr className="bg-slate-50 font-bold">
                       <td
                         colSpan={
-                          items[activeRowIndex]?.trackingType === "Barcode"
+                          salesDeliveryItems[activeRowIndex]?.trackingType ===
+                          "Barcode"
                             ? 3
-                            : items[activeRowIndex]?.trackingType ===
-                                "Size Template + Barcode"
+                            : salesDeliveryItems[activeRowIndex]
+                                  ?.trackingType === "Size Template + Barcode"
                               ? 4
                               : 2
                         }
@@ -254,8 +369,27 @@ const SalesDeliveryItems = ({
                         Total
                       </td>
                       <td className="border-b border-r border-slate-200 px-2 py-1 text-right text-[11px]">
-                        {(items[activeRowIndex]?.sizeBreakup || []).reduce(
-                          (sum, b) => sum + (Number(b.qty) || 0),
+                        {(
+                          salesDeliveryItems[activeRowIndex]
+                            ?.salesDeliveryBreakUp || []
+                        ).reduce((sum, b) => sum + (Number(b.qty) || 0), 0)}
+                      </td>
+                      <td className="border-b border-r border-slate-200 px-2 py-1 text-right text-[11px]">
+                        {(
+                          salesDeliveryItems[activeRowIndex]
+                            ?.salesDeliveryBreakUp || []
+                        ).reduce(
+                          (sum, b) =>
+                            sum + (Number(b.alreadyDeliveredQty) || 0),
+                          0,
+                        )}
+                      </td>
+                      <td className="border-b border-r border-slate-200 px-2 py-1 text-right text-[11px]">
+                        {(
+                          salesDeliveryItems[activeRowIndex]
+                            ?.salesDeliveryBreakUp || []
+                        ).reduce(
+                          (sum, b) => sum + (Number(b.deliveryQty) || 0),
                           0,
                         )}
                       </td>
@@ -311,11 +445,12 @@ const SalesDeliveryItems = ({
             </tr>
           </thead>
           <tbody>
-            {items?.map((item, index) => {
+            {salesDeliveryItems?.map((item, index) => {
               const isFilled = !!item.styleItemId;
               const enrichedIdx =
-                items.slice(0, index + 1).filter((i) => i.styleItemId).length -
-                1;
+                salesDeliveryItems
+                  .slice(0, index + 1)
+                  .filter((i) => i.styleItemId).length - 1;
               const enrichedItem =
                 isFilled && enrichedItems?.items
                   ? enrichedItems.items[enrichedIdx]
@@ -336,6 +471,7 @@ const SalesDeliveryItems = ({
                   className={`h-7 hover:bg-indigo-50 transition-colors ${
                     index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
                   }`}
+                  onContextMenu={(e) => handleContextMenu(e, index)}
                 >
                   <td className="text-[11px] text-center border border-gray-300">
                     {index + 1}
@@ -396,7 +532,7 @@ const SalesDeliveryItems = ({
                       onChange={(e) =>
                         handleInputChange(e.target.value, index, "price")
                       }
-                      readOnly={readOnly || !item.styleItemId}
+                      readOnly={true}
                       onFocus={(e) => {
                         e.target.select();
                         setFocusedField(`${index}`);
@@ -476,13 +612,19 @@ const SalesDeliveryItems = ({
                 Total
               </td>
               <td className="text-right px-1 border border-gray-300">
-                {items?.reduce((sum, i) => sum + (parseFloat(i.qty) || 0), 0)}
+                {salesDeliveryItems?.reduce(
+                  (sum, i) => sum + (parseFloat(i.qty) || 0),
+                  0,
+                )}
               </td>
               <td className="text-right pr-1 border border-gray-300">
-                {items?.reduce((sum, i) => sum + (parseFloat(i.price) || 0), 0)}
+                {salesDeliveryItems?.reduce(
+                  (sum, i) => sum + (parseFloat(i.price) || 0),
+                  0,
+                )}
               </td>
               <td className="text-right px-1 border border-gray-300">
-                {items
+                {salesDeliveryItems
                   ?.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0)
                   .toFixed(2)}
               </td>
@@ -496,7 +638,48 @@ const SalesDeliveryItems = ({
         </table>
       </div>
 
-      {/* {contextMenu && (
+      {sizeContextMenu && (
+        <div
+          style={{
+            position: "fixed",
+            top: `${sizeContextMenu.mouseY}px`,
+            left: `${sizeContextMenu.mouseX}px`,
+            boxShadow: "0px 0px 5px rgba(0,0,0,0.3)",
+            padding: "4px",
+            borderRadius: "4px",
+            zIndex: 10000,
+          }}
+          className="bg-white border border-gray-200 shadow-xl"
+          onMouseLeave={handleCloseSizeContextMenu}
+        >
+          <div className="flex flex-col min-w-[100px]">
+            <button
+              className="text-[12px] text-left px-3 py-1.5 hover:bg-red-50 text-red-600 font-medium rounded transition-colors"
+              onClick={() => {
+                deleteSizeBreakupRow(sizeContextMenu.breakupIndex);
+                handleCloseSizeContextMenu();
+              }}
+            >
+              Delete Row
+            </button>
+            <button
+              className="text-[12px] text-left px-3 py-1.5 hover:bg-gray-100 text-gray-700 font-medium rounded transition-colors"
+              onClick={() => {
+                const newItems = [...items];
+                newItems[activeRowIndex].salesDeliveryBreakUp = [];
+                newItems[activeRowIndex].qty = 0;
+                newItems[activeRowIndex].amount = "0.00";
+                setSalesDeliveryItems(newItems);
+                handleCloseSizeContextMenu();
+              }}
+            >
+              Delete All
+            </button>
+          </div>
+        </div>
+      )}
+
+      {contextMenu && (
         <div
           style={{
             position: "fixed",
@@ -523,7 +706,9 @@ const SalesDeliveryItems = ({
             <button
               className="text-[12px] text-left px-3 py-1.5 hover:bg-gray-100 text-gray-700 font-medium rounded transition-colors"
               onClick={() => {
-                setItems(Array.from({ length: 14 }, () => ({ ...EMPTY_ROW })));
+                setSalesDeliveryItems(
+                  Array.from({ length: 14 }, () => ({ ...EMPTY_ROW })),
+                );
                 handleCloseContextMenu();
               }}
             >
@@ -531,7 +716,7 @@ const SalesDeliveryItems = ({
             </button>
           </div>
         </div>
-      )} */}
+      )}
     </>
   );
 };

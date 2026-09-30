@@ -70,6 +70,8 @@ model Company {
   dies                Die[]
   proformaInvoices    ProformaInvoice[]
   machines            Machine[]
+  salesDeliveries     SalesDelivery[]
+  currencies          Currency[]
 }
 
 model Subscription {
@@ -130,6 +132,7 @@ model Branch {
   proformaInvoices               ProformaInvoice[]
   productionAllocations          ProductionAllocation[]
   packings                       Packing[]
+  salesDeliveries                SalesDelivery[]
 }
 
 model UserOnBranch {
@@ -221,6 +224,8 @@ model User {
   productionAllocationUpdatedBy  ProductionAllocation[] @relation(name: "AllocationUpdatedBy")
   PackingCreatedBy               Packing[]              @relation(name: "createdBy")
   PackingUpdatedBy               Packing[]              @relation(name: "updatedBy")
+  salesCreatedBy                 SalesDelivery[]        @relation(name: "salesCreatedBy")
+  salesUpdatedBy                 SalesDelivery[]        @relation(name: "salesUpdatedBy")
 }
 
 model Employee {
@@ -294,6 +299,7 @@ model FinYear {
   purchaseInwardReturns PurchaseInwardReturn[]
   purchaseCancels       PurchaseCancel[]
   packings              Packing[]
+  salesDeliveries       SalesDelivery[]
 }
 
 model EmployeeCategory {
@@ -487,6 +493,8 @@ model Party {
   PlateSupplier            JobCard[]                 @relation(name: "PlateSupplier")
   proformaInvoices         ProformaInvoice[]         @relation("customer")
   proformaInvoices2        ProformaInvoice[]         @relation("deliveryCustomer")
+  salesDeliveries          SalesDelivery[]           @relation("customer")
+  salesDeliveries2         SalesDelivery[]           @relation("deliveryCustomer")
   productionAllocationDtls ProductionAllocationDtl[]
 }
 
@@ -621,6 +629,7 @@ model Uom {
   proformaInvoiceItems   ProformaInvoiceItem[]
   packingOrderItems      PackingOrderItems[]
   packingItems           PackingItems[]
+  salesDeliveryItems     SalesDeliveryItems[]
 }
 
 model ProductUomPriceDetails {
@@ -657,6 +666,7 @@ model Product {
   ProductUomPriceDetails ProductUomPriceDetails[]
   OpeningStockItems      OpeningStockItems[]
   proformaInvoiceItems   ProformaInvoiceItem[]
+  salesDeliveryItems     SalesDeliveryItems[]
 }
 
 model PurchaseBill {
@@ -799,11 +809,14 @@ model Stock {
   styleId               Int?
   OrderEntry            OrderEntry?          @relation(fields: [orderId], references: [id], onDelete: Cascade)
   orderId               Int?
-
-  SalesReturn   SalesReturn? @relation(fields: [salesReturnId], references: [id], onDelete: Cascade)
-  salesReturnId Int?
-  packing       Packing?     @relation(fields: [packingId], references: [id])
-  packingId     Int?
+  packing               Packing?             @relation(fields: [packingId], references: [id])
+  packingId             Int?
+  SalesDelivery         SalesDelivery?       @relation(fields: [salesDeliveryId], references: [id], onDelete: Cascade)
+  salesDeliveryId       Int?
+  profromaInvoiceId     Int?
+  ProformaInvoice       ProformaInvoice?     @relation(fields: [profromaInvoiceId], references: [id])
+  SalesReturn           SalesReturn?         @relation(fields: [salesReturnId], references: [id], onDelete: Cascade)
+  salesReturnId         Int?
 }
 
 model SalesBill {
@@ -869,6 +882,7 @@ model SalesReturn {
   Uom              Uom?               @relation(fields: [uomId], references: [id])
   uomId            Int?
   stocks           Stock[]
+  ledgers          Ledger[]
 }
 
 model SalesReturnItems {
@@ -938,6 +952,7 @@ model Payment {
   discount        Int?     @default(0)
   paymentRefNo    String?
   totalAmount     Int?
+  ledgers         Ledger[]
 }
 
 model Style {
@@ -991,6 +1006,7 @@ model StyleItem {
   JobCard                JobCard[]
   JobCardsLabel          JobCard[]                @relation("label")
   packingOrderItems      PackingOrderItems[]
+  salesDeliveryItems     SalesDeliveryItems[]
 }
 
 model DeliveryChallan {
@@ -1152,6 +1168,14 @@ model Ledger {
   partyBillNo       String?
   createdAt         DateTime?        @default(now())
   updatedAt         DateTime?        @updatedAt
+  SalesDelivery     SalesDelivery?   @relation(fields: [salesDeliveryId], references: [id], onDelete: Cascade)
+  salesDeliveryId   Int?
+  SalesReturn       SalesReturn?     @relation(fields: [salesReturnId], references: [id], onDelete: Cascade)
+  salesReturnId     Int?
+  Currency          Currency?        @relation(fields: [currencyId], references: [id])
+  currencyId        Int?
+  Payment           Payment?         @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  paymentId         Int?
 }
 
 model TaxTerm {
@@ -1175,6 +1199,7 @@ model TaxTemplate {
   purchaseBillEntries PurchaseBillEntry[]
   purchaseInwards     PurchaseInward[]
   proformaInvoices    ProformaInvoice[]
+  salesDeliveries     SalesDelivery[]
 }
 
 model TaxTemplateDetails {
@@ -1205,6 +1230,7 @@ model Hsn {
   OrderItems             OrderItems[]
   ProformaInvoiceItems   ProformaInvoiceItem[]
   packingOrderItems      PackingOrderItems[]
+  salesDeliveryItems     SalesDeliveryItems[]
 }
 
 model BranchType {
@@ -1332,6 +1358,7 @@ model TermsAndConditions {
   purchaseCancels       PurchaseCancel[]
   orderEntries          OrderEntry[]
   proformaInvoices      ProformaInvoice[]
+  salesDeliveries       SalesDelivery[]
 }
 
 model PayTerm {
@@ -1657,6 +1684,8 @@ model Size {
   jobCardLabelSize       JobCard[]                @relation("labelSize")
   boardQualities         BoardQuality[]
   packingSizeBreakups    PackingSizeBreakup[]
+  salesDeliveryItems     SalesDeliveryItems[]
+  salesDeliveryBreakups  SalesDeliveryBreakup[]
 }
 
 model Gsm {
@@ -1679,6 +1708,7 @@ model Gsm {
   proformaInvoiceItems ProformaInvoiceItem[]
   boardQualities       BoardQuality[]
   packingOrderItems    PackingOrderItems[]
+  salesDeliveryItems   SalesDeliveryItems[]
 }
 
 model ItemGroup {
@@ -1697,6 +1727,8 @@ model ItemGroup {
   stocks                 Stock[]
   orderItems             OrderItems[]
   packingOrderItems      PackingOrderItems[]
+  proformaInvoiceItems   ProformaInvoiceItem[]
+  salesDeliveryItems     SalesDeliveryItems[]
 }
 
 model SizeTemplate {
@@ -1710,6 +1742,7 @@ model SizeTemplate {
   styleItems           StyleItem[]
   orderItems           OrderItems[]
   proformaInvoiceItems ProformaInvoiceItem[]
+  salesDeliveryItems   SalesDeliveryItems[]
 }
 
 model SizeTemplateList {
@@ -1889,6 +1922,7 @@ model OrderEntry {
   stocks            Stock[]
   inwardItems       InwardItems[]
   packings          Packing[]
+  salesDeliveries   SalesDelivery[]
 }
 
 model OrderItems {
@@ -1971,6 +2005,8 @@ model ProformaInvoice {
   discountType       String?
   discountValue      Float?
   JobCards           JobCard[]
+  salesDeliveries    SalesDelivery[]
+  stocks             Stock[]
 }
 
 model ProformaInvoiceItem {
@@ -1979,6 +2015,8 @@ model ProformaInvoiceItem {
   proformaInvoiceId Int
   styleItemId       Int?
   StyleItem         StyleItem?      @relation(fields: [styleItemId], references: [id])
+  itemGroupId       Int?
+  ItemGroup         ItemGroup?      @relation(fields: [itemGroupId], references: [id])
   qty               Float?
   price             Float?
   taxPercent        Float?
@@ -2008,15 +2046,16 @@ model ProformaInvoiceItem {
 }
 
 model ProformaSizeBreakup {
-  id          Int                 @id @default(autoincrement())
-  piItemId    Int
-  PIItem      ProformaInvoiceItem @relation(fields: [piItemId], references: [id], onDelete: Cascade)
-  sizeId      Int?
-  Size        Size?               @relation(fields: [sizeId], references: [id])
-  qty         Float?
-  barcodeFrom String?
-  barcodeTo   String?
-  description String?
+  id                    Int                    @id @default(autoincrement())
+  piItemId              Int
+  PIItem                ProformaInvoiceItem    @relation(fields: [piItemId], references: [id], onDelete: Cascade)
+  sizeId                Int?
+  Size                  Size?                  @relation(fields: [sizeId], references: [id])
+  qty                   Float?
+  barcodeFrom           String?
+  barcodeTo             String?
+  description           String?
+  salesDeliveryBreakups SalesDeliveryBreakup[]
 }
 
 model ProformaAttachments {
@@ -2443,4 +2482,113 @@ model PackingItems {
   Uom                  Uom?               @relation(fields: [packingUomId], references: [id])
   qty                  Float?
   noOfunits            Float?
+}
+
+model SalesDelivery {
+  id                 Int                  @id @default(autoincrement())
+  docId              String
+  docDate            DateTime?
+  userDate           DateTime?
+  deliveryDate       DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  createdBy          User?                @relation("salesCreatedBy", fields: [createdById], references: [id])
+  createdById        Int?
+  updatedBy          User?                @relation("salesUpdatedBy", fields: [updatedById], references: [id])
+  updatedById        Int?
+  Branch             Branch?              @relation(fields: [branchId], references: [id])
+  branchId           Int?
+  Company            Company?             @relation(fields: [companyId], references: [id])
+  companyId          Int?
+  customer           Party?               @relation("customer", fields: [customerId], references: [id])
+  customerId         Int?
+  deliveryCustomer   Party?               @relation("deliveryCustomer", fields: [deliveryCustomerId], references: [id])
+  deliveryCustomerId Int?
+  finYear            FinYear?             @relation(fields: [finYearId], references: [id])
+  finYearId          Int?
+  remarks            String?
+  termsAndCondition  String?
+  Terms              TermsAndConditions?  @relation(fields: [termsId], references: [id])
+  termsId            Int?
+  profromaInvoiceId  Int?
+  ProformaInvoice    ProformaInvoice?     @relation(fields: [profromaInvoiceId], references: [id])
+  salesDeliveryItems SalesDeliveryItems[]
+  TaxTemplate        TaxTemplate?         @relation(fields: [taxTemplateId], references: [id])
+  taxTemplateId      Int?
+  quoteVersion       Int                  @default(1)
+  isApproved         Boolean              @default(false)
+  approvalStatus     String               @default("PENDING")
+  deliveryType       String?
+  modeOfPayment      String?
+  deliveryCharge     Float?
+  discountType       String?
+  discountValue      Float?
+  stocks             Stock[]
+  ledgers            Ledger[]
+  orderEntry         OrderEntry?          @relation(fields: [orderEntryId], references: [id])
+  orderEntryId       Int?
+  netAmount          Float?
+}
+
+model SalesDeliveryItems {
+  id              Int           @id @default(autoincrement())
+  SalesDelivery   SalesDelivery @relation(fields: [salesDeliveryId], references: [id], onDelete: Cascade)
+  salesDeliveryId Int
+  styleItemId     Int?
+  StyleItem       StyleItem?    @relation(fields: [styleItemId], references: [id])
+  itemGroupId     Int?
+  ItemGroup       ItemGroup?    @relation(fields: [itemGroupId], references: [id])
+  qty             Float?
+  price           Float?
+  taxPercent      Float?
+  discountType    String?
+  discountValue   Float?
+  amount          Float?
+  sizeId          Int?
+  Size            Size?         @relation(fields: [sizeId], references: [id])
+  uomId           Int?
+  Uom             Uom?          @relation(fields: [uomId], references: [id])
+  gsmId           Int?
+  Gsm             Gsm?          @relation(fields: [gsmId], references: [id])
+  hsnId           Int?
+  Hsn             Hsn?          @relation(fields: [hsnId], references: [id])
+  product         Product?      @relation(fields: [productId], references: [id])
+  productId       Int?
+  itemOrder       Int           @default(0)
+  trackingType    String?
+  sizeTemplateId  Int?
+  SizeTemplate    SizeTemplate? @relation(fields: [sizeTemplateId], references: [id])
+  remarks         String?
+  description     String?
+
+  salesDeliveryBreakup SalesDeliveryBreakup[]
+}
+
+model SalesDeliveryBreakup {
+  id                    Int                  @id @default(autoincrement())
+  salesDeliveryItemsId  Int
+  SalesDeliveryItems    SalesDeliveryItems   @relation(fields: [salesDeliveryItemsId], references: [id], onDelete: Cascade)
+  sizeId                Int?
+  proformaSizeBreakup   ProformaSizeBreakup? @relation(fields: [proformaSizeBreakupId], references: [id])
+  proformaSizeBreakupId Int?
+  Size                  Size?                @relation(fields: [sizeId], references: [id])
+  qty                   Float?
+  deliveryQty           Float?
+  barcodeFrom           String?
+  barcodeTo             String?
+  description           String?
+}
+
+model Currency {
+  id             Int      @id @default(autoincrement())
+  name           String
+  code           String?
+  symbol         String?
+  isBaseCurrency Boolean  @default(false)
+  exchangeRate   Float?
+  Company        Company? @relation(fields: [companyId], references: [id])
+  companyId      Int?
+  active         Boolean  @default(true)
+
+  Ledger Ledger[]
 }

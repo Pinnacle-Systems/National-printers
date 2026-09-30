@@ -60,8 +60,9 @@ import {
   purchaseBillEntryApi,
   ApprovalMasterApi,
   JobCardApi,
-  ProductionAllocationApi,  PackingApi,
-
+  ProductionAllocationApi,
+  PackingApi,
+  SalesDeliveryApi,
 } from "./uniformService";
 import OrderEntryApi from "./uniformService/OrderEntryService";
 import ProformaInvoiceApi from "./uniformService/ProformaInvoiceService";
@@ -131,7 +132,8 @@ const commonReducers = {
   board: BoardMasterApi.reducer,
   [ProductionAllocationApi.reducerPath]: ProductionAllocationApi.reducer,
   machine: MachineMasterApi.reducer,
-   Packing: PackingApi.reducer,
+  Packing: PackingApi.reducer,
+  salesDelivery: SalesDeliveryApi.reducer,
 };
 const commonMiddleware = [
   countryMasterApi.middleware,
@@ -194,9 +196,9 @@ const commonMiddleware = [
   DieMasterApi.middleware,
   BoardMasterApi.middleware,
   ProductionAllocationApi.middleware,
-  MachineMasterApi.middleware,  PackingApi.middleware,
-
-  
+  MachineMasterApi.middleware,
+  PackingApi.middleware,
+  SalesDeliveryApi.middleware,
 ];
 
 const store = configureStore({

@@ -11,10 +11,10 @@ import { getTableRecordWithId } from "../utils/helperQueries.js";
 import fs from "fs";
 import path from "path";
 
-const REFERENCE_PAGE = "PROFORMA INVOICE";
+const REFERENCE_PAGE = "SALES DELIVERY";
 
 async function getNextDocId(branchId, shortCode, startTime, endTime) {
-  let lastObject = await prisma.proformaInvoice.findFirst({
+  let lastObject = await prisma.salesDelivery.findFirst({
     where: {
       branchId: parseInt(branchId),
       AND: [{ createdAt: { gte: startTime } }, { createdAt: { lte: endTime } }],
@@ -52,7 +52,7 @@ async function get(req) {
     ? getYearShortCodeForFinYear(finYearDate?.startTime, finYearDate?.endTime)
     : "";
 
-  let data = await prisma.proformaInvoice.findMany({
+  let data = await prisma.salesDelivery.findMany({
     where: {
       branchId: branchId ? parseInt(branchId) : undefined,
       AND: finYearDate
@@ -65,14 +65,20 @@ async function get(req) {
       customer: searchCustomer
         ? { name: { contains: searchCustomer } }
         : undefined,
-      OrderEntry: searchOrderNo
+      ProformaInvoice: searchOrderNo
         ? { docId: { contains: searchOrderNo } }
         : undefined,
     },
     include: {
       customer: { select: { id: true, name: true } },
-      items: true,
-      OrderEntry: { select: { id: true, docId: true, productionType: true } },
+      salesDeliveryItems: true,
+      ProformaInvoice: {
+        select: {
+          id: true,
+          docId: true,
+          OrderEntry: { select: { id: true, docId: true } },
+        },
+      },
     },
     orderBy: { id: "desc" },
   });
@@ -100,10 +106,10 @@ async function get(req) {
 }
 
 async function getOne(id) {
-  const data = await prisma.proformaInvoice.findUnique({
+  const data = await prisma.salesDelivery.findUnique({
     where: { id: parseInt(id) },
     include: {
-      items: {
+      salesDeliveryItems: {
         include: {
           StyleItem: true,
           Size: true,
@@ -111,18 +117,27 @@ async function getOne(id) {
           Gsm: true,
           Hsn: true,
           SizeTemplate: true,
-          sizeBreakup: { include: { Size: true } },
+          salesDeliveryBreakup: {
+            include: {
+              Size: true,
+
+              proformaSizeBreakup: {
+                include: {
+                  salesDeliveryBreakups: true,
+                },
+              },
+            },
+          },
         },
         orderBy: { itemOrder: "asc" },
       },
-      attachments: true,
       Branch: true,
       customer: true,
       deliveryCustomer: true,
-      OrderEntry: {
+      ProformaInvoice: {
         include: {
           customer: true,
-          orderItems: {
+          items: {
             include: {
               StyleItem: true,
               SizeTemplate: true,
@@ -139,40 +154,24 @@ async function getOne(id) {
   });
   if (!data) return NoRecordFound("Proforma Invoice");
 
-  if (data && data.OrderEntry && data.items) {
-    const styleItemCounts = {};
-    data.items = data.items.map((item) => {
-      // If trackingType is already present, it means it's newly saved data
-      if (item.trackingType) return item;
+  return {
+    statusCode: 0,
+    data: {
+      ...data,
+      salesDeliveryItems: data.salesDeliveryItems.map((item) => ({
+        ...item,
+        deliveryQty: item.salesDeliveryBreakup.reduce(
+          (acc1, size1) => acc1 + size1.deliveryQty,
+          0,
+        ),
 
-      const styleId = item.styleItemId;
-      styleItemCounts[styleId] = (styleItemCounts[styleId] || 0) + 1;
-      const count = styleItemCounts[styleId];
-
-      let matchCount = 0;
-      const orderItem = data.OrderEntry.orderItems.find((oi) => {
-        if (oi.styleItemId === styleId) {
-          matchCount++;
-          return matchCount === count;
-        }
-        return false;
-      });
-
-      if (orderItem) {
-        return {
-          ...item,
-          trackingType: orderItem.trackingType,
-          sizeTemplateId: orderItem.sizeTemplateId,
-          SizeTemplate: orderItem.SizeTemplate,
-          sizeBreakup: orderItem.sizeBreakup,
-          remarks: orderItem.remarks,
-        };
-      }
-      return item;
-    });
-  }
-
-  return { statusCode: 0, data };
+        orderQty: item.salesDeliveryBreakup.reduce(
+          (acc1, size1) => acc1 + size1.qty,
+          0,
+        ),
+      })),
+    },
+  };
 }
 
 async function create(body) {
@@ -186,11 +185,11 @@ async function create(body) {
     deliveryDate,
     remarks,
     finYearId,
-    items,
+    salesDeliveryItems,
     attachments,
     termsAndCondition,
     termsId,
-    orderEntryId,
+    profromaInvoiceId,
     taxTemplateId,
     deliveryType,
     deliveryCustomerId,
@@ -198,6 +197,7 @@ async function create(body) {
     deliveryCharge,
     discountType,
     discountValue,
+    netAmount,
   } = body;
 
   let finYearDate = await getFinYearStartTimeEndTime(finYearId);
@@ -215,97 +215,177 @@ async function create(body) {
     finYearDate?.endDateEndTime,
   );
 
-  const data = await prisma.proformaInvoice.create({
-    data: {
-      docId: newDocId,
-      docDate: docDate ? new Date(docDate) : null,
-      userDate: userDate ? new Date(userDate) : null,
-      deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
-      createdById: parseInt(userId),
-      branchId: parseInt(branchId),
-      companyId: parseInt(companyId),
-      customerId: customerId ? parseInt(customerId) : null,
-      finYearId: parseInt(finYearId),
-      orderEntryId: orderEntryId ? parseInt(orderEntryId) : null,
-      taxTemplateId: taxTemplateId ? parseInt(taxTemplateId) : null,
-      deliveryType,
-      deliveryCustomerId: deliveryCustomerId
-        ? parseInt(deliveryCustomerId)
-        : null,
-      modeOfPayment,
-      deliveryCharge:
-        deliveryCharge && deliveryCharge !== ""
-          ? parseFloat(deliveryCharge)
+  let stockEntries = [];
+  if (salesDeliveryItems && salesDeliveryItems.length > 0) {
+    salesDeliveryItems.forEach((item) => {
+      const baseStock = {
+        branchId: branchId ? parseInt(branchId) : null,
+        profromaInvoiceId: profromaInvoiceId
+          ? parseInt(profromaInvoiceId)
           : null,
-      discountValue:
-        discountValue && discountValue !== ""
-          ? parseFloat(discountValue)
-          : null,
-      discountType: discountType,
-      remarks,
-      termsAndCondition,
-      termsId: termsId ? parseInt(termsId) : null,
-      items: {
-        create: JSON.parse(items || "[]").map((item, idx) => ({
-          StyleItem: item.styleItemId
-            ? { connect: { id: parseInt(item.styleItemId) } }
-            : undefined,
-          ItemGroup: item.itemGroupId
-            ? { connect: { id: parseInt(item.itemGroupId) } }
-            : undefined,
-          Size: item.sizeId
-            ? { connect: { id: parseInt(item.sizeId) } }
-            : undefined,
-          Uom: item.uomId
-            ? { connect: { id: parseInt(item.uomId) } }
-            : undefined,
-          Gsm: item.gsmId
-            ? { connect: { id: parseInt(item.gsmId) } }
-            : undefined,
-          Hsn: item.hsnId
-            ? { connect: { id: parseInt(item.hsnId) } }
-            : undefined,
-          SizeTemplate: item.sizeTemplateId
-            ? { connect: { id: parseInt(item.sizeTemplateId) } }
-            : undefined,
-          qty: parseFloat(item.qty || 0),
-          price: parseFloat(item.price || 0),
-          taxPercent: parseFloat(item.taxPercent || 0),
-          discountType: item.discountType,
-          discountValue: parseFloat(item.discountValue || 0),
-          amount: parseFloat(item.amount || 0),
-          trackingType: item.trackingType,
-          remarks: item.remarks,
-          itemOrder: idx,
-          sizeBreakup: {
-            create: (item.sizeBreakup || [])
-              .filter((sb) => (parseFloat(sb.qty) || 0) > 0)
-              .map((sb) => ({
-                Size: sb.sizeId
-                  ? { connect: { id: parseInt(sb.sizeId) } }
-                  : undefined,
-                qty: parseFloat(sb.qty || 0),
-                barcodeFrom: sb.barcodeFrom,
-                barcodeTo: sb.barcodeTo,
-              })),
-          },
-        })),
-      },
-      attachments:
-        attachments && JSON.parse(attachments)?.length > 0
-          ? {
-              createMany: {
-                data: JSON.parse(attachments).map((sub) => ({
-                  date: sub?.date ? new Date(sub?.date) : undefined,
-                  filePath: sub?.filePath ? sub?.filePath : undefined,
-                  name: sub?.name ? sub?.name : undefined,
-                })),
-              },
-            }
-          : undefined,
-    },
-  });
+        createdById: userId ? parseInt(userId) : null,
+        inOrOut: "Out",
+        processName: "Sales",
+        styleItemId: item?.styleItemId ? parseInt(item.styleItemId) : null,
+        itemGroupId: item?.itemGroupId ? parseInt(item.itemGroupId) : null,
+        uomId: item?.uomId ? parseInt(item.uomId) : null,
+        hsnId: item?.hsnId ? parseInt(item.hsnId) : null,
+      };
 
+      if (item?.salesDeliveryBreakUp?.length > 0) {
+        item.salesDeliveryBreakUp.forEach((s) => {
+          stockEntries.push({
+            ...baseStock,
+            sizeId: s.sizeId ? parseInt(s.sizeId) : null,
+            qty: s?.deliveryQty ? -Math.abs(parseFloat(s.deliveryQty)) : null,
+          });
+        });
+      } else {
+        stockEntries.push({
+          ...baseStock,
+          qty: item?.qty ? -Math.abs(parseFloat(item.qty)) : null,
+        });
+      }
+    });
+  }
+
+  const requestedQuantities = {};
+  for (const entry of stockEntries) {
+    const key = `${entry.styleItemId || 0}-${entry.sizeId || 0}`;
+    if (!requestedQuantities[key]) {
+      requestedQuantities[key] = {
+        styleItemId: entry.styleItemId,
+        sizeId: entry.sizeId,
+        qty: 0,
+      };
+    }
+    requestedQuantities[key].qty += Math.abs(entry.qty || 0);
+  }
+
+  for (const key in requestedQuantities) {
+    const item = requestedQuantities[key];
+    const inStockAgg = await prisma.stock.aggregate({
+      _sum: { qty: true },
+      where: {
+        branchId: branchId ? parseInt(branchId) : null,
+        styleItemId: item.styleItemId,
+        sizeId: item.sizeId,
+        inOrOut: "In",
+      },
+    });
+    const outStockAgg = await prisma.stock.aggregate({
+      _sum: { qty: true },
+      where: {
+        branchId: branchId ? parseInt(branchId) : null,
+        styleItemId: item.styleItemId,
+        sizeId: item.sizeId,
+        inOrOut: "Out",
+      },
+    });
+    const inQty = inStockAgg._sum.qty || 0;
+    const outQty = outStockAgg._sum.qty || 0;
+    const availableQty = inQty + outQty;
+
+    if (item.qty > availableQty) {
+      return {
+        statusCode: 1,
+        message: "Insufficient stock for one or more items.",
+      };
+    }
+  }
+  let data;
+  await prisma.$transaction(async (tx) => {
+    data = await tx.salesDelivery.create({
+      data: {
+        docId: newDocId,
+        docDate: docDate ? new Date(docDate) : null,
+        userDate: userDate ? new Date(userDate) : null,
+        deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
+        createdById: parseInt(userId),
+        branchId: parseInt(branchId),
+        companyId: parseInt(companyId),
+        customerId: customerId ? parseInt(customerId) : null,
+        finYearId: parseInt(finYearId),
+        profromaInvoiceId: profromaInvoiceId
+          ? parseInt(profromaInvoiceId)
+          : null,
+        taxTemplateId: taxTemplateId ? parseInt(taxTemplateId) : null,
+        deliveryType,
+        deliveryCustomerId: deliveryCustomerId
+          ? parseInt(deliveryCustomerId)
+          : null,
+        modeOfPayment,
+        deliveryCharge:
+          deliveryCharge && deliveryCharge !== ""
+            ? parseFloat(deliveryCharge)
+            : null,
+        discountValue:
+          discountValue && discountValue !== ""
+            ? parseFloat(discountValue)
+            : null,
+        discountType: discountType,
+        remarks,
+        termsAndCondition,
+        netAmount: netAmount ? parseFloat(netAmount) : 0,
+        termsId: termsId ? parseInt(termsId) : null,
+        salesDeliveryItems: {
+          create: (salesDeliveryItems || []).map((item, idx) => ({
+            styleItemId: item.styleItemId ? parseInt(item.styleItemId) : null,
+            itemGroupId: item?.itemGroupId ? parseInt(item.itemGroupId) : null,
+
+            uomId: item.uomId ? parseInt(item.uomId) : null,
+            gsmId: item.gsmId ? parseInt(item.gsmId) : null,
+            hsnId: item.hsnId ? parseInt(item.hsnId) : null,
+            qty: parseFloat(item.qty || 0),
+            price: parseFloat(item.price || 0),
+            taxPercent: parseFloat(item.taxPercent || 0),
+            discountType: item.discountType,
+            discountValue: parseFloat(item.discountValue || 0),
+            amount: parseFloat(item.amount || 0),
+            trackingType: item.trackingType,
+            remarks: item.remarks,
+            itemOrder: idx,
+            salesDeliveryBreakup: {
+              create: (item.salesDeliveryBreakUp || [])
+                .filter((sb) => (parseFloat(sb.deliveryQty) || 0) > 0)
+                .map((sb) => ({
+                  sizeId: sb.sizeId ? parseInt(sb.sizeId) : null,
+                  proformaSizeBreakupId: sb.proformaSizeBreakupId
+                    ? parseInt(sb.proformaSizeBreakupId)
+                    : null,
+                  qty: parseFloat(sb.qty || 0),
+                  barcodeFrom: sb.barcodeFrom,
+                  barcodeTo: sb.barcodeTo,
+                  deliveryQty: parseFloat(sb.deliveryQty || 0),
+                })),
+            },
+          })),
+        },
+      },
+    });
+
+    if (stockEntries.length > 0) {
+      const stockEntriesWithSalesDeliveryId = stockEntries.map((entry) => ({
+        ...entry,
+        salesDeliveryId: data.id,
+      }));
+      await tx.Stock.createMany({
+        data: stockEntriesWithSalesDeliveryId,
+      });
+    }
+    await tx.Ledger.create({
+      data: {
+        EntryType: "Sales",
+        LedgerType: "Customer",
+        creditOrDebit: "Debit",
+        partyId: customerId ? parseInt(customerId) : null,
+        amount: netAmount ? parseFloat(netAmount) : null,
+        dcDate: docDate ? new Date(docDate) : null,
+        // currencyId: currencyId ? parseInt(currencyId) : null,
+        salesDeliveryId: data?.id ? parseInt(data.id) : null,
+      },
+    });
+  });
   return { statusCode: 0, data };
 }
 
@@ -339,7 +419,7 @@ async function update(id, body, files) {
     ?.filter((i) => i.id)
     .map((i) => parseInt(i.id));
 
-  const dataFound = await prisma.proformaInvoice.findUnique({
+  const dataFound = await prisma.salesDelivery.findUnique({
     where: { id: parseInt(id) },
     include: { attachments: true, items: { include: { sizeBreakup: true } } },
   });
@@ -368,7 +448,7 @@ async function update(id, body, files) {
       newIsApproved = isApproved === "true" || isApproved === true;
       newStatus = newIsApproved ? "APPROVED" : "REVOKED";
     }
-    const data = await prisma.proformaInvoice.update({
+    const data = await prisma.salesDelivery.update({
       where: { id: parseInt(id) },
       data: { isApproved: newIsApproved, approvalStatus: newStatus },
     });
@@ -444,7 +524,7 @@ async function update(id, body, files) {
     ? currentQuoteVersion + 1
     : currentQuoteVersion;
 
-  const data = await prisma.proformaInvoice.update({
+  const data = await prisma.salesDelivery.update({
     where: { id: parseInt(id) },
     data: {
       docDate: docDate ? new Date(docDate) : null,
@@ -480,9 +560,6 @@ async function update(id, body, files) {
             create: parseItems.map((item, idx) => ({
               StyleItem: item.styleItemId
                 ? { connect: { id: parseInt(item.styleItemId) } }
-                : undefined,
-              ItemGroup: item.itemGroupId
-                ? { connect: { id: parseInt(item.itemGroupId) } }
                 : undefined,
               Size: item.sizeId
                 ? { connect: { id: parseInt(item.sizeId) } }
@@ -565,7 +642,7 @@ async function update(id, body, files) {
 }
 
 async function remove(id) {
-  const dataFound = await prisma.proformaInvoice.findUnique({
+  const dataFound = await prisma.salesDelivery.findUnique({
     where: { id: parseInt(id) },
     include: { attachments: true },
   });
@@ -581,7 +658,7 @@ async function remove(id) {
     }
   });
 
-  const data = await prisma.proformaInvoice.delete({
+  const data = await prisma.salesDelivery.delete({
     where: { id: parseInt(id) },
   });
 

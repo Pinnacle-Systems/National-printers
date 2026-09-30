@@ -5,9 +5,9 @@ import secureLocalStorage from "react-secure-storage";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { Tooltip } from "@mui/material";
 import {
-  useGetProformaInvoiceQuery,
-  useUpdateProformaInvoiceMutation,
-} from "../../../redux/uniformService/ProformaInvoiceService";
+  useGetSalesDeliveryQuery,
+  useUpdateSalesDeliveryMutation,
+} from "../../../redux/uniformService/SalesDeliveryServices";
 import { useGetBranchByIdQuery } from "../../../redux/services/BranchMasterService";
 import { CheckCircle, XCircle, Clock } from "lucide-react";
 import { toast } from "react-toastify";
@@ -31,7 +31,7 @@ const SalesDeliveryReport = ({
     currentBranch?.data?.proformaInvoiceApprovalEnabled || false;
   const showApprovalColumn = isProformaEnabled && isApprovalEnabled;
 
-  const [updateProformaInvoice] = useUpdateProformaInvoiceMutation();
+  const [updateSalesDelivery] = useUpdateSalesDeliveryMutation();
   const [approvingId, setApprovingId] = useState(null);
 
   const [dataPerPage, setDataPerPage] = useState("10");
@@ -58,7 +58,7 @@ const SalesDeliveryReport = ({
     data: allData,
     isFetching,
     isLoading,
-  } = useGetProformaInvoiceQuery({
+  } = useGetSalesDeliveryQuery({
     params: {
       branchId,
       ...searchFields,
@@ -159,7 +159,7 @@ const SalesDeliveryReport = ({
                   <div className="">S No</div>
                 </th>
                 <th className=" px-3  font-medium text-[13px]  text-gray-900  text-center w-32">
-                  <div>Proforma No</div>
+                  <div>Sales Delivery No</div>
                 </th>
                 <th className=" px-3  font-medium text-[13px]  text-gray-900  text-center w-32">
                   <div>Order No</div>
@@ -258,7 +258,7 @@ const SalesDeliveryReport = ({
                       <td className="text-center ">{index + 1}</td>
                       <td className="py-1.5 text-center ">{item.docId}</td>
                       <td className="py-1.5 text-center">
-                        {item.OrderEntry?.docId || "—"}
+                        {item.ProformaInvoice?.OrderEntry?.docId || "—"}
                       </td>
                       <td className="py-1.5 text-center">
                         {getDateFromDateTimeToDisplay(item.docDate)}
@@ -281,7 +281,7 @@ const SalesDeliveryReport = ({
                               const fd = new FormData();
                               fd.append("approvalStatus", newStatus);
                               try {
-                                await updateProformaInvoice({
+                                await updateSalesDelivery({
                                   id: item.id,
                                   body: fd,
                                 }).unwrap();

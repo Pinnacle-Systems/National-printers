@@ -8,3 +8,4 @@ export { default as ApprovalMasterApi } from "./ApprovalMasterServices";
 export { default as JobCardApi } from "./JobCardService";
 export { default as ProductionAllocationApi } from "./ProductionAllocationService";
 export { default as PackingApi } from "./PackingService";
+export { default as SalesDeliveryApi } from "./SalesDeliveryServices";

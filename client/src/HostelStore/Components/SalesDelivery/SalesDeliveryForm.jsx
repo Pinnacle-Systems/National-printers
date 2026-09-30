@@ -6,18 +6,20 @@ import {
   DateInputNew,
 } from "../../../Inputs/index.js";
 import {
-  useAddProformaInvoiceMutation,
-  useUpdateProformaInvoiceMutation,
-  useDeleteProformaInvoiceMutation,
-  useGetProformaInvoiceByIdQuery,
-  useGetProformaInvoiceQuery,
-} from "../../../redux/uniformService/ProformaInvoiceService.js";
+  useAddSalesDeliveryMutation,
+  useUpdateSalesDeliveryMutation,
+  useGetSalesDeliveryByIdQuery,
+  useGetSalesDeliveryQuery,
+} from "../../../redux/uniformService/SalesDeliveryServices.js";
 import {
   findFromList,
   getCommonParams,
   ModeChip,
 } from "../../../Utils/helper.js";
-import { dropDownListObject } from "../../../Utils/contructObject.js";
+import {
+  dropDownListObject,
+  dropDownListObjectMultiple,
+} from "../../../Utils/contructObject.js";
 import SalesDeliveryItems from "./SalesDeliveryItems.jsx";
 import moment from "moment";
 import { PDFViewer } from "@react-pdf/renderer";
@@ -45,6 +47,7 @@ import PoSummary from "../PurchaseOrder/PoSummary.js";
 import { useGetPartyByIdQuery } from "../../../redux/services/PartyMasterService.js";
 import { invalidateOrderEntryModule } from "../../../redux/Dispatch/OrderInvalidateTags.js";
 import { poTypes } from "../../../Utils/DropdownData.js";
+import { useLazyGetProformaInvoiceByIdQuery } from "../../../redux/uniformService/ProformaInvoiceService.js";
 const EMPTY_ROW = {
   styleItemId: "",
   trackingType: "None",
@@ -88,13 +91,15 @@ const SalesDeliveryForm = ({
   const [docId, setDocId] = useState("New");
   const [docDate, setDocDate] = useState(moment().format("YYYY-MM-DD"));
   const [userDate, setUserDate] = useState(moment().format("YYYY-MM-DD"));
-  const [saleOrderType, setSaleOrderType] = useState("ORDER");
   const [customerId, setCustomerId] = useState("");
   const [orderEntryId, setOrderEntryId] = useState("");
+  console.log("orderEntryId", orderEntryId);
+  const [profromaInvoiceId, setProfromaInvoiceId] = useState("");
+  const [proformaDocId, setProformaDocId] = useState("");
   const [remarks, setRemarks] = useState("");
   const [termsAndCondition, setTermsAndCondition] = useState("");
   const [termsId, setTermsId] = useState("");
-  const [items, setItems] = useState(padItems([]));
+  const [salesDeliveryItems, setSalesDeliveryItems] = useState(padItems([]));
   const [taxTemplateId, setTaxTemplateId] = useState("");
   const [summary, setSummary] = useState(false);
   const [discountType, setDiscountType] = useState("");
@@ -108,6 +113,7 @@ const SalesDeliveryForm = ({
 
   const [selectedQuoteVersion, setSelectedQuoteVersion] = useState("Latest");
   const [availableVersions, setAvailableVersions] = useState([]);
+  const [netAmount, setNetAmount] = useState();
   const isOldVersion = selectedQuoteVersion !== "Latest";
   const effectiveReadOnly = readOnly || isOldVersion;
   console.log(deliveryCustomer, "ddeliveryCustomere");
@@ -120,10 +126,10 @@ const SalesDeliveryForm = ({
 
   const customerRef = useRef(null);
 
-  const { data: allData } = useGetProformaInvoiceQuery({
+  const { data: allData } = useGetSalesDeliveryQuery({
     params: { branchId },
   });
-  const { data: singleData } = useGetProformaInvoiceByIdQuery(id, {
+  const { data: singleData } = useGetSalesDeliveryByIdQuery(id, {
     skip: !id,
   });
   const { data: orderList } = useGetOrderEntryQuery({
@@ -143,11 +149,10 @@ const SalesDeliveryForm = ({
     );
   }, [customerId, orderList]);
 
-  const [triggerGetOrderById] = useLazyGetOrderEntryByIdQuery();
+  const [triggerGetProformaInvoiceById] = useLazyGetProformaInvoiceByIdQuery();
 
-  const [addData] = useAddProformaInvoiceMutation();
-  const [updateData] = useUpdateProformaInvoiceMutation();
-  const [removeData] = useDeleteProformaInvoiceMutation();
+  const [addData] = useAddSalesDeliveryMutation();
+  const [updateData] = useUpdateSalesDeliveryMutation();
 
   useEffect(() => {
     if (!id && allData?.nextDocId) {
@@ -185,16 +190,18 @@ const SalesDeliveryForm = ({
       setDeliveryCharge(data.deliveryCharge || "");
       console.log(data.deliveryCustomerId, "deliveryCustomerId");
       let loadedVersions = [];
-      if (data.items?.length > 0) {
+      if (data.salesDeliveryItems?.length > 0) {
         loadedVersions = [
-          ...new Set(data.items.map((i) => i.quoteVersion).filter(Boolean)),
+          ...new Set(
+            data.salesDeliveryItems.map((i) => i.quoteVersion).filter(Boolean),
+          ),
         ].sort((a, b) => b - a);
       }
       setAvailableVersions(loadedVersions);
       setSelectedQuoteVersion("Latest");
       const targetVersion =
         loadedVersions.length > 0 ? Math.max(...loadedVersions, 1) : 1;
-      const filteredItems = (data.items || []).filter(
+      const filteredItems = (data.salesDeliveryItems || []).filter(
         (i) => (i.quoteVersion || 1) === targetVersion,
       );
       const formattedItems = filteredItems.map((item) => ({
@@ -202,7 +209,7 @@ const SalesDeliveryForm = ({
         price: Number(item.price || 0), // ✅ keep number
       }));
       console.log("filteredItems", filteredItems);
-      setItems(padItems(formattedItems));
+      setSalesDeliveryItems(padItems(formattedItems));
       setDiscountValue(data?.discountValue);
       setDiscountType(data?.discountType);
       const cust = data.customer || data.OrderEntry?.customer;
@@ -217,12 +224,14 @@ const SalesDeliveryForm = ({
   }, [id, singleData]);
 
   useEffect(() => {
-    if (singleData?.data?.items && id) {
+    if (singleData?.data?.salesDeliveryItems && id) {
       let targetVersion;
       if (selectedQuoteVersion === "Latest") {
         const versions = [
           ...new Set(
-            singleData.data.items.map((i) => i.quoteVersion).filter(Boolean),
+            singleData.data.salesDeliveryItems
+              .map((i) => i.quoteVersion)
+              .filter(Boolean),
           ),
         ];
         targetVersion = versions.length > 0 ? Math.max(...versions) : 1;
@@ -230,7 +239,7 @@ const SalesDeliveryForm = ({
         targetVersion = parseInt(selectedQuoteVersion.replace("V", ""));
       }
 
-      const itemsArr = singleData.data.items;
+      const itemsArr = singleData.data.salesDeliveryItems;
       const filteredItems = itemsArr.filter(
         (i) => (i.quoteVersion || 1) === targetVersion,
       );
@@ -238,7 +247,7 @@ const SalesDeliveryForm = ({
         ...item,
         price: Number(item.price || 0),
       }));
-      setItems(padItems(formattedItems));
+      setSalesDeliveryItems(padItems(formattedItems));
     }
   }, [selectedQuoteVersion, singleData, id]);
 
@@ -260,42 +269,62 @@ const SalesDeliveryForm = ({
   }, [customerId, customerList]);
 
   useEffect(() => {
-    if (orderEntryId) {
+    if (profromaInvoiceId) {
+      console.log(profromaInvoiceId, "testing");
+
       const fetchOrderDetails = async () => {
         try {
-          const res = await triggerGetOrderById(orderEntryId).unwrap();
+          const res =
+            await triggerGetProformaInvoiceById(profromaInvoiceId).unwrap();
+          console.log(res, "res");
+
           if (res.data) {
             const order = res.data;
+            setProformaDocId(order.docId);
             setCustomerId(order.customerId);
 
             if (!id) {
               setTermsId(order.termsId || "");
               setTermsAndCondition(order.termsAndCondition || "");
               setTaxTemplateId(order.taxTemplateId || "");
+              setDeliveryType(order?.deliveryType);
+              setDeliveryCustomer(order?.deliveryCustomerId);
+              setModeOfPayment(order?.modeOfPayment);
+              setDeliveryCharge(order?.deliveryCharge);
+              if (order.items && order.items.length > 0) {
+                const maxQuoteVersion = Math.max(
+                  ...order.items.map((oi) => oi.quoteVersion || 1),
+                );
 
-              if (order.orderItems && order.orderItems.length > 0) {
-                const mappedItems = order.orderItems.map((oi) => ({
+                const filteredItems = order.items.filter(
+                  (oi) => (oi.quoteVersion || 1) === maxQuoteVersion,
+                );
+
+                const mappedItems = filteredItems.map((oi) => ({
                   styleItemId: oi.styleItemId,
+                  itemGroupId: oi.itemGroupId,
+                  hsnId: oi.hsnId,
                   trackingType: oi.trackingType || "None",
-                  sizeTemplateId: oi.sizeTemplateId || "",
-                  sizeId: oi.sizeId,
-                  barcodeFrom: oi.barcodeFrom || "",
-                  barcodeTo: oi.barcodeTo || "",
+
                   uomId: oi.uomId,
                   gsmId: oi.gsmId,
-                  hsnId: oi.hsnId,
-                  qty: parseFloat(oi.orderQty) || 0,
+
+                  qty: parseFloat(oi.qty) || 0,
                   price: oi.price || "",
                   taxPercent: parseFloat(oi.Hsn?.tax) || 0,
-                  discountType: "",
-                  discountValue: 0,
+                  discountType: oi?.discountType,
+                  discountValue: oi?.discountValue,
                   amount:
-                    (parseFloat(oi.orderQty) || 0) *
-                    (parseFloat(oi.price) || 0),
+                    (parseFloat(oi.qty) || 0) * (parseFloat(oi.price) || 0),
                   remarks: oi.remarks || "",
-                  sizeBreakup: oi.sizeBreakup || [],
+                  salesDeliveryBreakUp:
+                    oi.sizeBreakup?.map((val) => ({
+                      ...val,
+                      proformaSizeBreakupId: val.id,
+                    })) || [],
                 }));
-                setItems(padItems(mappedItems));
+                console.log("mappedItems", mappedItems);
+                setSalesDeliveryItems(padItems(mappedItems));
               }
             }
 
@@ -313,10 +342,10 @@ const SalesDeliveryForm = ({
       };
       fetchOrderDetails();
     }
-  }, [orderEntryId, triggerGetOrderById, id]);
+  }, [profromaInvoiceId, triggerGetProformaInvoiceById, id]);
 
   const handleSave = async (pendingAction = null) => {
-    if (!orderEntryId) {
+    if (!profromaInvoiceId) {
       Swal.fire({
         title: "Warning",
         text: "Please select an Order No.",
@@ -336,7 +365,7 @@ const SalesDeliveryForm = ({
       return;
     }
 
-    const filteredItems = items.filter((item) => item.styleItemId);
+    const filteredItems = salesDeliveryItems.filter((item) => item.styleItemId);
 
     if (filteredItems.length === 0) {
       Swal.fire({
@@ -348,7 +377,23 @@ const SalesDeliveryForm = ({
       return;
     }
 
-    const missingPriceIndex = items.findIndex(
+    const missingQtyIndex = salesDeliveryItems.findIndex(
+      (item) => item.styleItemId && (!item.qty || parseFloat(item.qty) <= 0),
+    );
+
+    if (missingQtyIndex !== -1) {
+      Swal.fire({
+        title: "Warning",
+        text: `Delivery Qty must be greater than zero in row no ${
+          missingQtyIndex + 1
+        }`,
+        icon: "warning",
+        confirmButtonColor: "#3085d6",
+      });
+      return;
+    }
+
+    const missingPriceIndex = salesDeliveryItems.findIndex(
       (item) =>
         item.styleItemId && (!item.price || parseFloat(item.price) <= 0),
     );
@@ -372,7 +417,7 @@ const SalesDeliveryForm = ({
       userDate,
       deliveryDate: docDate,
       customerId,
-      orderEntryId,
+      profromaInvoiceId,
       remarks,
       termsAndCondition,
       termsId,
@@ -381,15 +426,20 @@ const SalesDeliveryForm = ({
       deliveryCustomerId: deliveryCustomer || null,
       modeOfPayment,
       deliveryCharge: Number(deliveryCharge) || 0,
-      items: JSON.stringify(filteredItems),
+      salesDeliveryItems: filteredItems,
       discountType,
       discountValue,
+      netAmount,
     };
+    console.log(payload, "payload");
 
     try {
       let savedId = id;
       if (id) {
-        await updateData({ id, body: payload }).unwrap();
+        const res = await updateData({ id, body: payload }).unwrap();
+        if (res?.statusCode === 1) {
+          throw new Error(res?.message || "Failed to update Proforma Invoice");
+        }
         Swal.fire({
           title: "Success",
           text: "Proforma Invoice updated successfully",
@@ -399,7 +449,10 @@ const SalesDeliveryForm = ({
         });
       } else {
         const res = await addData(payload).unwrap();
-        savedId = res.data.id;
+        if (res?.statusCode === 1) {
+          throw new Error(res?.message || "Failed to create Proforma Invoice");
+        }
+        savedId = res?.data?.id;
         setId(savedId);
         Swal.fire({
           title: "Success",
@@ -419,9 +472,11 @@ const SalesDeliveryForm = ({
       }
       invalidateOrderEntryModule();
     } catch (error) {
+      console.log(error, "errorcheckingasfkljklas");
+
       Swal.fire({
         title: "Error",
-        text: error.data?.message || "Failed to save Proforma Invoice",
+        text: error?.message || "Failed to save Proforma Invoice",
         icon: "error",
         confirmButtonColor: "#d33",
       });
@@ -452,7 +507,7 @@ const SalesDeliveryForm = ({
     setDeliveryCustomer("");
     setModeOfPayment("By cash");
     setDeliveryCharge("");
-    setItems(padItems([]));
+    setSalesDeliveryItems(padItems([]));
     setCustomerDetails({ name: "", contactPerson: "", phone: "" });
     setSelectedQuoteVersion("Latest");
     setAvailableVersions([]);
@@ -465,11 +520,11 @@ const SalesDeliveryForm = ({
     }
   }, [termsId, termsData]);
 
-  const totalAmount = items.reduce(
+  const totalAmount = salesDeliveryItems.reduce(
     (sum, item) => sum + (parseFloat(item.amount) || 0),
     0,
   );
-  const totalQty = items.reduce(
+  const totalQty = salesDeliveryItems.reduce(
     (sum, item) => sum + (parseFloat(item.qty) || 0),
     0,
   );
@@ -497,16 +552,6 @@ const SalesDeliveryForm = ({
               type="date"
             />
           </div>
-          <div className="w-32">
-            <DropdownInput
-              name="Sale Order Type"
-              options={poTypes}
-              value={saleOrderType}
-              setValue={setSaleOrderType}
-              required={true}
-              disabled={effectiveReadOnly}
-            />
-          </div>
         </div>
       </div>
 
@@ -524,7 +569,7 @@ const SalesDeliveryForm = ({
               setValue={(val) => {
                 setCustomerId(val);
                 setOrderEntryId(""); // Clear order if customer changes
-                setItems(padItems([])); // Clear table if customer changes
+                setSalesDeliveryItems(padItems([])); // Clear table if customer changes
                 if (deliveryType === "self") {
                   setDeliveryCustomer(val);
                 }
@@ -550,10 +595,26 @@ const SalesDeliveryForm = ({
           <div className="w-36">
             <DropdownInput
               name="Order No"
-              options={dropDownListObject(filteredOrderList, "docId", "id")}
-              value={orderEntryId}
-              setValue={setOrderEntryId}
+              options={dropDownListObjectMultiple(
+                filteredOrderList.map((item) => ({
+                  ...item,
+                  id: item.ProformaInvoices?.[0]?.id,
+                })),
+                ["docId"],
+                "id",
+              )}
+              value={profromaInvoiceId}
+              setValue={setProfromaInvoiceId}
               readOnly={effectiveReadOnly || !!id}
+              required={true}
+            />
+          </div>
+          <div className="w-36">
+            <TextInput
+              name="Proforma Invoice No"
+              value={proformaDocId}
+              setValue={setProformaDocId}
+              readOnly={true}
               required={true}
             />
           </div>
@@ -568,7 +629,7 @@ const SalesDeliveryForm = ({
               value={taxTemplateId}
               setValue={setTaxTemplateId}
               required={true}
-              readOnly={effectiveReadOnly || !!id}
+              readOnly={true}
             />
           </div>
         </div>
@@ -595,7 +656,7 @@ const SalesDeliveryForm = ({
                   setDeliveryCustomer("");
                 }
               }}
-              readOnly={effectiveReadOnly}
+              readOnly={true}
             />
           </div>
           <div className="w-60">
@@ -604,7 +665,7 @@ const SalesDeliveryForm = ({
               options={dropDownListObject(customerList?.data, "name", "id")}
               value={deliveryCustomer}
               setValue={setDeliveryCustomer}
-              readOnly={effectiveReadOnly || deliveryType === "self"}
+              readOnly={true}
             />
           </div>
           <div className="w-24">
@@ -618,7 +679,7 @@ const SalesDeliveryForm = ({
               ]}
               value={modeOfPayment}
               setValue={setModeOfPayment}
-              readOnly={effectiveReadOnly}
+              readOnly={true}
             />
           </div>
         </div>
@@ -631,7 +692,7 @@ const SalesDeliveryForm = ({
   }, [supplierData]);
 
   const enrichedData = useMemo(() => {
-    const filteredItems = items.filter((i) => i.styleItemId);
+    const filteredItems = salesDeliveryItems.filter((i) => i.styleItemId);
     if (!filteredItems.length)
       return {
         items: [],
@@ -650,7 +711,7 @@ const SalesDeliveryForm = ({
       discountType,
       discountValue,
     );
-  }, [items, isSupplierOutside, discountType, discountValue]);
+  }, [salesDeliveryItems, isSupplierOutside, discountType, discountValue]);
 
   const versionDropdown = (
     <div className="flex items-center gap-2 ml-2">
@@ -786,6 +847,33 @@ const SalesDeliveryForm = ({
             summaryColumn: "right",
             emphasized: true,
           },
+          {
+            key: "finalAmount",
+            label: "Net Bill Value",
+            renderValue: () => (
+              <div className="flex items-center">
+                <span className="text-slate-600 mr-1">Rs.</span>
+                <input
+                  type="number"
+                  className="w-20 text-right border border-gray-300 rounded px-1 py-0.5 outline-none focus:border-indigo-500 text-[11px]"
+                  value={netAmount}
+                  onChange={(e) => setNetAmount(e.target.value)}
+                  readOnly={effectiveReadOnly}
+                  placeholder="0.00"
+                  onBlur={(e) => {
+                    const val = e.target.value;
+                    if (val === "") {
+                      setNetAmount(val);
+                    } else {
+                      const num = parseFloat(val);
+                      setNetAmount(isNaN(num) ? "" : Number(num).toFixed(2));
+                    }
+                  }}
+                />
+              </div>
+            ),
+            summaryColumn: "right",
+          },
         ]}
         extraTotalsContent={taxBreakdownContent}
         extraTotalsContentColumn="right"
@@ -865,7 +953,7 @@ const SalesDeliveryForm = ({
         widthClass="w-[500px]"
       >
         <PoSummary
-          poItems={items}
+          poItems={salesDeliveryItems}
           totals={enrichedData}
           readOnly={effectiveReadOnly}
           discountType={discountType}
@@ -885,7 +973,9 @@ const SalesDeliveryForm = ({
           <SalesDeliveryPrintFormat
             data={{
               ...singleData?.data,
-              items: items.filter((i) => i.styleItemId),
+              salesDeliveryItems: salesDeliveryItems.filter(
+                (i) => i.styleItemId,
+              ),
               calculations: enrichedData,
               isSupplierOutside,
             }}
@@ -894,7 +984,7 @@ const SalesDeliveryForm = ({
       </Modal>
 
       <TransactionLayout
-        title="Sale Order"
+        title="Sales Delivery"
         badge={<ModeChip id={id} readOnly={readOnly} />}
         closeIcon={<IoArrowBackCircleSharp className="w-7 h-7" />}
         onClose={onClose}
@@ -904,9 +994,9 @@ const SalesDeliveryForm = ({
         detailsLayouts={["default"]}
         gridItems={
           <SalesDeliveryItems
-            items={items}
+            salesDeliveryItems={salesDeliveryItems}
             enrichedItems={enrichedData}
-            setItems={setItems}
+            setSalesDeliveryItems={setSalesDeliveryItems}
             readOnly={effectiveReadOnly}
             taxTemplateId={taxTemplateId}
             id={id}

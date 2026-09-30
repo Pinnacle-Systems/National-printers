@@ -134,10 +134,13 @@ async function get(req) {
     searchCustomer,
     searchBranch,
     isTakeOnlyFinshedJobCards,
+    isProforma,
   } = req.query;
 
   const isTakeOnlyFinished =
     isTakeOnlyFinshedJobCards === true || isTakeOnlyFinshedJobCards === "true";
+
+  const isProformaInvoice = isProforma === true || isProforma === "true";
 
   let finYearDate = await getFinYearStartTimeEndTime(finYearId);
   const shortCode = finYearDate
@@ -155,6 +158,7 @@ async function get(req) {
     where: {
       branchId: branchId ? parseInt(branchId) : undefined,
       JobCard: isTakeOnlyFinished ? { some: {} } : undefined,
+      ProformaInvoices: isProformaInvoice ? { some: {} } : undefined,
       AND: finYearDate
         ? [
             {
@@ -194,6 +198,7 @@ async function get(req) {
       orderBranch: {
         select: { id: true, branchName: true },
       },
+      ProformaInvoices: { select: { id: true, docId: true } },
       _count: {
         select: {
           JobCard: true,

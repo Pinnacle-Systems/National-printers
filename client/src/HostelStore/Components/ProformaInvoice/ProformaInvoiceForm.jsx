@@ -264,6 +264,7 @@ const ProformaInvoiceForm = ({
               if (order.orderItems && order.orderItems.length > 0) {
                 const mappedItems = order.orderItems.map((oi) => ({
                   styleItemId: oi.styleItemId,
+                  itemGroupId: oi.itemGroupId,
                   trackingType: oi.trackingType || "None",
                   sizeTemplateId: oi.sizeTemplateId || "",
                   sizeId: oi.sizeId,

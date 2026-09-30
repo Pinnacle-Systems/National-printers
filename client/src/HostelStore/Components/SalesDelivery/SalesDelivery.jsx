@@ -2,7 +2,7 @@ import { useDispatch } from "react-redux";
 import { getCommonParams } from "../../../Utils/helper.js";
 import { useGetTermsandCondtionsQuery } from "../../../redux/uniformService/TermsAndContionService.js";
 import { useGetUserByIdQuery } from "../../../redux/services/UsersMasterService.js";
-import { useDeleteProformaInvoiceMutation } from "../../../redux/uniformService/ProformaInvoiceService.js";
+import { useDeleteSalesDeliveryMutation } from "../../../redux/uniformService/SalesDeliveryServices.js";
 import { useGetPartyQuery } from "../../../redux/services/PartyMasterService.js";
 import { useGetBranchQuery } from "../../../redux/services/BranchMasterService.js";
 import { useState } from "react";
@@ -39,7 +39,7 @@ const SalesDelivery = () => {
     setReadOnly(false);
   };
 
-  const [removeData] = useDeleteProformaInvoiceMutation();
+  const [removeData] = useDeleteSalesDeliveryMutation();
 
   const handleDelete = async (id) => {
     if (id) {
@@ -91,7 +91,7 @@ const SalesDelivery = () => {
         <div className="flex flex-col sm:flex-row justify-between bg-white py-1 px-1 items-start sm:items-center mb-4 gap-x-4 rounded-tl-lg rounded-tr-lg shadow-sm border border-gray-200">
           <div>
             <h1 className="text-lg font-bold text-gray-800">
-              Sale Order Report
+              Sales Delivery Report
             </h1>
           </div>
 

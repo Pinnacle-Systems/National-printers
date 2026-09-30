@@ -69,6 +69,7 @@ import {
   productionalallocation,
   machine,
   packing,
+  salesDelivery,
 } from "./src/routes/index.js";
 import { setIo } from "./src/utils/notificationHelper.js";
 import { socketMain } from "./src/sockets/socket.js";
@@ -172,6 +173,7 @@ apiRouter.use("/proformaInvoice", proformaInvoice);
 apiRouter.use("/productionAllocation", productionalallocation);
 apiRouter.use("/machine", machine);
 apiRouter.use("/packing", packing);
+apiRouter.use("/salesDelivery", salesDelivery);
 
 apiRouter.get("/retreiveFile/:fileName", (req, res) => {
   const { fileName } = req.params;
