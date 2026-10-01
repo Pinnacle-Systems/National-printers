@@ -2022,7 +2022,6 @@ model ProformaInvoiceItem {
   taxPercent        Float?
   discountType      String?
   discountValue     Float?
-  amount            Float?
   sizeId            Int?
   Size              Size?           @relation(fields: [sizeId], references: [id])
   uomId             Int?
@@ -2515,7 +2514,6 @@ model SalesDelivery {
   salesDeliveryItems SalesDeliveryItems[]
   TaxTemplate        TaxTemplate?         @relation(fields: [taxTemplateId], references: [id])
   taxTemplateId      Int?
-  quoteVersion       Int                  @default(1)
   isApproved         Boolean              @default(false)
   approvalStatus     String               @default("PENDING")
   deliveryType       String?
@@ -2543,7 +2541,6 @@ model SalesDeliveryItems {
   taxPercent      Float?
   discountType    String?
   discountValue   Float?
-  amount          Float?
   sizeId          Int?
   Size            Size?         @relation(fields: [sizeId], references: [id])
   uomId           Int?
@@ -2561,7 +2558,7 @@ model SalesDeliveryItems {
   remarks         String?
   description     String?
 
-  salesDeliveryBreakup SalesDeliveryBreakup[]
+  salesDeliveryBreakUp SalesDeliveryBreakup[]
 }
 
 model SalesDeliveryBreakup {

@@ -29,13 +29,9 @@ import tw from "../../../Utils/tailwind-react-pdf.js";
 import { IoArrowBackCircleSharp } from "react-icons/io5";
 import { FiEdit2, FiSave, FiPrinter, FiEye } from "react-icons/fi";
 import { HiOutlineRefresh, HiX } from "react-icons/hi";
-import {
-  useGetOrderEntryQuery,
-  useLazyGetOrderEntryByIdQuery,
-} from "../../../redux/uniformService/OrderEntryService.js";
+import { useGetOrderEntryQuery } from "../../../redux/uniformService/OrderEntryService.js";
 import {
   CommonFormFooter,
-  TransactionActions,
   TransactionLayout,
 } from "../../../Basic/components/Reuseable/index.js";
 import {
@@ -46,7 +42,6 @@ import { calculateTaxWithHSNBreakupAndInsertIntoPoItems } from "../../../Utils/t
 import PoSummary from "../PurchaseOrder/PoSummary.js";
 import { useGetPartyByIdQuery } from "../../../redux/services/PartyMasterService.js";
 import { invalidateOrderEntryModule } from "../../../redux/Dispatch/OrderInvalidateTags.js";
-import { poTypes } from "../../../Utils/DropdownData.js";
 import { useLazyGetProformaInvoiceByIdQuery } from "../../../redux/uniformService/ProformaInvoiceService.js";
 const EMPTY_ROW = {
   styleItemId: "",
@@ -111,11 +106,8 @@ const SalesDeliveryForm = ({
   const [modeOfPayment, setModeOfPayment] = useState("By cash");
   const [deliveryCharge, setDeliveryCharge] = useState("");
 
-  const [selectedQuoteVersion, setSelectedQuoteVersion] = useState("Latest");
-  const [availableVersions, setAvailableVersions] = useState([]);
   const [netAmount, setNetAmount] = useState();
-  const isOldVersion = selectedQuoteVersion !== "Latest";
-  const effectiveReadOnly = readOnly || isOldVersion;
+  const effectiveReadOnly = readOnly;
   console.log(deliveryCustomer, "ddeliveryCustomere");
 
   const [customerDetails, setCustomerDetails] = useState({
@@ -178,6 +170,7 @@ const SalesDeliveryForm = ({
           ? moment(data.userDate).format("YYYY-MM-DD")
           : moment().format("YYYY-MM-DD"),
       );
+      setProfromaInvoiceId(data?.profromaInvoiceId);
       setCustomerId(data.customerId);
       setOrderEntryId(data.orderEntryId || "");
       setRemarks(data.remarks || "");
@@ -197,21 +190,16 @@ const SalesDeliveryForm = ({
           ),
         ].sort((a, b) => b - a);
       }
-      setAvailableVersions(loadedVersions);
-      setSelectedQuoteVersion("Latest");
-      const targetVersion =
-        loadedVersions.length > 0 ? Math.max(...loadedVersions, 1) : 1;
-      const filteredItems = (data.salesDeliveryItems || []).filter(
-        (i) => (i.quoteVersion || 1) === targetVersion,
-      );
-      const formattedItems = filteredItems.map((item) => ({
+
+      const formattedItems = data.salesDeliveryItems?.map((item) => ({
         ...item,
         price: Number(item.price || 0), // ✅ keep number
       }));
-      console.log("filteredItems", filteredItems);
       setSalesDeliveryItems(padItems(formattedItems));
       setDiscountValue(data?.discountValue);
       setDiscountType(data?.discountType);
+      setDeliveryCharge(data?.deliveryCharge);
+      setNetAmount(data?.netAmount);
       const cust = data.customer || data.OrderEntry?.customer;
       if (cust) {
         setCustomerDetails({
@@ -222,34 +210,6 @@ const SalesDeliveryForm = ({
       }
     }
   }, [id, singleData]);
-
-  useEffect(() => {
-    if (singleData?.data?.salesDeliveryItems && id) {
-      let targetVersion;
-      if (selectedQuoteVersion === "Latest") {
-        const versions = [
-          ...new Set(
-            singleData.data.salesDeliveryItems
-              .map((i) => i.quoteVersion)
-              .filter(Boolean),
-          ),
-        ];
-        targetVersion = versions.length > 0 ? Math.max(...versions) : 1;
-      } else {
-        targetVersion = parseInt(selectedQuoteVersion.replace("V", ""));
-      }
-
-      const itemsArr = singleData.data.salesDeliveryItems;
-      const filteredItems = itemsArr.filter(
-        (i) => (i.quoteVersion || 1) === targetVersion,
-      );
-      const formattedItems = filteredItems.map((item) => ({
-        ...item,
-        price: Number(item.price || 0),
-      }));
-      setSalesDeliveryItems(padItems(formattedItems));
-    }
-  }, [selectedQuoteVersion, singleData, id]);
 
   useEffect(() => {
     if (customerId && customerList?.data) {
@@ -270,13 +230,10 @@ const SalesDeliveryForm = ({
 
   useEffect(() => {
     if (profromaInvoiceId) {
-      console.log(profromaInvoiceId, "testing");
-
       const fetchOrderDetails = async () => {
         try {
           const res =
             await triggerGetProformaInvoiceById(profromaInvoiceId).unwrap();
-          console.log(res, "res");
 
           if (res.data) {
             const order = res.data;
@@ -305,17 +262,14 @@ const SalesDeliveryForm = ({
                   itemGroupId: oi.itemGroupId,
                   hsnId: oi.hsnId,
                   trackingType: oi.trackingType || "None",
-
                   uomId: oi.uomId,
                   gsmId: oi.gsmId,
-
                   qty: parseFloat(oi.qty) || 0,
+                  deliveryQty: 0,
                   price: oi.price || "",
                   taxPercent: parseFloat(oi.Hsn?.tax) || 0,
                   discountType: oi?.discountType,
                   discountValue: oi?.discountValue,
-                  amount:
-                    (parseFloat(oi.qty) || 0) * (parseFloat(oi.price) || 0),
                   remarks: oi.remarks || "",
                   salesDeliveryBreakUp:
                     oi.sizeBreakup?.map((val) => ({
@@ -323,7 +277,6 @@ const SalesDeliveryForm = ({
                       proformaSizeBreakupId: val.id,
                     })) || [],
                 }));
-                console.log("mappedItems", mappedItems);
                 setSalesDeliveryItems(padItems(mappedItems));
               }
             }
@@ -463,7 +416,6 @@ const SalesDeliveryForm = ({
         });
       }
       setReadOnly(true);
-      setSelectedQuoteVersion("Latest");
 
       if (pendingAction === "new") {
         onNew();
@@ -509,8 +461,6 @@ const SalesDeliveryForm = ({
     setDeliveryCharge("");
     setSalesDeliveryItems(padItems([]));
     setCustomerDetails({ name: "", contactPerson: "", phone: "" });
-    setSelectedQuoteVersion("Latest");
-    setAvailableVersions([]);
   };
 
   useEffect(() => {
@@ -710,56 +660,10 @@ const SalesDeliveryForm = ({
       isSupplierOutside,
       discountType,
       discountValue,
+      false,
+      "deliveryQty",
     );
   }, [salesDeliveryItems, isSupplierOutside, discountType, discountValue]);
-
-  const versionDropdown = (
-    <div className="flex items-center gap-2 ml-2">
-      <span className="text-xs text-gray-500 mt-1">Version</span>
-
-      <div className="relative">
-        <select
-          value={selectedQuoteVersion}
-          onChange={(e) => setSelectedQuoteVersion(e.target.value)}
-          className="appearance-none bg-white border border-gray-300 text-gray-700 text-xs rounded-md pl-2 pr-6 py-1 
-                   focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 
-                   hover:border-gray-400 transition"
-        >
-          {availableVersions.length > 0 ? (
-            availableVersions.map((v) => (
-              <option
-                key={v}
-                value={
-                  Math.max(...availableVersions) === v ? "Latest" : `V${v}`
-                }
-              >
-                {Math.max(...availableVersions) === v ? "Latest" : `V${v}`}
-              </option>
-            ))
-          ) : (
-            <option value="Latest">Latest</option>
-          )}
-        </select>
-
-        {/* Custom arrow */}
-        <div className="pointer-events-none absolute inset-y-0 right-1 flex items-center text-gray-400">
-          <svg
-            className="w-3 h-3"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M19 9l-7 7-7-7"
-            />
-          </svg>
-        </div>
-      </div>
-    </div>
-  );
 
   const taxBreakdownContent =
     enrichedData.slabBreakup.length > 0 ? (
@@ -904,7 +808,7 @@ const SalesDeliveryForm = ({
 
         {/* Right Buttons */}
         <div className="flex gap-2 flex-wrap">
-          {!(!readOnly || !id || isOldVersion) && (
+          {!(!readOnly || !id) && (
             <button
               onClick={() => setReadOnly(false)}
               className="bg-yellow-600 text-white px-2 py-1 rounded hover:bg-yellow-700 flex items-center text-xs font-medium"
@@ -1004,7 +908,6 @@ const SalesDeliveryForm = ({
           />
         }
         footer={footerContent}
-        versionDropdown={id ? versionDropdown : null}
       />
     </>
   );

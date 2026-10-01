@@ -45,7 +45,6 @@ const SalesDeliveryItems = ({
     hsnId: "",
     qty: 0,
     price: 0,
-    amount: 0, // Used for "Gross"
   };
 
   const [contextMenu, setContextMenu] = useState(null);
@@ -66,11 +65,6 @@ const SalesDeliveryItems = ({
       ...newItems[index],
       [field]: value,
     };
-
-    // Calculate gross (amount)
-    const qty = parseFloat(newItems[index].qty) || 0;
-    const price = parseFloat(newItems[index].price) || 0;
-    newItems[index].amount = (qty * price).toFixed(2);
 
     setSalesDeliveryItems(newItems);
   };
@@ -120,10 +114,36 @@ const SalesDeliveryItems = ({
       }
     }
 
-    newBreakup[breakupIndex] = {
-      ...newBreakup[breakupIndex],
-      [field]: field === "deliveryQty" ? (value === "" ? "" : Number(value)) : value,
-    };
+    if (field === "deliveryQty") {
+      let numericValue = value === "" ? "" : Number(value);
+
+      if (numericValue !== "") {
+        const orderQty = Number(newBreakup[breakupIndex]?.qty) || 0;
+        const alreadyDelivered =
+          Number(newBreakup[breakupIndex]?.alreadyDeliveryQty) || 0;
+        const maxAllowed = Math.max(0, orderQty - alreadyDelivered);
+
+        if (numericValue > maxAllowed) {
+          Swal.fire({
+            title: "Quantity Exceeded",
+            text: `Delivery Qty cannot exceed ${maxAllowed} (Order Qty: ${orderQty} - Already Delivered: ${alreadyDelivered})`,
+            icon: "warning",
+            confirmButtonColor: "#3085d6",
+          });
+          numericValue = maxAllowed;
+        }
+      }
+
+      newBreakup[breakupIndex] = {
+        ...newBreakup[breakupIndex],
+        [field]: numericValue,
+      };
+    } else {
+      newBreakup[breakupIndex] = {
+        ...newBreakup[breakupIndex],
+        [field]: value,
+      };
+    }
 
     newItems[rowIndex].salesDeliveryBreakUp = newBreakup;
 
@@ -131,10 +151,7 @@ const SalesDeliveryItems = ({
       (sum, b) => sum + (parseFloat(b.deliveryQty) || 0),
       0,
     );
-    newItems[rowIndex].qty = totalDeliveryQty;
-
-    const price = parseFloat(newItems[rowIndex].price) || 0;
-    newItems[rowIndex].amount = (totalDeliveryQty * price).toFixed(2);
+    newItems[rowIndex].deliveryQty = totalDeliveryQty;
 
     setSalesDeliveryItems(newItems);
   };
@@ -151,9 +168,7 @@ const SalesDeliveryItems = ({
       (sum, b) => sum + (parseFloat(b.deliveryQty) || 0),
       0,
     );
-    newItems[activeRowIndex].qty = totalDeliveryQty;
-    const price = parseFloat(newItems[activeRowIndex].price) || 0;
-    newItems[activeRowIndex].amount = (totalDeliveryQty * price).toFixed(2);
+    newItems[activeRowIndex].deliveryQty = totalDeliveryQty;
 
     setSalesDeliveryItems(newItems);
   };
@@ -218,6 +233,10 @@ const SalesDeliveryItems = ({
           <div className="bg-slate-100 p-3 rounded-lg">
             <div className="bg-white p-3 rounded-lg flex justify-between items-center mb-3 shadow-sm">
               <h3 className="text-[16px] font-bold text-slate-800">
+                {console.log(
+                  "salesDeliveryBreakup",
+                  salesDeliveryItems[activeRowIndex]?.salesDeliveryBreakUp,
+                )}
                 {salesDeliveryItems[activeRowIndex]?.trackingType === "Barcode"
                   ? "Barcode Wise Breakup"
                   : salesDeliveryItems[activeRowIndex]?.trackingType ===
@@ -329,8 +348,8 @@ const SalesDeliveryItems = ({
                           {breakup.qty !== undefined ? Number(breakup.qty) : ""}
                         </td>
                         <td className="border-b border-r border-slate-200 text-right px-2 text-[11px]">
-                          {breakup.alreadyDeliveredQty !== undefined
-                            ? Number(breakup.alreadyDeliveredQty)
+                          {breakup.alreadyDeliveryQty !== undefined
+                            ? Number(breakup.alreadyDeliveryQty)
                             : ""}
                         </td>
                         <td className="border-b border-r border-slate-200 text-right px-1 text-[11px]">
@@ -379,8 +398,7 @@ const SalesDeliveryItems = ({
                           salesDeliveryItems[activeRowIndex]
                             ?.salesDeliveryBreakUp || []
                         ).reduce(
-                          (sum, b) =>
-                            sum + (Number(b.alreadyDeliveredQty) || 0),
+                          (sum, b) => sum + (Number(b.alreadyDeliveryQty) || 0),
                           0,
                         )}
                       </td>
@@ -425,7 +443,10 @@ const SalesDeliveryItems = ({
                 UOM
               </th>
               <th className="w-12 px-1 py-1.5 text-center font-medium border border-gray-300">
-                Qty
+                Order Qty
+              </th>
+              <th className="w-12 px-1 py-1.5 text-center font-medium border border-gray-300">
+                Delivery Qty
               </th>
               <th className="w-12 px-1 py-1.5 text-center font-medium border border-gray-300">
                 Price
@@ -515,6 +536,9 @@ const SalesDeliveryItems = ({
                   <td className="border border-gray-300 text-right px-1 text-[11px]">
                     {item?.qty || ""}
                   </td>
+                  <td className="border border-gray-300 text-right px-1 text-[11px]">
+                    {item?.deliveryQty || ""}
+                  </td>
                   <td className="border border-gray-300 text-right px-1 grid-editable-cell">
                     <input
                       id={`price-input-${index}`}
@@ -555,7 +579,9 @@ const SalesDeliveryItems = ({
                   </td>
                   <td className="border border-gray-300 text-right px-1 text-[11px]">
                     {item.styleItemId
-                      ? Number(item.amount || 0).toFixed(2)
+                      ? parseFloat(item.deliveryQty * item.price || 0).toFixed(
+                          2,
+                        )
                       : ""}
                   </td>
                   <td className="border border-gray-300 text-center text-[11px]">
@@ -617,6 +643,12 @@ const SalesDeliveryItems = ({
                   0,
                 )}
               </td>
+              <td className="text-right px-1 border border-gray-300">
+                {salesDeliveryItems?.reduce(
+                  (sum, i) => sum + (parseFloat(i.deliveryQty) || 0),
+                  0,
+                )}
+              </td>
               <td className="text-right pr-1 border border-gray-300">
                 {salesDeliveryItems?.reduce(
                   (sum, i) => sum + (parseFloat(i.price) || 0),
@@ -625,7 +657,13 @@ const SalesDeliveryItems = ({
               </td>
               <td className="text-right px-1 border border-gray-300">
                 {salesDeliveryItems
-                  ?.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0)
+                  ?.reduce(
+                    (sum, i) =>
+                      sum +
+                      (parseFloat(i.deliveryQty) || 0) *
+                        (parseFloat(i.price) || 0),
+                    0,
+                  )
                   .toFixed(2)}
               </td>
               <td className="border border-gray-300"></td>
@@ -667,8 +705,7 @@ const SalesDeliveryItems = ({
               onClick={() => {
                 const newItems = [...items];
                 newItems[activeRowIndex].salesDeliveryBreakUp = [];
-                newItems[activeRowIndex].qty = 0;
-                newItems[activeRowIndex].amount = "0.00";
+
                 setSalesDeliveryItems(newItems);
                 handleCloseSizeContextMenu();
               }}

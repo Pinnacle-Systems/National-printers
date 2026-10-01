@@ -117,7 +117,7 @@ async function getOne(id) {
           Gsm: true,
           Hsn: true,
           SizeTemplate: true,
-          salesDeliveryBreakup: {
+          salesDeliveryBreakUp: {
             include: {
               Size: true,
 
@@ -160,15 +160,23 @@ async function getOne(id) {
       ...data,
       salesDeliveryItems: data.salesDeliveryItems.map((item) => ({
         ...item,
-        deliveryQty: item.salesDeliveryBreakup.reduce(
+        deliveryQty: item.salesDeliveryBreakUp.reduce(
           (acc1, size1) => acc1 + size1.deliveryQty,
           0,
         ),
 
-        orderQty: item.salesDeliveryBreakup.reduce(
+        orderQty: item.salesDeliveryBreakUp.reduce(
           (acc1, size1) => acc1 + size1.qty,
           0,
         ),
+        salesDeliveryBreakUp: item.salesDeliveryBreakUp.map((s) => ({
+          ...s,
+          alreadyDeliveryQty:
+            s.proformaSizeBreakup?.salesDeliveryBreakups
+              ?.filter((i) => i?.id !== s?.id)
+              ?.reduce((acc1, size1) => acc1 + (size1.deliveryQty || 0), 0) ||
+            0,
+        })),
       })),
     },
   };
@@ -243,7 +251,9 @@ async function create(body) {
       } else {
         stockEntries.push({
           ...baseStock,
-          qty: item?.qty ? -Math.abs(parseFloat(item.qty)) : null,
+          qty: item?.deliveryQty
+            ? -Math.abs(parseFloat(item.deliveryQty))
+            : null,
         });
       }
     });
@@ -341,11 +351,10 @@ async function create(body) {
             taxPercent: parseFloat(item.taxPercent || 0),
             discountType: item.discountType,
             discountValue: parseFloat(item.discountValue || 0),
-            amount: parseFloat(item.amount || 0),
             trackingType: item.trackingType,
             remarks: item.remarks,
             itemOrder: idx,
-            salesDeliveryBreakup: {
+            salesDeliveryBreakUp: {
               create: (item.salesDeliveryBreakUp || [])
                 .filter((sb) => (parseFloat(sb.deliveryQty) || 0) > 0)
                 .map((sb) => ({
@@ -393,16 +402,16 @@ async function update(id, body, files) {
   const {
     userId,
     branchId,
+    companyId,
     docDate,
     userDate,
     customerId,
     deliveryDate,
     remarks,
-    items,
-    attachments,
+    salesDeliveryItems,
     termsId,
     termsAndCondition,
-    orderEntryId,
+    profromaInvoiceId,
     taxTemplateId,
     isApproved,
     deliveryType,
@@ -411,35 +420,24 @@ async function update(id, body, files) {
     deliveryCharge,
     discountValue,
     discountType,
+    netAmount,
   } = body;
-
-  const parseItems = JSON.parse(items || "[]");
-  const parseAttachments = JSON.parse(attachments || "[]");
-  const incomingAttachmentIds = parseAttachments
-    ?.filter((i) => i.id)
-    .map((i) => parseInt(i.id));
 
   const dataFound = await prisma.salesDelivery.findUnique({
     where: { id: parseInt(id) },
-    include: { attachments: true, items: { include: { sizeBreakup: true } } },
   });
 
-  if (!dataFound) return NoRecordFound("Proforma Invoice");
+  if (!dataFound) return { statusCode: 1, message: "Record not found" };
 
-  // ── Fast path: approval-only toggle ─────────────────────────────────────
-  // When only approvalStatus (or isApproved) is sent from the report page,
-  // skip the full update to avoid overwriting all other fields with null.
   const approvalStatus = body.approvalStatus;
 
   const isApprovalOnlyUpdate =
     (approvalStatus !== undefined || isApproved !== undefined) &&
     !docDate &&
     !customerId &&
-    !userId &&
-    !items;
+    !salesDeliveryItems;
 
   if (isApprovalOnlyUpdate) {
-    // Derive both fields from approvalStatus if provided, else from isApproved
     let newStatus = approvalStatus;
     let newIsApproved;
     if (approvalStatus) {
@@ -454,188 +452,176 @@ async function update(id, body, files) {
     });
     return { statusCode: 0, data };
   }
-  // ────────────────────────────────────────────────────────────────────────
 
-  // Handle file unlinking for removed attachments
-  const removedAttachments = dataFound.attachments.filter(
-    (existing) => !incomingAttachmentIds.includes(existing.id),
-  );
-  removedAttachments.forEach((att) => {
-    if (att.filePath) {
-      const fullPath = path.join("./uploads", att.filePath);
-      fs.unlink(fullPath, (err) => {
-        if (err)
-          console.warn(`Could not delete file: ${fullPath}`, err.message);
-      });
-    }
-  });
+  // Stock Validation & Preparation
+  let stockEntries = [];
+  if (salesDeliveryItems && salesDeliveryItems.length > 0) {
+    salesDeliveryItems.forEach((item) => {
+      const baseStock = {
+        branchId: branchId ? parseInt(branchId) : null,
+        profromaInvoiceId: profromaInvoiceId ? parseInt(profromaInvoiceId) : null,
+        createdById: userId ? parseInt(userId) : null,
+        inOrOut: "Out",
+        processName: "Sales",
+        styleItemId: item?.styleItemId ? parseInt(item.styleItemId) : null,
+        itemGroupId: item?.itemGroupId ? parseInt(item.itemGroupId) : null,
+        uomId: item?.uomId ? parseInt(item.uomId) : null,
+        hsnId: item?.hsnId ? parseInt(item.hsnId) : null,
+      };
 
-  const currentQuoteVersion = dataFound.quoteVersion || 1;
-  const latestItems = dataFound.items
-    .filter((i) => i.quoteVersion === currentQuoteVersion)
-    .sort((a, b) => (a.itemOrder || 0) - (b.itemOrder || 0));
-
-  let isTableChanged = false;
-  if (parseItems.length !== latestItems.length) {
-    isTableChanged = true;
-  } else {
-    isTableChanged = parseItems.some((newItem, index) => {
-      const oldItem = latestItems[index];
-      if (!oldItem) return true;
-
-      const basicChanged =
-        parseInt(newItem.styleItemId || 0) !==
-          parseInt(oldItem.styleItemId || 0) ||
-        parseFloat(newItem.qty || 0) !== parseFloat(oldItem.qty || 0) ||
-        parseFloat(newItem.price || 0) !== parseFloat(oldItem.price || 0) ||
-        parseFloat(newItem.taxPercent || 0) !==
-          parseFloat(oldItem.taxPercent || 0) ||
-        (newItem.discountType || null) !== (oldItem.discountType || null) ||
-        parseFloat(newItem.discountValue || 0) !==
-          parseFloat(oldItem.discountValue || 0) ||
-        parseInt(newItem.sizeId || 0) !== parseInt(oldItem.sizeId || 0) ||
-        parseInt(newItem.uomId || 0) !== parseInt(oldItem.uomId || 0) ||
-        parseInt(newItem.gsmId || 0) !== parseInt(oldItem.gsmId || 0) ||
-        parseInt(newItem.hsnId || 0) !== parseInt(oldItem.hsnId || 0);
-
-      if (basicChanged) return true;
-
-      const oldSB = [...(oldItem.sizeBreakup || [])].sort(
-        (a, b) => (a.sizeId || 0) - (b.sizeId || 0),
-      );
-      const newSB = [...(newItem.sizeBreakup || [])].sort(
-        (a, b) => (a.sizeId || 0) - (b.sizeId || 0),
-      );
-
-      if (oldSB.length !== newSB.length) return true;
-
-      return newSB.some((nsb, sIdx) => {
-        const osb = oldSB[sIdx];
-        if (!osb) return true;
-        return (
-          parseInt(nsb.sizeId || 0) !== parseInt(osb.sizeId || 0) ||
-          parseFloat(nsb.qty || 0) !== parseFloat(osb.qty || 0)
-        );
-      });
+      if (item?.salesDeliveryBreakUp?.length > 0) {
+        item.salesDeliveryBreakUp.forEach((s) => {
+          stockEntries.push({
+            ...baseStock,
+            sizeId: s.sizeId ? parseInt(s.sizeId) : null,
+            qty: s?.deliveryQty ? -Math.abs(parseFloat(s.deliveryQty)) : null,
+          });
+        });
+      } else {
+        stockEntries.push({
+          ...baseStock,
+          qty: item?.deliveryQty ? -Math.abs(parseFloat(item.deliveryQty)) : null,
+        });
+      }
     });
   }
 
-  const nextQuoteVersion = isTableChanged
-    ? currentQuoteVersion + 1
-    : currentQuoteVersion;
+  // Stock check
+  const requestedQuantities = {};
+  for (const entry of stockEntries) {
+    const key = `${entry.styleItemId || 0}-${entry.sizeId || 0}`;
+    if (!requestedQuantities[key]) {
+      requestedQuantities[key] = {
+        styleItemId: entry.styleItemId,
+        sizeId: entry.sizeId,
+        qty: 0,
+      };
+    }
+    requestedQuantities[key].qty += Math.abs(entry.qty || 0);
+  }
 
-  const data = await prisma.salesDelivery.update({
-    where: { id: parseInt(id) },
-    data: {
-      docDate: docDate ? new Date(docDate) : null,
-      userDate: userDate ? new Date(userDate) : null,
-      deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
-      updatedById: parseInt(userId),
-      customerId: customerId ? parseInt(customerId) : null,
-      remarks,
-      termsAndCondition,
-      termsId: termsId ? parseInt(termsId) : null,
-      orderEntryId: orderEntryId ? parseInt(orderEntryId) : null,
-      taxTemplateId: taxTemplateId ? parseInt(taxTemplateId) : null,
-      deliveryType,
-      deliveryCustomerId: deliveryCustomerId
-        ? parseInt(deliveryCustomerId)
-        : null,
-      modeOfPayment,
-      deliveryCharge:
-        deliveryCharge && deliveryCharge !== ""
-          ? parseFloat(deliveryCharge)
-          : null,
-      discountValue:
-        discountValue && discountValue !== ""
-          ? parseFloat(discountValue)
-          : null,
-      discountType: discountType,
-      quoteVersion: nextQuoteVersion,
-      ...(isApproved !== undefined && {
-        isApproved: isApproved === "true" || isApproved === true,
-      }),
-      items: isTableChanged
-        ? {
-            create: parseItems.map((item, idx) => ({
-              StyleItem: item.styleItemId
-                ? { connect: { id: parseInt(item.styleItemId) } }
-                : undefined,
-              Size: item.sizeId
-                ? { connect: { id: parseInt(item.sizeId) } }
-                : undefined,
-              Uom: item.uomId
-                ? { connect: { id: parseInt(item.uomId) } }
-                : undefined,
-              Gsm: item.gsmId
-                ? { connect: { id: parseInt(item.gsmId) } }
-                : undefined,
-              Hsn: item.hsnId
-                ? { connect: { id: parseInt(item.hsnId) } }
-                : undefined,
-              SizeTemplate: item.sizeTemplateId
-                ? { connect: { id: parseInt(item.sizeTemplateId) } }
-                : undefined,
-              qty: parseFloat(item.qty || 0),
-              price: parseFloat(item.price || 0),
-              taxPercent: parseFloat(item.taxPercent || 0),
-              discountType: item.discountType,
-              discountValue: parseFloat(item.discountValue || 0),
-              amount: parseFloat(item.amount || 0),
-              quoteVersion: nextQuoteVersion,
-              trackingType: item.trackingType,
-              remarks: item.remarks,
-              itemOrder: idx,
-              sizeBreakup: {
-                create: (item.sizeBreakup || [])
-                  .filter((sb) => (parseFloat(sb.qty) || 0) > 0)
-                  .map((sb) => ({
-                    Size: sb.sizeId
-                      ? { connect: { id: parseInt(sb.sizeId) } }
-                      : undefined,
-                    qty: parseFloat(sb.qty || 0),
-                    barcodeFrom: sb.barcodeFrom,
-                    barcodeTo: sb.barcodeTo,
-                  })),
-              },
-            })),
-          }
-        : undefined,
-      attachments: {
-        deleteMany: {
-          ...(incomingAttachmentIds.length > 0 && {
-            id: { notIn: incomingAttachmentIds },
-          }),
-        },
-        update: parseAttachments
-          .filter((item) => item.id)
-          .map((sub) => ({
-            where: { id: parseInt(sub.id) },
-            data: {
-              date: sub?.date ? new Date(sub?.date) : undefined,
-              filePath: (() => {
-                const matchedFile = files?.find(
-                  (f) => f.originalname === sub.filePath,
-                );
-                return matchedFile ? matchedFile.filename : sub.filePath;
-              })(),
-              name: sub?.name ? sub?.name : undefined,
+  for (const key in requestedQuantities) {
+    const item = requestedQuantities[key];
+    const inStockAgg = await prisma.stock.aggregate({
+      _sum: { qty: true },
+      where: {
+        branchId: branchId ? parseInt(branchId) : null,
+        styleItemId: item.styleItemId,
+        sizeId: item.sizeId,
+        inOrOut: "In",
+      },
+    });
+    // For out stock, we must exclude the current SalesDelivery's stock entries
+    const outStockAgg = await prisma.stock.aggregate({
+      _sum: { qty: true },
+      where: {
+        branchId: branchId ? parseInt(branchId) : null,
+        styleItemId: item.styleItemId,
+        sizeId: item.sizeId,
+        inOrOut: "Out",
+        salesDeliveryId: { not: parseInt(id) }
+      },
+    });
+    const inQty = inStockAgg._sum.qty || 0;
+    const outQty = outStockAgg._sum.qty || 0;
+    const availableQty = inQty + outQty; // outQty is already negative
+
+    if (item.qty > availableQty) {
+      return {
+        statusCode: 1,
+        message: "Insufficient stock for one or more items.",
+      };
+    }
+  }
+
+  let data;
+  await prisma.$transaction(async (tx) => {
+    // Delete existing nested records so we can cleanly recreate them
+    await tx.salesDeliveryItems.deleteMany({
+      where: { salesDeliveryId: parseInt(id) }
+    });
+    await tx.stock.deleteMany({
+      where: { salesDeliveryId: parseInt(id) }
+    });
+    await tx.ledger.deleteMany({
+      where: { salesDeliveryId: parseInt(id) }
+    });
+
+    data = await tx.salesDelivery.update({
+      where: { id: parseInt(id) },
+      data: {
+        docDate: docDate ? new Date(docDate) : null,
+        userDate: userDate ? new Date(userDate) : null,
+        deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
+        updatedById: parseInt(userId),
+        branchId: branchId ? parseInt(branchId) : null,
+        companyId: companyId ? parseInt(companyId) : null,
+        customerId: customerId ? parseInt(customerId) : null,
+        profromaInvoiceId: profromaInvoiceId ? parseInt(profromaInvoiceId) : null,
+        taxTemplateId: taxTemplateId ? parseInt(taxTemplateId) : null,
+        deliveryType,
+        deliveryCustomerId: deliveryCustomerId ? parseInt(deliveryCustomerId) : null,
+        modeOfPayment,
+        deliveryCharge: deliveryCharge && deliveryCharge !== "" ? parseFloat(deliveryCharge) : null,
+        discountValue: discountValue && discountValue !== "" ? parseFloat(discountValue) : null,
+        discountType: discountType,
+        remarks,
+        termsAndCondition,
+        netAmount: netAmount ? parseFloat(netAmount) : 0,
+        termsId: termsId ? parseInt(termsId) : null,
+        salesDeliveryItems: {
+          create: (salesDeliveryItems || []).map((item, idx) => ({
+            styleItemId: item.styleItemId ? parseInt(item.styleItemId) : null,
+            itemGroupId: item?.itemGroupId ? parseInt(item.itemGroupId) : null,
+            uomId: item.uomId ? parseInt(item.uomId) : null,
+            gsmId: item.gsmId ? parseInt(item.gsmId) : null,
+            hsnId: item.hsnId ? parseInt(item.hsnId) : null,
+            qty: parseFloat(item.qty || 0),
+            price: parseFloat(item.price || 0),
+            taxPercent: parseFloat(item.taxPercent || 0),
+            discountType: item.discountType,
+            discountValue: parseFloat(item.discountValue || 0),
+            trackingType: item.trackingType,
+            remarks: item.remarks,
+            itemOrder: idx,
+            salesDeliveryBreakUp: {
+              create: (item.salesDeliveryBreakUp || [])
+                .filter((sb) => (parseFloat(sb.deliveryQty) || 0) > 0)
+                .map((sb) => ({
+                  sizeId: sb.sizeId ? parseInt(sb.sizeId) : null,
+                  proformaSizeBreakupId: sb.proformaSizeBreakupId ? parseInt(sb.proformaSizeBreakupId) : null,
+                  qty: parseFloat(sb.qty || 0),
+                  barcodeFrom: sb.barcodeFrom,
+                  barcodeTo: sb.barcodeTo,
+                  deliveryQty: parseFloat(sb.deliveryQty || 0),
+                })),
             },
           })),
-        create: parseAttachments
-          .filter((item) => !item.id)
-          .map((sub) => ({
-            date: sub?.date ? new Date(sub?.date) : undefined,
-            filePath: (() => {
-              const matchedFile = files?.find(
-                (f) => f.originalname === sub.filePath,
-              );
-              return matchedFile ? matchedFile.filename : sub.filePath;
-            })(),
-            name: sub?.name ? sub?.name : undefined,
-          })),
+        },
       },
-    },
+    });
+
+    if (stockEntries.length > 0) {
+      const stockEntriesWithSalesDeliveryId = stockEntries.map((entry) => ({
+        ...entry,
+        salesDeliveryId: data.id,
+      }));
+      await tx.stock.createMany({
+        data: stockEntriesWithSalesDeliveryId,
+      });
+    }
+
+    await tx.ledger.create({
+      data: {
+        EntryType: "Sales",
+        LedgerType: "Customer",
+        creditOrDebit: "Debit",
+        partyId: customerId ? parseInt(customerId) : null,
+        amount: netAmount ? parseFloat(netAmount) : null,
+        dcDate: docDate ? new Date(docDate) : null,
+        salesDeliveryId: data.id,
+      },
+    });
   });
 
   return { statusCode: 0, data };
@@ -644,19 +630,9 @@ async function update(id, body, files) {
 async function remove(id) {
   const dataFound = await prisma.salesDelivery.findUnique({
     where: { id: parseInt(id) },
-    include: { attachments: true },
   });
 
-  if (!dataFound) return NoRecordFound("Proforma Invoice");
-
-  dataFound.attachments.forEach((att) => {
-    if (att.filePath) {
-      const fullPath = path.join("./uploads", att.filePath);
-      fs.unlink(fullPath, (err) => {
-        if (err) console.warn(`Could not delete: ${fullPath}`, err.message);
-      });
-    }
-  });
+  if (!dataFound) return NoRecordFound("Sales Delivery");
 
   const data = await prisma.salesDelivery.delete({
     where: { id: parseInt(id) },

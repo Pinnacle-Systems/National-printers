@@ -419,7 +419,7 @@ const ProformaInvoiceItems = ({
                   </td>
                   <td className="border border-gray-300 text-right px-1 text-[11px]">
                     {item.styleItemId
-                      ? Number(item.amount || 0).toFixed(2)
+                      ? parseFloat(item.qty * item.price || 0).toFixed(2)
                       : ""}
                   </td>
                   <td className="border border-gray-300 text-center text-[11px]">
@@ -483,7 +483,10 @@ const ProformaInvoiceItems = ({
               </td>
               <td className="text-right px-1 border border-gray-300">
                 {items
-                  ?.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0)
+                  ?.reduce(
+                    (sum, i) => sum + (parseFloat(i.qty * i.price) || 0),
+                    0,
+                  )
                   .toFixed(2)}
               </td>
               <td className="border border-gray-300"></td>

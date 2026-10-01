@@ -111,7 +111,7 @@ async function getOne(id) {
           Gsm: true,
           Hsn: true,
           SizeTemplate: true,
-          sizeBreakup: { include: { Size: true } },
+          sizeBreakup: { include: { Size: true, salesDeliveryBreakups: true } },
         },
         orderBy: { itemOrder: "asc" },
       },
@@ -139,40 +139,22 @@ async function getOne(id) {
   });
   if (!data) return NoRecordFound("Proforma Invoice");
 
-  if (data && data.OrderEntry && data.items) {
-    const styleItemCounts = {};
-    data.items = data.items.map((item) => {
-      // If trackingType is already present, it means it's newly saved data
-      if (item.trackingType) return item;
-
-      const styleId = item.styleItemId;
-      styleItemCounts[styleId] = (styleItemCounts[styleId] || 0) + 1;
-      const count = styleItemCounts[styleId];
-
-      let matchCount = 0;
-      const orderItem = data.OrderEntry.orderItems.find((oi) => {
-        if (oi.styleItemId === styleId) {
-          matchCount++;
-          return matchCount === count;
-        }
-        return false;
-      });
-
-      if (orderItem) {
-        return {
-          ...item,
-          trackingType: orderItem.trackingType,
-          sizeTemplateId: orderItem.sizeTemplateId,
-          SizeTemplate: orderItem.SizeTemplate,
-          sizeBreakup: orderItem.sizeBreakup,
-          remarks: orderItem.remarks,
-        };
-      }
-      return item;
-    });
-  }
-
-  return { statusCode: 0, data };
+  return {
+    statusCode: 0,
+    data: {
+      ...data,
+      items: data.items.map((item) => ({
+        ...item,
+        sizeBreakup: item.sizeBreakup?.map((val) => ({
+          ...val,
+          alreadyDeliveryQty: val?.salesDeliveryBreakups?.reduce(
+            (acc, size) => acc + parseFloat(size.deliveryQty || 0),
+            0,
+          ),
+        })),
+      })),
+    },
+  };
 }
 
 async function create(body) {
@@ -273,7 +255,6 @@ async function create(body) {
           taxPercent: parseFloat(item.taxPercent || 0),
           discountType: item.discountType,
           discountValue: parseFloat(item.discountValue || 0),
-          amount: parseFloat(item.amount || 0),
           trackingType: item.trackingType,
           remarks: item.remarks,
           itemOrder: idx,
@@ -504,7 +485,6 @@ async function update(id, body, files) {
               taxPercent: parseFloat(item.taxPercent || 0),
               discountType: item.discountType,
               discountValue: parseFloat(item.discountValue || 0),
-              amount: parseFloat(item.amount || 0),
               quoteVersion: nextQuoteVersion,
               trackingType: item.trackingType,
               remarks: item.remarks,

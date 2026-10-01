@@ -16,6 +16,7 @@ const TaxDetailsFullTemplate = ({
   id,
   onCloseFocus,
   isSupplierOutside,
+  currencyCode,
 }) => {
   const row = poItems[index];
   const discountTypeRef = useRef(null);
@@ -111,7 +112,7 @@ const TaxDetailsFullTemplate = ({
         <thead className="border border-gray-500">
           <tr>
             <th className="w-52 border border-gray-500">Tax Name</th>
-            <th className="w-28 border border-gray-500">Value</th>
+            {/* <th className="w-28 border border-gray-500">Value</th> */}
             <th className="w-28 border border-gray-500">Amount</th>
           </tr>
         </thead>

@@ -135,7 +135,6 @@ const ProformaInvoiceForm = ({
 
   const [addData] = useAddProformaInvoiceMutation();
   const [updateData] = useUpdateProformaInvoiceMutation();
-  const [removeData] = useDeleteProformaInvoiceMutation();
 
   useEffect(() => {
     if (!id && allData?.nextDocId) {
@@ -189,7 +188,6 @@ const ProformaInvoiceForm = ({
         ...item,
         price: Number(item.price || 0), // ✅ keep number
       }));
-      console.log("filteredItems", filteredItems);
       setItems(padItems(formattedItems));
       setDiscountValue(data?.discountValue);
       setDiscountType(data?.discountType);
@@ -815,7 +813,7 @@ const ProformaInvoiceForm = ({
             </button>
           )}
 
-          <button
+          {/* <button
             onClick={() => {
               if (!taxTemplateId) {
                 Swal.fire({
@@ -832,7 +830,7 @@ const ProformaInvoiceForm = ({
           >
             <FiEye className="w-3.5 h-3.5 mr-2" />
             View Summary
-          </button>
+          </button> */}
 
           <button
             onClick={() => setPrintModalOpen(true)}
