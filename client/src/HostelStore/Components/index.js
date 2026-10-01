@@ -4,7 +4,7 @@ export { default as ProductMaster } from "./ProductMaster";
 export { default as PurchaseBillEntry } from "./PurchaseBillEntry";
 export { default as PartyCategoryMaster } from "./PartyCategoryMaster";
 export { default as PartyMaster } from "./PartyMaster";
-export { default as SalesBillEntry } from "./SalesBillEntry";
+export { default as SalesBillEntry } from "./SalesBillNew/SalesBillEntry";
 export { default as PurchaseReturn } from "./PurchaseReturn";
 export { default as SalesReturn } from "./SalesReturn";
 export { default as PurchaseCancel } from "./PurchaseCancel";
