@@ -2526,6 +2526,7 @@ model SalesDelivery {
   orderEntry         OrderEntry?          @relation(fields: [orderEntryId], references: [id])
   orderEntryId       Int?
   netAmount          Float?
+  receiptType        String?
 }
 
 model SalesDeliveryItems {

@@ -206,6 +206,7 @@ async function create(body) {
     discountType,
     discountValue,
     netAmount,
+    receiptType,
   } = body;
 
   let finYearDate = await getFinYearStartTimeEndTime(finYearId);
@@ -335,6 +336,7 @@ async function create(body) {
             : null,
         discountType: discountType,
         remarks,
+        receiptType,
         termsAndCondition,
         netAmount: netAmount ? parseFloat(netAmount) : 0,
         termsId: termsId ? parseInt(termsId) : null,
@@ -382,18 +384,20 @@ async function create(body) {
         data: stockEntriesWithSalesDeliveryId,
       });
     }
-    await tx.Ledger.create({
-      data: {
-        EntryType: "Sales",
-        LedgerType: "Customer",
-        creditOrDebit: "Debit",
-        partyId: customerId ? parseInt(customerId) : null,
-        amount: netAmount ? parseFloat(netAmount) : null,
-        dcDate: docDate ? new Date(docDate) : null,
-        // currencyId: currencyId ? parseInt(currencyId) : null,
-        salesDeliveryId: data?.id ? parseInt(data.id) : null,
-      },
-    });
+    if (receiptType === "AGAINST_INVOICE") {
+      await tx.Ledger.create({
+        data: {
+          EntryType: "Sales",
+          LedgerType: "Customer",
+          creditOrDebit: "Debit",
+          partyId: customerId ? parseInt(customerId) : null,
+          amount: netAmount ? parseFloat(netAmount) : null,
+          dcDate: docDate ? new Date(docDate) : null,
+          // currencyId: currencyId ? parseInt(currencyId) : null,
+          salesDeliveryId: data?.id ? parseInt(data.id) : null,
+        },
+      });
+    }
   });
   return { statusCode: 0, data };
 }
@@ -421,6 +425,7 @@ async function update(id, body, files) {
     discountValue,
     discountType,
     netAmount,
+    receiptType,
   } = body;
 
   const dataFound = await prisma.salesDelivery.findUnique({
@@ -459,7 +464,9 @@ async function update(id, body, files) {
     salesDeliveryItems.forEach((item) => {
       const baseStock = {
         branchId: branchId ? parseInt(branchId) : null,
-        profromaInvoiceId: profromaInvoiceId ? parseInt(profromaInvoiceId) : null,
+        profromaInvoiceId: profromaInvoiceId
+          ? parseInt(profromaInvoiceId)
+          : null,
         createdById: userId ? parseInt(userId) : null,
         inOrOut: "Out",
         processName: "Sales",
@@ -480,7 +487,9 @@ async function update(id, body, files) {
       } else {
         stockEntries.push({
           ...baseStock,
-          qty: item?.deliveryQty ? -Math.abs(parseFloat(item.deliveryQty)) : null,
+          qty: item?.deliveryQty
+            ? -Math.abs(parseFloat(item.deliveryQty))
+            : null,
         });
       }
     });
@@ -519,7 +528,7 @@ async function update(id, body, files) {
         styleItemId: item.styleItemId,
         sizeId: item.sizeId,
         inOrOut: "Out",
-        salesDeliveryId: { not: parseInt(id) }
+        salesDeliveryId: { not: parseInt(id) },
       },
     });
     const inQty = inStockAgg._sum.qty || 0;
@@ -538,34 +547,44 @@ async function update(id, body, files) {
   await prisma.$transaction(async (tx) => {
     // Delete existing nested records so we can cleanly recreate them
     await tx.salesDeliveryItems.deleteMany({
-      where: { salesDeliveryId: parseInt(id) }
+      where: { salesDeliveryId: parseInt(id) },
     });
     await tx.stock.deleteMany({
-      where: { salesDeliveryId: parseInt(id) }
+      where: { salesDeliveryId: parseInt(id) },
     });
     await tx.ledger.deleteMany({
-      where: { salesDeliveryId: parseInt(id) }
+      where: { salesDeliveryId: parseInt(id) },
     });
 
     data = await tx.salesDelivery.update({
       where: { id: parseInt(id) },
       data: {
-        docDate: docDate ? new Date(docDate) : null,
         userDate: userDate ? new Date(userDate) : null,
         deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
         updatedById: parseInt(userId),
         branchId: branchId ? parseInt(branchId) : null,
         companyId: companyId ? parseInt(companyId) : null,
         customerId: customerId ? parseInt(customerId) : null,
-        profromaInvoiceId: profromaInvoiceId ? parseInt(profromaInvoiceId) : null,
+        profromaInvoiceId: profromaInvoiceId
+          ? parseInt(profromaInvoiceId)
+          : null,
         taxTemplateId: taxTemplateId ? parseInt(taxTemplateId) : null,
         deliveryType,
-        deliveryCustomerId: deliveryCustomerId ? parseInt(deliveryCustomerId) : null,
+        deliveryCustomerId: deliveryCustomerId
+          ? parseInt(deliveryCustomerId)
+          : null,
         modeOfPayment,
-        deliveryCharge: deliveryCharge && deliveryCharge !== "" ? parseFloat(deliveryCharge) : null,
-        discountValue: discountValue && discountValue !== "" ? parseFloat(discountValue) : null,
+        deliveryCharge:
+          deliveryCharge && deliveryCharge !== ""
+            ? parseFloat(deliveryCharge)
+            : null,
+        discountValue:
+          discountValue && discountValue !== ""
+            ? parseFloat(discountValue)
+            : null,
         discountType: discountType,
         remarks,
+        receiptType,
         termsAndCondition,
         netAmount: netAmount ? parseFloat(netAmount) : 0,
         termsId: termsId ? parseInt(termsId) : null,
@@ -589,7 +608,9 @@ async function update(id, body, files) {
                 .filter((sb) => (parseFloat(sb.deliveryQty) || 0) > 0)
                 .map((sb) => ({
                   sizeId: sb.sizeId ? parseInt(sb.sizeId) : null,
-                  proformaSizeBreakupId: sb.proformaSizeBreakupId ? parseInt(sb.proformaSizeBreakupId) : null,
+                  proformaSizeBreakupId: sb.proformaSizeBreakupId
+                    ? parseInt(sb.proformaSizeBreakupId)
+                    : null,
                   qty: parseFloat(sb.qty || 0),
                   barcodeFrom: sb.barcodeFrom,
                   barcodeTo: sb.barcodeTo,
@@ -611,17 +632,20 @@ async function update(id, body, files) {
       });
     }
 
-    await tx.ledger.create({
-      data: {
-        EntryType: "Sales",
-        LedgerType: "Customer",
-        creditOrDebit: "Debit",
-        partyId: customerId ? parseInt(customerId) : null,
-        amount: netAmount ? parseFloat(netAmount) : null,
-        dcDate: docDate ? new Date(docDate) : null,
-        salesDeliveryId: data.id,
-      },
-    });
+    if (receiptType === "AGAINST_INVOICE") {
+      await tx.Ledger.create({
+        data: {
+          EntryType: "Sales",
+          LedgerType: "Customer",
+          creditOrDebit: "Debit",
+          partyId: customerId ? parseInt(customerId) : null,
+          amount: netAmount ? parseFloat(netAmount) : null,
+          dcDate: docDate ? new Date(docDate) : null,
+          // currencyId: currencyId ? parseInt(currencyId) : null,
+          salesDeliveryId: data?.id ? parseInt(data.id) : null,
+        },
+      });
+    }
   });
 
   return { statusCode: 0, data };

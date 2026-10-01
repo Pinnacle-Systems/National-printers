@@ -43,6 +43,8 @@ import PoSummary from "../PurchaseOrder/PoSummary.js";
 import { useGetPartyByIdQuery } from "../../../redux/services/PartyMasterService.js";
 import { invalidateOrderEntryModule } from "../../../redux/Dispatch/OrderInvalidateTags.js";
 import { useLazyGetProformaInvoiceByIdQuery } from "../../../redux/uniformService/ProformaInvoiceService.js";
+import { receiptTypes } from "../../../Utils/DropdownData.js";
+
 const EMPTY_ROW = {
   styleItemId: "",
   trackingType: "None",
@@ -88,7 +90,6 @@ const SalesDeliveryForm = ({
   const [userDate, setUserDate] = useState(moment().format("YYYY-MM-DD"));
   const [customerId, setCustomerId] = useState("");
   const [orderEntryId, setOrderEntryId] = useState("");
-  console.log("orderEntryId", orderEntryId);
   const [profromaInvoiceId, setProfromaInvoiceId] = useState("");
   const [proformaDocId, setProformaDocId] = useState("");
   const [remarks, setRemarks] = useState("");
@@ -108,8 +109,7 @@ const SalesDeliveryForm = ({
 
   const [netAmount, setNetAmount] = useState();
   const effectiveReadOnly = readOnly;
-  console.log(deliveryCustomer, "ddeliveryCustomere");
-
+  const [receiptType, setReceiptType] = useState("AGAINST_INVOICE");
   const [customerDetails, setCustomerDetails] = useState({
     name: "",
     contactPerson: "",
@@ -208,6 +208,7 @@ const SalesDeliveryForm = ({
           phone: cust.contactNumber || "",
         });
       }
+      setReceiptType(data?.receiptType || "AGAINST_INVOICE");
     }
   }, [id, singleData]);
 
@@ -383,6 +384,7 @@ const SalesDeliveryForm = ({
       discountType,
       discountValue,
       netAmount,
+      receiptType,
     };
     console.log(payload, "payload");
 
@@ -583,6 +585,17 @@ const SalesDeliveryForm = ({
             />
           </div>
         </div>
+        <div>
+          <div className="w-44">
+            <DropdownInput
+              name="Receipt Type"
+              options={receiptTypes}
+              value={receiptType}
+              setValue={setReceiptType}
+              readOnly={readOnly}
+            />
+          </div>
+        </div>
       </div>
 
       <div className="flex-1 border border-slate-200 p-1.5 bg-white rounded-md shadow-sm overflow-hidden">
@@ -723,10 +736,16 @@ const SalesDeliveryForm = ({
                 <span className="text-slate-600 mr-1">Rs.</span>
                 <input
                   type="number"
-                  className="w-20 text-right border border-gray-300 rounded px-1 py-0.5 outline-none focus:border-indigo-500 text-[11px]"
+                  className={`w-20 text-right border border-gray-300 rounded px-1 py-0.5 outline-none text-[11px] ${
+                    effectiveReadOnly || receiptType !== "AGAINST_INVOICE"
+                      ? "cursor-not-allowed bg-gray-100"
+                      : "focus:border-indigo-500"
+                  }`}
                   value={deliveryCharge}
                   onChange={(e) => setDeliveryCharge(e.target.value)}
-                  readOnly={effectiveReadOnly}
+                  readOnly={
+                    effectiveReadOnly || receiptType !== "AGAINST_INVOICE"
+                  }
                   placeholder="0.00"
                   onBlur={(e) => {
                     const val = e.target.value;
@@ -759,10 +778,16 @@ const SalesDeliveryForm = ({
                 <span className="text-slate-600 mr-1">Rs.</span>
                 <input
                   type="number"
-                  className="w-20 text-right border border-gray-300 rounded px-1 py-0.5 outline-none focus:border-indigo-500 text-[11px]"
+                  className={`w-20 text-right border border-gray-300 rounded px-1 py-0.5 outline-none text-[11px] ${
+                    effectiveReadOnly || receiptType !== "AGAINST_INVOICE"
+                      ? "cursor-not-allowed bg-gray-100"
+                      : "focus:border-indigo-500"
+                  }`}
                   value={netAmount}
                   onChange={(e) => setNetAmount(e.target.value)}
-                  readOnly={effectiveReadOnly}
+                  readOnly={
+                    effectiveReadOnly || receiptType !== "AGAINST_INVOICE"
+                  }
                   placeholder="0.00"
                   onBlur={(e) => {
                     const val = e.target.value;
@@ -818,7 +843,7 @@ const SalesDeliveryForm = ({
             </button>
           )}
 
-          <button
+          {/* <button
             onClick={() => {
               if (!taxTemplateId) {
                 Swal.fire({
@@ -835,7 +860,7 @@ const SalesDeliveryForm = ({
           >
             <FiEye className="w-3.5 h-3.5 mr-2" />
             View Summary
-          </button>
+          </button> */}
 
           <button
             onClick={() => setPrintModalOpen(true)}
@@ -905,6 +930,7 @@ const SalesDeliveryForm = ({
             taxTemplateId={taxTemplateId}
             id={id}
             isSupplierOutside={isSupplierOutside}
+            receiptType={receiptType}
           />
         }
         footer={footerContent}

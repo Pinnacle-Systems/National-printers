@@ -20,6 +20,7 @@ const SalesDeliveryItems = ({
   taxTemplateId,
   id,
   isSupplierOutside,
+  receiptType,
 }) => {
   console.log("salesDeliveryItems", salesDeliveryItems);
   const { companyId } = getCommonParams();
@@ -448,21 +449,25 @@ const SalesDeliveryItems = ({
               <th className="w-12 px-1 py-1.5 text-center font-medium border border-gray-300">
                 Delivery Qty
               </th>
-              <th className="w-12 px-1 py-1.5 text-center font-medium border border-gray-300">
-                Price
-              </th>
-              <th className="w-16 px-1 py-1.5 text-center font-medium border border-gray-300">
-                Gross Amt
-              </th>
-              <th className="w-12 px-1 py-1.5 text-center font-medium border border-gray-300">
-                Tax
-              </th>
-              <th className="w-12 px-1 py-1.5 text-center font-medium border border-gray-300">
-                Tax %
-              </th>
-              <th className="w-12 px-1 py-1.5 text-center font-medium border border-gray-300">
-                Net Amt
-              </th>
+              {receiptType === "AGAINST_INVOICE" && (
+                <>
+                  <th className="w-12 px-1 py-1.5 text-center font-medium border border-gray-300">
+                    Price
+                  </th>
+                  <th className="w-16 px-1 py-1.5 text-center font-medium border border-gray-300">
+                    Gross Amt
+                  </th>
+                  <th className="w-12 px-1 py-1.5 text-center font-medium border border-gray-300">
+                    Tax
+                  </th>
+                  <th className="w-12 px-1 py-1.5 text-center font-medium border border-gray-300">
+                    Tax %
+                  </th>
+                  <th className="w-12 px-1 py-1.5 text-center font-medium border border-gray-300">
+                    Net Amt
+                  </th>
+                </>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -539,92 +544,96 @@ const SalesDeliveryItems = ({
                   <td className="border border-gray-300 text-right px-1 text-[11px]">
                     {item?.deliveryQty || ""}
                   </td>
-                  <td className="border border-gray-300 text-right px-1 grid-editable-cell">
-                    <input
-                      id={`price-input-${index}`}
-                      type="number"
-                      className="w-full text-[11px] text-right outline-none bg-transparent"
-                      value={
-                        focusedField === `${index}`
-                          ? (item.price ?? "")
-                          : item.price !== undefined &&
-                              item.price !== null &&
-                              item.price !== ""
-                            ? Number(item.price).toFixed(2)
-                            : ""
-                      }
-                      onChange={(e) =>
-                        handleInputChange(e.target.value, index, "price")
-                      }
-                      readOnly={true}
-                      onFocus={(e) => {
-                        e.target.select();
-                        setFocusedField(`${index}`);
-                      }}
-                      onBlur={(e) => {
-                        const val = e.target.value;
-                        if (val === "") {
-                          handleInputChange("", index, "price");
-                        } else {
-                          const num = parseFloat(val);
-                          handleInputChange(
-                            isNaN(num) ? "" : Number(num).toFixed(2),
-                            index,
-                            "price",
-                          );
-                        }
-                        setFocusedField(null);
-                      }}
-                    />
-                  </td>
-                  <td className="border border-gray-300 text-right px-1 text-[11px]">
-                    {item.styleItemId
-                      ? parseFloat(item.deliveryQty * item.price || 0).toFixed(
-                          2,
-                        )
-                      : ""}
-                  </td>
-                  <td className="border border-gray-300 text-center text-[11px]">
-                    <button
-                      id={`tax-btn-${index}`}
-                      disabled={!item.styleItemId}
-                      className="text-indigo-600 hover:text-indigo-800 disabled:text-gray-300 transition-colors outline-none focus:ring-2 focus:ring-indigo-500 rounded"
-                      onClick={() => {
-                        if (!taxTemplateId) {
-                          return Swal.fire({
-                            title: "Information",
-                            text: "Please select Tax Type",
-                            icon: "info",
-                            confirmButtonColor: "#3085d6",
-                          });
-                        }
-                        setCurrentSelectedIndex(index);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          if (!taxTemplateId) {
-                            return Swal.fire({
-                              title: "Information",
-                              text: "Please select Tax Type",
-                              icon: "info",
-                              confirmButtonColor: "#3085d6",
-                            });
+                  {receiptType === "AGAINST_INVOICE" && (
+                    <>
+                      <td className="border border-gray-300 text-right px-1 grid-editable-cell">
+                        <input
+                          id={`price-input-${index}`}
+                          type="number"
+                          className="w-full text-[11px] text-right outline-none bg-transparent"
+                          value={
+                            focusedField === `${index}`
+                              ? (item.price ?? "")
+                              : item.price !== undefined &&
+                                  item.price !== null &&
+                                  item.price !== ""
+                                ? Number(item.price).toFixed(2)
+                                : ""
                           }
-                          setCurrentSelectedIndex(index);
-                        }
-                      }}
-                    >
-                      <FiEye size={16} className="inline" />
-                    </button>
-                  </td>
-                  <td className="border border-gray-300 text-right pr-1 text-[11px] ">
-                    {taxPercentStr}
-                  </td>
-                  <td className="border border-gray-300 text-right pr-1 text-[11px] ">
-                    {netAmountStr}
-                  </td>
+                          onChange={(e) =>
+                            handleInputChange(e.target.value, index, "price")
+                          }
+                          readOnly={true}
+                          onFocus={(e) => {
+                            e.target.select();
+                            setFocusedField(`${index}`);
+                          }}
+                          onBlur={(e) => {
+                            const val = e.target.value;
+                            if (val === "") {
+                              handleInputChange("", index, "price");
+                            } else {
+                              const num = parseFloat(val);
+                              handleInputChange(
+                                isNaN(num) ? "" : Number(num).toFixed(2),
+                                index,
+                                "price",
+                              );
+                            }
+                            setFocusedField(null);
+                          }}
+                        />
+                      </td>
+                      <td className="border border-gray-300 text-right px-1 text-[11px]">
+                        {item.styleItemId
+                          ? parseFloat(
+                              item.deliveryQty * item.price || 0,
+                            ).toFixed(2)
+                          : ""}
+                      </td>
+                      <td className="border border-gray-300 text-center text-[11px]">
+                        <button
+                          id={`tax-btn-${index}`}
+                          disabled={!item.styleItemId}
+                          className="text-indigo-600 hover:text-indigo-800 disabled:text-gray-300 transition-colors outline-none focus:ring-2 focus:ring-indigo-500 rounded"
+                          onClick={() => {
+                            if (!taxTemplateId) {
+                              return Swal.fire({
+                                title: "Information",
+                                text: "Please select Tax Type",
+                                icon: "info",
+                                confirmButtonColor: "#3085d6",
+                              });
+                            }
+                            setCurrentSelectedIndex(index);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (!taxTemplateId) {
+                                return Swal.fire({
+                                  title: "Information",
+                                  text: "Please select Tax Type",
+                                  icon: "info",
+                                  confirmButtonColor: "#3085d6",
+                                });
+                              }
+                              setCurrentSelectedIndex(index);
+                            }
+                          }}
+                        >
+                          <FiEye size={16} className="inline" />
+                        </button>
+                      </td>
+                      <td className="border border-gray-300 text-right pr-1 text-[11px] ">
+                        {taxPercentStr}
+                      </td>
+                      <td className="border border-gray-300 text-right pr-1 text-[11px] ">
+                        {netAmountStr}
+                      </td>
+                    </>
+                  )}
                 </tr>
               );
             })}
@@ -649,28 +658,32 @@ const SalesDeliveryItems = ({
                   0,
                 )}
               </td>
-              <td className="text-right pr-1 border border-gray-300">
-                {salesDeliveryItems?.reduce(
-                  (sum, i) => sum + (parseFloat(i.price) || 0),
-                  0,
-                )}
-              </td>
-              <td className="text-right px-1 border border-gray-300">
-                {salesDeliveryItems
-                  ?.reduce(
-                    (sum, i) =>
-                      sum +
-                      (parseFloat(i.deliveryQty) || 0) *
-                        (parseFloat(i.price) || 0),
-                    0,
-                  )
-                  .toFixed(2)}
-              </td>
-              <td className="border border-gray-300"></td>
-              <td className="border border-gray-300"></td>
-              <td className="text-right px-1 border border-gray-300 text-[11px]">
-                {enrichedItems?.net?.toFixed(2) || ""}
-              </td>
+              {receiptType === "AGAINST_INVOICE" && (
+                <>
+                  <td className="text-right pr-1 border border-gray-300">
+                    {salesDeliveryItems?.reduce(
+                      (sum, i) => sum + (parseFloat(i.price) || 0),
+                      0,
+                    )}
+                  </td>
+                  <td className="text-right px-1 border border-gray-300">
+                    {salesDeliveryItems
+                      ?.reduce(
+                        (sum, i) =>
+                          sum +
+                          (parseFloat(i.deliveryQty) || 0) *
+                            (parseFloat(i.price) || 0),
+                        0,
+                      )
+                      .toFixed(2)}
+                  </td>
+                  <td className="border border-gray-300"></td>
+                  <td className="border border-gray-300"></td>
+                  <td className="text-right px-1 border border-gray-300 text-[11px]">
+                    {enrichedItems?.net?.toFixed(2) || ""}
+                  </td>
+                </>
+              )}
             </tr>
           </tfoot>
         </table>
