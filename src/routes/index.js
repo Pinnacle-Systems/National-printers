@@ -66,3 +66,4 @@ export { default as proformaInvoice } from "./ProformaInvoice.route.js";
 export { default as productionalallocation } from "./productionAllocation.route.js";
 export { default as machine } from "./machine.route.js";
 export { default as packing } from "./packing.route.js";
+export { default as salesDelivery } from "./salesDelivery.route.js";

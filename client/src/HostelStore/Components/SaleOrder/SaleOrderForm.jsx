@@ -44,6 +44,7 @@ import { calculateTaxWithHSNBreakupAndInsertIntoPoItems } from "../../../Utils/t
 import PoSummary from "../PurchaseOrder/PoSummary.js";
 import { useGetPartyByIdQuery } from "../../../redux/services/PartyMasterService.js";
 import { invalidateOrderEntryModule } from "../../../redux/Dispatch/OrderInvalidateTags.js";
+import { poTypes } from "../../../Utils/DropdownData.js";
 const EMPTY_ROW = {
   styleItemId: "",
   trackingType: "None",
@@ -87,6 +88,7 @@ const SaleOrderForm = ({
   const [docId, setDocId] = useState("New");
   const [docDate, setDocDate] = useState(moment().format("YYYY-MM-DD"));
   const [userDate, setUserDate] = useState(moment().format("YYYY-MM-DD"));
+  const [saleOrderType, setSaleOrderType] = useState("ORDER");
   const [customerId, setCustomerId] = useState("");
   const [orderEntryId, setOrderEntryId] = useState("");
   const [remarks, setRemarks] = useState("");
@@ -124,7 +126,9 @@ const SaleOrderForm = ({
   const { data: singleData } = useGetProformaInvoiceByIdQuery(id, {
     skip: !id,
   });
-  const { data: orderList } = useGetOrderEntryQuery({ params: { branchId } });
+  const { data: orderList } = useGetOrderEntryQuery({
+    params: { branchId, isProforma: true },
+  });
   const { data: taxTypeList } = useGetTaxTemplateQuery({
     params: { companyId },
   });
@@ -493,16 +497,16 @@ const SaleOrderForm = ({
               type="date"
             />
           </div>
-          {/* <div className="w-24">
-            <DateInputNew
-              name="User Date"
-              value={userDate}
-              setValue={setUserDate}
+          <div className="w-32">
+            <DropdownInput
+              name="Sale Order Type"
+              options={poTypes}
+              value={saleOrderType}
+              setValue={setSaleOrderType}
+              required={true}
               disabled={effectiveReadOnly}
-              required={false}
-              type="date"
             />
-          </div> */}
+          </div>
         </div>
       </div>
 
@@ -594,7 +598,7 @@ const SaleOrderForm = ({
               readOnly={effectiveReadOnly}
             />
           </div>
-          <div className="w-72">
+          <div className="w-60">
             <DropdownInput
               name="Delivery Customer"
               options={dropDownListObject(customerList?.data, "name", "id")}
@@ -605,7 +609,7 @@ const SaleOrderForm = ({
           </div>
           <div className="w-24">
             <DropdownInput
-              name="Mode of Payment"
+              name="Payment Mode"
               options={[
                 { show: "By cash", value: "By cash" },
                 { show: "By cheque", value: "By cheque" },

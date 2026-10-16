@@ -66,6 +66,7 @@ const ProformaInvoiceApi = createApi({
 export const {
   useGetProformaInvoiceQuery,
   useGetProformaInvoiceByIdQuery,
+  useLazyGetProformaInvoiceByIdQuery,
   useAddProformaInvoiceMutation,
   useUpdateProformaInvoiceMutation,
   useDeleteProformaInvoiceMutation,

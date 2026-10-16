@@ -65,3 +65,4 @@ export const PROFORMA_INVOICE_API = "proformaInvoice";
 export const PRODUCTION_ALLOCATION_API = "productionAllocation";
 export const MACHINE_API = "machine";
 export const PACKING_API = "packing";
+export const SALES_DELIVERY_API = "salesDelivery";
