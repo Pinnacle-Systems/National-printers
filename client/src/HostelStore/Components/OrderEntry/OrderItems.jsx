@@ -90,35 +90,143 @@ const OrderItems = ({
   }, [sizeModalOpen, activeRowIndex]);
 
   const handleCloseSizeModal = () => {
+    if (readOnly) {
+      setSizeModalOpen(false);
+      return;
+    }
+
     if (activeRowIndex !== null && orderItems[activeRowIndex]) {
       const currentRow = orderItems[activeRowIndex];
+      const trackingType = currentRow?.trackingType;
+      const breakup = currentRow.sizeBreakup || [];
 
-      const selectedSizes = currentRow.sizeBreakup
-        ?.map((item) => item.sizeId)
-        ?.filter(
-          (sizeId) => sizeId !== undefined && sizeId !== null && sizeId !== "",
+      // Check unique sizes for tracking types with size selection
+      if (
+        trackingType === "Size Template" ||
+        trackingType === "Size Template + Barcode"
+      ) {
+        const selectedSizes = breakup
+          ?.map((item) => item.sizeId)
+          ?.filter(
+            (sizeId) =>
+              sizeId !== undefined && sizeId !== null && sizeId !== "",
+          );
+
+        if (selectedSizes && selectedSizes.length > 0) {
+          const uniqueSizes = new Set(selectedSizes);
+          if (selectedSizes.length !== uniqueSizes.size) {
+            Swal.fire({
+              icon: "warning",
+              title: "Duplicate Size",
+              text: "You have selected the same size multiple times. Each row must have a unique size.",
+              timer: 3000,
+            });
+            return;
+          }
+        }
+      }
+
+      // Tracking Type: Size Template
+      if (trackingType === "Size Template") {
+        const rowsWithSize = breakup.filter(
+          (item) =>
+            item.sizeId !== undefined &&
+            item.sizeId !== null &&
+            item.sizeId !== "",
         );
 
-      if (selectedSizes && selectedSizes.length > 0) {
-        const uniqueSizes = new Set(selectedSizes);
-        if (selectedSizes.length !== uniqueSizes.size) {
+        if (rowsWithSize.length === 0) {
           Swal.fire({
             icon: "warning",
-            title: "Duplicate Size",
-            text: "You have selected the same size multiple times. Each row must have a unique size.",
+            title: "Validation Error",
+            text: "At least one size must be selected.",
+            timer: 3000,
+          });
+          return;
+        }
+
+        for (let i = 0; i < breakup.length; i++) {
+          const item = breakup[i];
+          const hasSize =
+            item.sizeId !== undefined &&
+            item.sizeId !== null &&
+            item.sizeId !== "";
+          const hasQty =
+            item.qty !== undefined &&
+            item.qty !== null &&
+            String(item.qty).trim() !== "" &&
+            Number(item.qty) > 0;
+
+          if (hasSize && !hasQty) {
+            Swal.fire({
+              icon: "warning",
+              title: "Validation Error",
+              text: `Qty is mandatory and must be greater than 0 for selected size at row ${i + 1}.`,
+              timer: 3000,
+            });
+            return;
+          }
+
+          if (!hasSize && hasQty) {
+            Swal.fire({
+              icon: "warning",
+              title: "Validation Error",
+              text: `Size is required for row ${i + 1} where Qty is entered.`,
+              timer: 3000,
+            });
+            return;
+          }
+        }
+      }
+
+      // Tracking Type: Size Template + Barcode
+      if (trackingType === "Size Template + Barcode") {
+        let hasAnyFilled = false;
+        for (let i = 0; i < breakup.length; i++) {
+          const item = breakup[i];
+          const hasSize =
+            item.sizeId !== undefined &&
+            item.sizeId !== null &&
+            item.sizeId !== "";
+          const hasFrom =
+            item.barcodeFrom && String(item.barcodeFrom).trim() !== "";
+          const hasTo = item.barcodeTo && String(item.barcodeTo).trim() !== "";
+          const hasQty =
+            item.qty !== undefined &&
+            item.qty !== null &&
+            String(item.qty).trim() !== "" &&
+            Number(item.qty) > 0;
+
+          if (hasSize || hasFrom || hasTo || hasQty) {
+            hasAnyFilled = true;
+            if (!(hasSize && hasFrom && hasTo && hasQty)) {
+              Swal.fire({
+                icon: "warning",
+                title: "Validation Error",
+                text: `Size, Barcode From, Barcode To, and Qty are all mandatory for row ${i + 1}.`,
+                timer: 3000,
+              });
+              return;
+            }
+          }
+        }
+
+        if (!hasAnyFilled) {
+          Swal.fire({
+            icon: "warning",
+            title: "Validation Error",
+            text: "At least one row with Size, Barcode From, Barcode To, and Qty is required.",
             timer: 3000,
           });
           return;
         }
       }
 
-      if (
-        currentRow?.trackingType === "Barcode" ||
-        currentRow?.trackingType === "Size Template + Barcode"
-      ) {
-        let hasError = false;
-        for (let i = 0; i < (currentRow.sizeBreakup?.length || 0); i++) {
-          const item = currentRow.sizeBreakup[i];
+      // Tracking Type: Barcode
+      if (trackingType === "Barcode") {
+        let hasAnyFilled = false;
+        for (let i = 0; i < breakup.length; i++) {
+          const item = breakup[i];
           const hasFrom =
             item.barcodeFrom && String(item.barcodeFrom).trim() !== "";
           const hasTo = item.barcodeTo && String(item.barcodeTo).trim() !== "";
@@ -129,17 +237,23 @@ const OrderItems = ({
             Number(item.qty) !== 0;
 
           if (hasFrom || hasTo || hasQty) {
+            hasAnyFilled = true;
             if (!(hasFrom && hasTo && hasQty)) {
-              hasError = true;
-              break;
+              Swal.fire({
+                icon: "warning",
+                title: "Validation Error",
+                text: `Barcode From, Barcode To and Qty are mandatory for row ${i + 1}.`,
+                timer: 3000,
+              });
+              return;
             }
           }
         }
-        if (hasError) {
+        if (!hasAnyFilled) {
           Swal.fire({
             icon: "warning",
             title: "Validation Error",
-            text: "Barcode From, Barcode To and Qty are mandatory for a row.",
+            text: "At least one row with Barcode From, Barcode To and Qty is required.",
             timer: 3000,
           });
           return;
@@ -1000,12 +1114,8 @@ const OrderItems = ({
                             >
                               <FxSelectWithAdd
                                 value={item.sizeId || ""}
-                                onChange={(e) =>
-                                  handleSizeBreakupChange(
-                                    idx,
-                                    "sizeId",
-                                    e.target.value,
-                                  )
+                                onChange={(val) =>
+                                  handleSizeBreakupChange(idx, "sizeId", val)
                                 }
                                 disabled={readOnly}
                                 options={(sizeList?.data || [])
@@ -1026,6 +1136,7 @@ const OrderItems = ({
                                 addNewModalWidth="w-[30%] h-[45%]"
                                 advanceOnEnter
                                 advanceOnSelect
+                                menuPortalTarget={document.body}
                               />
                             </td>
                             {/* <td className="border-b border-r border-slate-200 px-1 py-0 text-[11px] text-black">
@@ -1128,7 +1239,40 @@ const OrderItems = ({
                             <td className="border-b border-r border-slate-200 px-1 py-0 text-center text-[11px] text-black ">
                               {idx + 1}
                             </td>
-                            <td className="border-b border-r border-slate-200 px-1 py-0 text-[11px] text-black">
+                            <td
+                              data-grid-row={idx}
+                              data-grid-col={1}
+                              data-grid-editable="true"
+                              className="grid-editable-cell border border-gray-300 text-[11px]"
+                            >
+                              <FxSelectWithAdd
+                                value={item.sizeId || ""}
+                                onChange={(val) =>
+                                  handleSizeBreakupChange(idx, "sizeId", val)
+                                }
+                                disabled={readOnly}
+                                options={(sizeList?.data || [])
+                                  .filter((item) => (id ? true : item.active))
+                                  .map((item) => ({
+                                    label: item.name,
+                                    value: item.id,
+                                  }))}
+                                readOnly={readOnly}
+                                placeholder=""
+                                onKeyDown={(event) => {
+                                  if (event.key === "Delete") {
+                                    handleSizeBreakupChange(idx, "sizeId", "");
+                                  }
+                                }}
+                                addNew={true}
+                                childComponent={Size}
+                                addNewModalWidth="w-[30%] h-[45%]"
+                                advanceOnEnter
+                                advanceOnSelect
+                                menuPortalTarget={document.body}
+                              />
+                            </td>
+                            {/* <td className="border-b border-r border-slate-200 px-1 py-0 text-[11px] text-black">
                               <select
                                 className="w-full h-7 border-none bg-transparent px-1 text-[11px] text-black outline-none focus:bg-white"
                                 value={item.sizeId || ""}
@@ -1148,7 +1292,7 @@ const OrderItems = ({
                                   </option>
                                 ))}
                               </select>
-                            </td>
+                            </td> */}
                             <td className="border-b border-r border-slate-200 px-1 py-0">
                               <input
                                 id={`sizeBarcodeFrom-${idx}`}

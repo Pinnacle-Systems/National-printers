@@ -372,6 +372,64 @@ const OrderEntryForm = ({
       if (!item.uomId) {
         errors.push(`Row ${rowIndex}: UOM is required`);
       }
+
+      if (item.trackingType === "Size Template") {
+        const rowsWithSize = (item.sizeBreakup || []).filter(
+          (s) =>
+            s.sizeId !== undefined && s.sizeId !== null && s.sizeId !== "",
+        );
+        if (rowsWithSize.length === 0) {
+          errors.push(
+            `Row ${rowIndex}: At least one size is required for Size Template`,
+          );
+        } else {
+          const hasMissingQty = rowsWithSize.some(
+            (s) =>
+              s.qty === undefined ||
+              s.qty === null ||
+              String(s.qty).trim() === "" ||
+              Number(s.qty) <= 0,
+          );
+          if (hasMissingQty) {
+            errors.push(
+              `Row ${rowIndex}: Qty must be filled and greater than 0 for all selected sizes`,
+            );
+          }
+        }
+      }
+
+      if (item.trackingType === "Size Template + Barcode") {
+        const validRows = (item.sizeBreakup || []).filter(
+          (s) =>
+            s.sizeId &&
+            s.barcodeFrom &&
+            String(s.barcodeFrom).trim() !== "" &&
+            s.barcodeTo &&
+            String(s.barcodeTo).trim() !== "" &&
+            Number(s.qty) > 0,
+        );
+        if (validRows.length === 0) {
+          errors.push(
+            `Row ${rowIndex}: Size, Barcode From, Barcode To, and Qty are required for Size Template + Barcode`,
+          );
+        }
+      }
+
+      if (item.trackingType === "Barcode") {
+        const validRows = (item.sizeBreakup || []).filter(
+          (s) =>
+            s.barcodeFrom &&
+            String(s.barcodeFrom).trim() !== "" &&
+            s.barcodeTo &&
+            String(s.barcodeTo).trim() !== "" &&
+            Number(s.qty) > 0,
+        );
+        if (validRows.length === 0) {
+          errors.push(
+            `Row ${rowIndex}: Barcode From, Barcode To, and Qty are required for Barcode`,
+          );
+        }
+      }
     });
 
     return errors;
