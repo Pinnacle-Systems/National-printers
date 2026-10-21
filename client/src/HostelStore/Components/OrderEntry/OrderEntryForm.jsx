@@ -51,6 +51,25 @@ import {
   TransactionLayout,
 } from "../../../Basic/components/Reuseable/index.js";
 
+const createEmptyOrderItems = (count = 14) =>
+  Array.from({ length: count }, () => ({
+    itemGroupId: "",
+    styleItemId: "",
+    trackingType: "Size Template",
+    sizeId: "",
+    sizeTemplateId: "",
+    barcodeFrom: "",
+    barcodeTo: "",
+    uomId: "",
+    gsmId: "",
+    hsnId: "",
+    orderQty: "",
+    price: "",
+    remarks: "",
+    description: "",
+    sizeBreakup: [],
+  }));
+
 const OrderEntryForm = ({
   onClose,
   id,
@@ -109,16 +128,30 @@ const OrderEntryForm = ({
   const [orderQty, setOrderQty] = useState("");
   const [termsId, setTermsId] = useState("");
   const [printModalOpen, setPrintModalOpen] = useState(false);
-  const [orderItems, setOrderItems] = useState(
-    Array.from({ length: 14 }, () => ({
-      styleItemId: "",
-      sizeId: "",
-      uomId: "",
-      gsmId: "",
-      hsnId: "",
-      orderQty: "",
-    })),
-  );
+  const [orderItems, setOrderItems] = useState(() => createEmptyOrderItems(14));
+
+  const handleOrderTypeChange = (val) => {
+    if (val != orderType) {
+      setOrderType(val);
+      setCustomerId("");
+      setOrderBranchId("");
+      setOrderItems(createEmptyOrderItems(14));
+    }
+  };
+
+  const handleCustomerChange = (val) => {
+    if (val != customerId) {
+      setCustomerId(val);
+      setOrderItems(createEmptyOrderItems(14));
+    }
+  };
+
+  const handleOrderBranchChange = (val) => {
+    if (val != orderBranchId) {
+      setOrderBranchId(val);
+      setOrderItems(createEmptyOrderItems(14));
+    }
+  };
 
   // ── Approval state (File 2) ──────────────────────────────────────────────
   const [approvalModal, setApprovalModal] = useState(false);
@@ -176,29 +209,13 @@ const OrderEntryForm = ({
       const initialItems = (data?.orderItems || []).map((item) => ({
         ...item,
         itemGroupId: item.itemGroupId || "",
-        trackingType: item.trackingType || "None",
+        trackingType: item.trackingType || "Size Template",
         sizeBreakup: item.sizeBreakup || [],
         price: item?.price?.toFixed(2) || "",
       }));
 
       const emptyRowsCount = Math.max(0, 14 - initialItems.length);
-      const emptyRows = Array.from({ length: emptyRowsCount }, () => ({
-        itemGroupId: "",
-        styleItemId: "",
-        trackingType: "None",
-        sizeId: "",
-        sizeTemplateId: "",
-        barcodeFrom: "",
-        barcodeTo: "",
-        uomId: "",
-        gsmId: "",
-        hsnId: "",
-        orderQty: "",
-        price: "",
-        remarks: "",
-        description: "",
-        sizeBreakup: [],
-      }));
+      const emptyRows = createEmptyOrderItems(emptyRowsCount);
 
       setOrderItems([...initialItems, ...emptyRows]);
     },
@@ -613,7 +630,7 @@ const OrderEntryForm = ({
               name="Order Type"
               options={poTypes}
               value={orderType}
-              setValue={setOrderType}
+              setValue={handleOrderTypeChange}
               required={true}
               readOnly={isReadOnly}
               disabled={childRecord.current > 0 || isReadOnly}
@@ -664,7 +681,7 @@ const OrderEntryForm = ({
                     "id",
                   )}
                   value={customerId}
-                  setValue={setCustomerId}
+                  setValue={handleCustomerChange}
                   required={true}
                   readOnly={isReadOnly}
                   addNewLabel="+ Add New Customer"
@@ -707,7 +724,7 @@ const OrderEntryForm = ({
                     "id",
                   )}
                   value={orderBranchId}
-                  setValue={setOrderBranchId}
+                  setValue={handleOrderBranchChange}
                   required={true}
                   readOnly={isReadOnly}
                   disabled={childRecord.current > 0 || isReadOnly}
@@ -806,7 +823,12 @@ const OrderEntryForm = ({
 
         {/* Right Buttons */}
         <div className="flex gap-2 flex-wrap">
-          {(!(!id || (parentReadOnly && !(singleData?.data?.childRecord > 0)) === false || isDisabled)) && (
+          {!(
+            !id ||
+            (parentReadOnly && !(singleData?.data?.childRecord > 0)) ===
+              false ||
+            isDisabled
+          ) && (
             <button
               onClick={() => setReadOnly(false)}
               className="bg-yellow-600 text-white px-2 py-1 rounded hover:bg-yellow-700 flex items-center text-xs font-medium"

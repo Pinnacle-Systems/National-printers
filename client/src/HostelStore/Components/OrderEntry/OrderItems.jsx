@@ -992,7 +992,43 @@ const OrderItems = ({
                             <td className="border-b border-r border-slate-200 px-1 py-0 text-center text-[11px] text-black">
                               {idx + 1}
                             </td>
-                            <td className="border-b border-r border-slate-200 px-1 py-0 text-[11px] text-black">
+                            <td
+                              data-grid-row={idx}
+                              data-grid-col={1}
+                              data-grid-editable="true"
+                              className="grid-editable-cell border border-gray-300 text-[11px]"
+                            >
+                              <FxSelectWithAdd
+                                value={item.sizeId || ""}
+                                onChange={(e) =>
+                                  handleSizeBreakupChange(
+                                    idx,
+                                    "sizeId",
+                                    e.target.value,
+                                  )
+                                }
+                                disabled={readOnly}
+                                options={(sizeList?.data || [])
+                                  .filter((item) => (id ? true : item.active))
+                                  .map((item) => ({
+                                    label: item.name,
+                                    value: item.id,
+                                  }))}
+                                readOnly={readOnly}
+                                placeholder=""
+                                onKeyDown={(event) => {
+                                  if (event.key === "Delete") {
+                                    handleSizeBreakupChange(idx, "sizeId", "");
+                                  }
+                                }}
+                                addNew={true}
+                                childComponent={Size}
+                                addNewModalWidth="w-[30%] h-[45%]"
+                                advanceOnEnter
+                                advanceOnSelect
+                              />
+                            </td>
+                            {/* <td className="border-b border-r border-slate-200 px-1 py-0 text-[11px] text-black">
                               <select
                                 className="w-full h-7 border-none bg-transparent px-1 text-[11px] text-black outline-none focus:bg-white"
                                 value={item.sizeId || ""}
@@ -1012,7 +1048,7 @@ const OrderItems = ({
                                   </option>
                                 ))}
                               </select>
-                            </td>
+                            </td> */}
                             <td className="border-b border-r border-slate-200 px-1 py-0">
                               <input
                                 id={`sizeQty-${idx}`}
