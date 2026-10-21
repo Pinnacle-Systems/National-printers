@@ -39,7 +39,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
   const [name, setName] = useState(defaultName || "");
   const [price, setPrice] = useState(false);
   const [active, setActive] = useState(false);
-  const [aliasName, setAliasName] = useState(defaultName || "");
+  const [aliasName, setAliasName] = useState("");
   const [hsnId, setHsnId] = useState("");
   const [searchValue, setSearchValue] = useState("");
   const childRecord = useRef(0);
@@ -47,7 +47,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
   const [sizeTemplateId, setSizeTemplateId] = useState("");
   const [uomId, setUomId] = useState("");
   const [gsmId, setGsmId] = useState("");
-
+  const [styleImage, setStyleImage] = useState(null);
   const [dispatchInvalidate] = useInvalidateTags();
   const { refs, handlers, focusFirstInput } = useFormKeyboardNavigation();
 
@@ -83,7 +83,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
     (data) => {
       setName(data?.name || defaultName || "");
       setActive(id ? (data?.active ?? false) : true);
-      setAliasName(data?.aliasName || defaultName || "");
+      setAliasName(data?.aliasName || "");
       setHsnId(data?.hsnId ? data?.hsnId : "");
       setItemGroupId(data?.itemGroupId ? data?.itemGroupId : "");
       setUomId(data?.uomId ? data?.uomId : "");
@@ -396,7 +396,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
                     addNewModalWidth="w-[40%] h-[45%]"
                   />
                 </div>
-                <div className="mb-3">
+                {/* <div className="mb-3">
                   <DropdownWithModal
                     name="Size Template"
                     options={dropDownListObject(
@@ -417,7 +417,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
                     childComponent={SizeTemplate}
                     addNewModalWidth="w-[40%] h-[62%]"
                   />
-                </div>
+                </div> */}
                 <div className="mb-3">
                   <DropdownWithModal
                     name="Hsn"
