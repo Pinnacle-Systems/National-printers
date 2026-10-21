@@ -12,6 +12,7 @@ async function get(req) {
       _count: {
         select: {
           poItems: true,
+          orderItems: true,
           inwardItems: true,
         },
       },
@@ -31,7 +32,10 @@ async function get(req) {
     statusCode: 0,
     data: (data = data.map((color) => ({
       ...color,
-      childRecord: color?._count.poItems + color?._count.inwardItems,
+      childRecord:
+        color?._count.poItems +
+        color?._count.inwardItems +
+        color?._count.orderItems,
     }))),
   };
 }
@@ -41,6 +45,9 @@ async function getOne(id) {
     where: { styleItemId: parseInt(id) },
   });
   const childRecordInward = await prisma.inwardItems.count({
+    where: { styleItemId: parseInt(id) },
+  });
+  const childRecodOrderEntry = await prisma.orderItems.count({
     where: { styleItemId: parseInt(id) },
   });
   const data = await prisma.styleItem.findUnique({
@@ -54,7 +61,12 @@ async function getOne(id) {
   if (!data) return NoRecordFound("styleItem");
   return {
     statusCode: 0,
-    data: { ...data, ...{ childRecord: childRecordPo + childRecordInward } },
+    data: {
+      ...data,
+      ...{
+        childRecord: childRecordPo + childRecordInward + childRecodOrderEntry,
+      },
+    },
   };
 }
 
