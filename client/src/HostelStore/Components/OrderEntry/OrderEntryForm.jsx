@@ -257,7 +257,6 @@ const OrderEntryForm = ({
           item.sizeBreakup?.filter((size) => Number(size.qty) > 0) || [],
       })),
   };
-  console.log(data.orderItems, "payloadcheck");
   const handleSubmitCustom = async (callback, data, text, nextProcess) => {
     try {
       const formData = new FormData();
@@ -375,8 +374,7 @@ const OrderEntryForm = ({
 
       if (item.trackingType === "Size Template") {
         const rowsWithSize = (item.sizeBreakup || []).filter(
-          (s) =>
-            s.sizeId !== undefined && s.sizeId !== null && s.sizeId !== "",
+          (s) => s.sizeId !== undefined && s.sizeId !== null && s.sizeId !== "",
         );
         if (rowsWithSize.length === 0) {
           errors.push(

@@ -27,6 +27,9 @@ async function get(req) {
       },
       ItemGroup: true,
     },
+    orderBy: {
+      id: "desc",
+    },
   });
   return {
     statusCode: 0,
