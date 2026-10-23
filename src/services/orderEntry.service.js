@@ -1036,4 +1036,57 @@ async function remove(id) {
   return { statusCode: 0, data };
 }
 
-export { get, getOne, create, update, remove, getRefList, geOrderItemsList };
+async function getPIList(req) {
+  const { branchId, customerId, finYearId } = req.query;
+
+  const parsedBranchId =
+    branchId && !isNaN(parseInt(branchId)) ? parseInt(branchId) : undefined;
+  const parsedCustomerId =
+    customerId && !isNaN(parseInt(customerId))
+      ? parseInt(customerId)
+      : undefined;
+  const parsedFinYearId =
+    finYearId && !isNaN(parseInt(finYearId)) ? parseInt(finYearId) : undefined;
+
+  const data = await prisma.orderEntry.findMany({
+    where: {
+      branchId: parsedBranchId,
+      customerId: parsedCustomerId,
+      finYearId: parsedFinYearId,
+      ProformaInvoices: {
+        none: {},
+      },
+      orderType: "ORDER",
+    },
+    select: {
+      id: true,
+      customerId: true,
+      docId: true,
+      docDate: true,
+      orderType: true,
+      customer: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+    orderBy: { id: "desc" },
+  });
+
+  return {
+    statusCode: 0,
+    data,
+  };
+}
+
+export {
+  get,
+  getOne,
+  create,
+  update,
+  remove,
+  getRefList,
+  geOrderItemsList,
+  getPIList,
+};

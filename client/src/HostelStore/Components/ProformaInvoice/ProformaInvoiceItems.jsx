@@ -22,7 +22,6 @@ const ProformaInvoiceItems = ({
   id,
   isSupplierOutside,
 }) => {
-  console.log("items", items);
   const { companyId } = getCommonParams();
   const { data: styleItemList } = useGetStyleItemMasterQuery({
     params: { companyId },

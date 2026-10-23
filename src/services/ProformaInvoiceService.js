@@ -122,6 +122,8 @@ async function getOne(id) {
       OrderEntry: {
         include: {
           customer: true,
+          id: true,
+          docId: true,
           orderItems: {
             include: {
               StyleItem: true,

@@ -50,6 +50,7 @@ import {
   TransactionActions,
   TransactionLayout,
 } from "../../../Basic/components/Reuseable/index.js";
+import { invalidateItems } from "../../../redux/Dispatch/ItemsInvalidateTags.js";
 
 const createEmptyOrderItems = (count = 14) =>
   Array.from({ length: count }, () => ({
@@ -309,6 +310,7 @@ const OrderEntryForm = ({
           showConfirmButton: false,
           timer: 2000,
           didClose: () => {
+            invalidateItems();
             dispatchInvalidate();
 
             if (returnData.statusCode === 0) {
@@ -872,21 +874,27 @@ const OrderEntryForm = ({
         hasSummaryTitle="Order Summary"
         totalsRows={[
           {
-            key: "totalItems",
-            label: "Total Items",
-            value: orderItems?.filter((item) => item.styleItemId)?.length || 0,
+            key: "",
+            label: " ",
+            value: null,
             summaryColumn: "right",
           },
-          {
-            key: "totalQty",
-            label: "Total Qty",
-            value: orderItems?.reduce((acc, item) => {
-              const qty = parseFloat(item.orderQty) || 0;
-              return acc + qty;
-            }, 0),
-            summaryColumn: "right",
-            emphasized: true,
-          },
+          // {
+          //   key: "totalItems",
+          //   label: "Total Items",
+          //   value: orderItems?.filter((item) => item.styleItemId)?.length || 0,
+          //   summaryColumn: "right",
+          // },
+          // {
+          //   key: "totalQty",
+          //   label: "Total Qty",
+          //   value: orderItems?.reduce((acc, item) => {
+          //     const qty = parseFloat(item.orderQty) || 0;
+          //     return acc + qty;
+          //   }, 0),
+          //   summaryColumn: "right",
+          //   emphasized: true,
+          // },
         ]}
       />
       <div className="flex flex-col md:flex-row gap-2 justify-between mt-4 pb-4 px-2">

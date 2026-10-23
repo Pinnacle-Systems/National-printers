@@ -364,10 +364,10 @@ const OrderItems = ({
               <th className="w-6 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 S.No
               </th>
-              <th className="w-80 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="w-[400px] px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Description of Goods
               </th>
-              <th className="w-36 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="w-44 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Item Group
               </th>
               <th className="w-24 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
