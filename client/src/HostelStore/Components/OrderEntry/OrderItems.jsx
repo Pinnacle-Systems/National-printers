@@ -5,8 +5,9 @@ import { useGetHsnMasterQuery } from "../../../redux/services/HsnMasterServices"
 import { findFromList, getCommonParams } from "../../../Utils/helper";
 import Swal from "sweetalert2";
 import { Gsm, Size, StyleItemMaster, UomMaster } from "..";
-import { FiEye } from "react-icons/fi";
+import { FiEye, FiImage } from "react-icons/fi";
 import Modal from "../../../UiComponents/Modal";
+import { getImageUrlPath } from "../../../Constants/index.js";
 import {
   useGetSizeTemplateQuery,
   useLazyGetSizeTemplateByIdQuery,
@@ -34,6 +35,17 @@ const OrderItems = ({
   });
   const [triggerGetTemplateById] = useLazyGetSizeTemplateByIdQuery();
 
+  const [imagePreviewModalOpen, setImagePreviewModalOpen] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState("");
+  const [previewImageTitle, setPreviewImageTitle] = useState("");
+
+  const handleOpenImagePreview = (url, title) => {
+    if (!url) return;
+    setPreviewImageUrl(url);
+    setPreviewImageTitle(title || "Style Item Image");
+    setImagePreviewModalOpen(true);
+  };
+
   const EMPTY_ROW = {
     itemGroupId: "",
     styleItemId: "",
@@ -43,6 +55,8 @@ const OrderItems = ({
     gsmId: "",
     hsnId: "",
     orderQty: "",
+    price: "",
+    StyleItem: null,
     remarks: "",
     description: "",
     sizeBreakup: [],
@@ -402,11 +416,17 @@ const OrderItems = ({
           hsnId: selectedItem.hsnId || "",
           sizeTemplateId: selectedItem.sizeTemplateId || "",
           price: selectedItem.price?.toFixed(2) || "",
+          StyleItem: selectedItem,
           sizeBreakup: [],
           orderQty: "",
           barcodeFrom: "",
           barcodeTo: "",
           description: "",
+        };
+      } else {
+        updatedRow = {
+          ...updatedRow,
+          StyleItem: null,
         };
       }
     }
@@ -537,6 +557,9 @@ const OrderItems = ({
               </th>
               <th className="w-24 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Price
+              </th>
+              <th className="w-16 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+                Image
               </th>
               <th className="w-full px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Remarks
@@ -805,6 +828,54 @@ const OrderItems = ({
                   ></input>
                 </td>
 
+                <td className="border border-gray-300 text-center px-1 py-0.5 w-16">
+                  {(() => {
+                    const currentStyleItem =
+                      row?.StyleItem ||
+                      styleItemList?.data?.find(
+                        (item) => item.id === row?.styleItemId,
+                      );
+                    const rawImage = currentStyleItem?.styleImage;
+                    const imgUrl = rawImage ? getImageUrlPath(rawImage) : null;
+                    const itemName = currentStyleItem?.name || "Style Item";
+
+                    if (!imgUrl) {
+                      return (
+                        <div className="flex items-center justify-center text-gray-300 text-[11px]">
+                          -
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="flex items-center justify-center">
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenImagePreview(imgUrl, itemName);
+                          }}
+                          className="relative group p-0.5 rounded border border-gray-200 hover:border-indigo-500 bg-white shadow-2xs hover:shadow-xs transition-all cursor-pointer focus:outline-none"
+                          title="Click to preview image"
+                        >
+                          <img
+                            src={imgUrl}
+                            alt={itemName}
+                            className="w-5 h-5 object-cover rounded-xs"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-black/35 rounded-xs opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                            <FiEye className="text-white w-3 h-3" />
+                          </div>
+                        </button>
+                      </div>
+                    );
+                  })()}
+                </td>
+
                 <td className="border border-gray-300 grid-editable-cell">
                   <input
                     id={`remarks-input-${index}`}
@@ -863,6 +934,7 @@ const OrderItems = ({
                   ?.reduce((sum, row) => sum + (Number(row.price) || 0), 0)
                   .toFixed(2)}
               </td>
+              <td className="border border-gray-300"></td>
               <td className="border border-gray-300"></td>
             </tr>
           </tfoot>
@@ -1393,6 +1465,39 @@ const OrderItems = ({
                   placeholder="Enter description here..."
                 />
               </div>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {imagePreviewModalOpen && (
+        <Modal
+          isOpen={imagePreviewModalOpen}
+          onClose={() => setImagePreviewModalOpen(false)}
+          widthClass="w-[550px] max-w-[90vw]"
+        >
+          <div className="bg-slate-100 p-3 rounded-lg">
+            <div className="bg-white p-3 rounded-lg flex justify-between items-center mb-3 shadow-xs">
+              <div className="flex items-center gap-2">
+                <FiImage className="text-indigo-600 w-4 h-4" />
+                <h3 className="text-[14px] font-bold text-slate-800 truncate max-w-[400px]">
+                  {previewImageTitle ? `${previewImageTitle} - Image Preview` : "Style Item Image"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                className="bg-white text-indigo-600 border border-indigo-600 px-3 py-0.5 rounded text-[12px] hover:bg-indigo-50 font-semibold transition-colors shadow-2xs cursor-pointer"
+                onClick={() => setImagePreviewModalOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="bg-white p-3 rounded-lg shadow-xs border border-slate-200 flex items-center justify-center min-h-[250px] max-h-[70vh] overflow-auto">
+              <img
+                src={previewImageUrl}
+                alt={previewImageTitle || "Style Item"}
+                className="max-h-[65vh] max-w-full object-contain rounded shadow-md"
+              />
             </div>
           </div>
         </Modal>

@@ -18,8 +18,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import moment from "moment";
 import { findFromList, getCommonParams, ModeChip } from "../../../Utils/helper";
 import { toast } from "react-toastify";
-import { FiCheck, FiEdit2, FiPrinter, FiSave, FiSend } from "react-icons/fi";
+import {
+  FiCheck,
+  FiEdit2,
+  FiPrinter,
+  FiSave,
+  FiSend,
+  FiEye,
+  FiImage,
+} from "react-icons/fi";
 import { HiOutlineRefresh } from "react-icons/hi";
+import { getImageUrlPath } from "../../../Constants/index.js";
 import Swal from "sweetalert2";
 import { dropDownListObject } from "../../../Utils/contructObject";
 import { ColorMaster, Size, StyleItemMaster } from "../index.js";
@@ -165,6 +174,16 @@ const JobCardForm = ({
 
   const [trackingType, setTrackingType] = useState("Barcode");
   const [sizeModalOpen, setSizeModalOpen] = useState(false);
+  const [imagePreviewModalOpen, setImagePreviewModalOpen] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState("");
+  const [previewImageTitle, setPreviewImageTitle] = useState("");
+
+  const handleOpenImagePreview = (url, title) => {
+    if (!url) return;
+    setPreviewImageUrl(url);
+    setPreviewImageTitle(title || "Style Item Image");
+    setImagePreviewModalOpen(true);
+  };
 
   const childRecord = useRef(0);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState("");
@@ -1155,7 +1174,7 @@ const JobCardForm = ({
               }}
             />
           </div>
-          {console.log(selectedOrderData, "selectedOrderItem")}
+
           <div className="w-64">
             <DropdownNew
               name="Item Description"
@@ -1218,6 +1237,71 @@ const JobCardForm = ({
                 setSelectedLabelPrinting([]);
               }}
             />
+          </div>
+          <div className="w-10 ">
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">
+              Image
+            </label>
+            <div className="h-7 flex items-center justify-center">
+              {(() => {
+                const currentStyleItem =
+                  styleList?.data?.find((s) => s.id === styleItemId) ||
+                  styleItemList?.data?.find((s) => s.id === styleItemId) ||
+                  selectedOrderData?.orderItems?.find(
+                    (item) => item.styleItemId === styleItemId,
+                  )?.StyleItem ||
+                  singleData?.data?.StyleItem;
+
+                const rawImage =
+                  currentStyleItem?.styleImage ||
+                  selectedOrderData?.orderItems?.find(
+                    (item) => item.styleItemId === styleItemId,
+                  )?.styleImage ||
+                  singleData?.data?.styleImage;
+
+                const imgUrl = rawImage ? getImageUrlPath(rawImage) : null;
+                const itemName =
+                  currentStyleItem?.name ||
+                  singleData?.data?.StyleItem?.name ||
+                  "Item Image";
+
+                if (!imgUrl) {
+                  return (
+                    <div
+                      className="w-7 h-7 rounded border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-400"
+                      title="No image available"
+                    >
+                      <FiImage size={14} className="text-gray-300" />
+                    </div>
+                  );
+                }
+
+                return (
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenImagePreview(imgUrl, itemName);
+                    }}
+                    className="relative group w-7 h-7 rounded border border-gray-200 hover:border-indigo-500 bg-white shadow-2xs hover:shadow-xs transition-all cursor-pointer flex items-center justify-center p-0.5 focus:outline-none"
+                    title="Click to view large preview"
+                  >
+                    <img
+                      src={imgUrl}
+                      alt={itemName}
+                      className="w-full h-full object-cover rounded-xs"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-black/35 rounded-xs opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                      <FiEye className="text-white w-3.5 h-3.5" />
+                    </div>
+                  </button>
+                );
+              })()}
+            </div>
           </div>
           <div className="w-20">
             <TextInput
@@ -2651,6 +2735,41 @@ const JobCardForm = ({
           />
         </PDFViewer>
       </Modal>
+
+      {imagePreviewModalOpen && (
+        <Modal
+          isOpen={imagePreviewModalOpen}
+          onClose={() => setImagePreviewModalOpen(false)}
+          widthClass="w-[550px] max-w-[90vw]"
+        >
+          <div className="bg-slate-100 p-3 rounded-lg">
+            <div className="bg-white p-3 rounded-lg flex justify-between items-center mb-3 shadow-xs">
+              <div className="flex items-center gap-2">
+                <FiImage className="text-indigo-600 w-4 h-4" />
+                <h3 className="text-[14px] font-bold text-slate-800 truncate max-w-[400px]">
+                  {previewImageTitle
+                    ? `${previewImageTitle} - Image Preview`
+                    : "Style Item Image"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                className="bg-white text-indigo-600 border border-indigo-600 px-3 py-0.5 rounded text-[12px] hover:bg-indigo-50 font-semibold transition-colors shadow-2xs cursor-pointer"
+                onClick={() => setImagePreviewModalOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="bg-white p-3 rounded-lg shadow-xs border border-slate-200 flex items-center justify-center min-h-[250px] max-h-[70vh] overflow-auto">
+              <img
+                src={previewImageUrl}
+                alt={previewImageTitle || "Style Item"}
+                className="max-h-[65vh] max-w-full object-contain rounded shadow-md"
+              />
+            </div>
+          </div>
+        </Modal>
+      )}
 
       <TransactionLayout
         title="Job Card"

@@ -10,8 +10,9 @@ import { formatCurrencyAmount } from "../../../Utils/helper";
 import Modal from "../../../UiComponents/Modal";
 import { VIEW } from "../../../icons";
 import { FaEye, FaTrash } from "react-icons/fa";
-import { FiEye } from "react-icons/fi";
+import { FiEye, FiImage } from "react-icons/fi";
 import { useGetSizeTemplateQuery } from "../../../redux/services/SizeTemplateMaster";
+import { getImageUrlPath } from "../../../Constants/index.js";
 
 import {
   DEFAULT_ROW_COUNT,
@@ -47,10 +48,19 @@ const PackingItems = ({
 }) => {
   const { companyId } = getCommonParams();
 
-  console.log("orderItemsinpackingitems", packingOrderItems);
   const [contextMenu, setContextMenu] = useState(null);
   const [sizeModalOpen, setSizeModalOpen] = useState(false);
   const [activeRowIndex, setActiveRowIndex] = useState(null);
+  const [imagePreviewModalOpen, setImagePreviewModalOpen] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState("");
+  const [previewImageTitle, setPreviewImageTitle] = useState("");
+
+  const handleOpenImagePreview = (url, title) => {
+    if (!url) return;
+    setPreviewImageUrl(url);
+    setPreviewImageTitle(title || "Style Item Image");
+    setImagePreviewModalOpen(true);
+  };
   const [currentSelectedIndex, setCurrentSelectedIndex] = useState(null);
   const [activeModalRowIndex, setActiveModalRowIndex] = useState(null);
   const [activeStyleIndex, setActiveStyleIndex] = useState(0);
@@ -163,13 +173,17 @@ const PackingItems = ({
       const rows = [...prev];
       let row = { ...rows[index], [field]: value };
       if (field === "styleItemId" && value) {
-        const found = styleItemList?.data?.find((i) => i.id === value);
+        const found =
+          styleItemList?.data?.find((i) => i.id === value) ||
+          styleList?.data?.find((i) => i.id === value);
         if (found) {
           const hsnId = found.hsnId || "";
           const hsnObj = hsnList?.data?.find((h) => h.id === hsnId);
           row = {
             ...row,
+            StyleItem: found,
             uomId: found.uomId || "",
+            itemGroupId: found.itemGroupId || row.itemGroupId || "",
             hsnId: hsnId,
             taxPercent: hsnObj ? hsnObj.tax : "",
             styleBreakup: id
@@ -788,6 +802,9 @@ const PackingItems = ({
               <th className="w-28 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Item Group
               </th>
+              <th className="w-14 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+                Image
+              </th>
 
               <th className="w-16 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Type
@@ -870,6 +887,57 @@ const PackingItems = ({
                         "name",
                       ) || ""}
                     </span>
+                  </td>
+
+                  <td className="border border-gray-300 text-center px-1 py-0.5 w-14">
+                    {(() => {
+                      const currentStyleItem =
+                        row?.StyleItem ||
+                        styleItemList?.data?.find(
+                          (item) => item.id === row?.styleItemId,
+                        ) ||
+                        styleList?.data?.find(
+                          (item) => item.id === row?.styleItemId,
+                        );
+                      const rawImage = currentStyleItem?.styleImage;
+                      const imgUrl = rawImage ? getImageUrlPath(rawImage) : null;
+                      const itemName = currentStyleItem?.name || "Style Item";
+
+                      if (!imgUrl) {
+                        return (
+                          <div className="flex items-center justify-center text-gray-300 text-[11px]">
+                            -
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="flex items-center justify-center">
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenImagePreview(imgUrl, itemName);
+                            }}
+                            className="relative group p-0.5 rounded border border-gray-200 hover:border-indigo-500 bg-white shadow-2xs hover:shadow-xs transition-all cursor-pointer focus:outline-none"
+                            title="Click to preview image"
+                          >
+                            <img
+                              src={imgUrl}
+                              alt={itemName}
+                              className="w-5 h-5 object-cover rounded-xs"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-black/35 rounded-xs opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                              <FiEye className="text-white w-3 h-3" />
+                            </div>
+                          </button>
+                        </div>
+                      );
+                    })()}
                   </td>
 
                   <td className="border border-gray-300 grid-editable-cell">
@@ -994,7 +1062,7 @@ const PackingItems = ({
 
                 {row.trackingType !== "None" && row.styleItemId && (
                   <tr>
-                    <td colSpan={6} className="p-0 bg-slate-50">
+                    <td colSpan={7} className="p-0 bg-slate-50">
                       <div
                         className="mt-2 border border-slate-300 shadow-md rounded-lg mx-2 mb-4 packing-details-panel"
                         data-row={index}
@@ -1260,30 +1328,40 @@ const PackingItems = ({
                                     </td>
                                     <td className="border-b border-r border-slate-200 px-2 py-1 text-right text-[11px]">
                                       {(row?.packingSizeBreakup || []).reduce(
-                                        (sum, b) => sum + (Number(b.alreadyPackingQty) || 0),
+                                        (sum, b) =>
+                                          sum +
+                                          (Number(b.alreadyPackingQty) || 0),
                                         0,
                                       )}
                                     </td>
                                     <td className="border-b border-r border-slate-200 px-2 py-1 text-right text-[11px]">
                                       {(row?.packingSizeBreakup || []).reduce(
-                                        (sum, b) => sum + (Number(b.packingQty) || 0),
+                                        (sum, b) =>
+                                          sum + (Number(b.packingQty) || 0),
                                         0,
                                       )}
                                     </td>
                                     <td className="border-b border-r border-slate-200 px-2 py-1 text-right text-[11px]">
                                       {Number(
-                                        (row?.packingSizeBreakup || []).reduce(
-                                          (sum, b) => sum + (Number(b.grossWeight) || 0),
-                                          0,
-                                        ).toFixed(3)
+                                        (row?.packingSizeBreakup || [])
+                                          .reduce(
+                                            (sum, b) =>
+                                              sum +
+                                              (Number(b.grossWeight) || 0),
+                                            0,
+                                          )
+                                          .toFixed(3),
                                       )}
                                     </td>
                                     <td className="border-b border-r border-slate-200 px-2 py-1 text-right text-[11px]">
                                       {Number(
-                                        (row?.packingSizeBreakup || []).reduce(
-                                          (sum, b) => sum + (Number(b.netWeight) || 0),
-                                          0,
-                                        ).toFixed(3)
+                                        (row?.packingSizeBreakup || [])
+                                          .reduce(
+                                            (sum, b) =>
+                                              sum + (Number(b.netWeight) || 0),
+                                            0,
+                                          )
+                                          .toFixed(3),
                                       )}
                                     </td>
                                     <td className="border-b border-r border-slate-200"></td>
@@ -1597,6 +1675,41 @@ const PackingItems = ({
             </button>
           </div>
         </div>
+      )}
+
+      {imagePreviewModalOpen && (
+        <Modal
+          isOpen={imagePreviewModalOpen}
+          onClose={() => setImagePreviewModalOpen(false)}
+          widthClass="w-[550px] max-w-[90vw]"
+        >
+          <div className="bg-slate-100 p-3 rounded-lg">
+            <div className="bg-white p-3 rounded-lg flex justify-between items-center mb-3 shadow-xs">
+              <div className="flex items-center gap-2">
+                <FiImage className="text-indigo-600 w-4 h-4" />
+                <h3 className="text-[14px] font-bold text-slate-800 truncate max-w-[400px]">
+                  {previewImageTitle
+                    ? `${previewImageTitle} - Image Preview`
+                    : "Style Item Image"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                className="bg-white text-indigo-600 border border-indigo-600 px-3 py-0.5 rounded text-[12px] hover:bg-indigo-50 font-semibold transition-colors shadow-2xs cursor-pointer"
+                onClick={() => setImagePreviewModalOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="bg-white p-3 rounded-lg shadow-xs border border-slate-200 flex items-center justify-center min-h-[250px] max-h-[70vh] overflow-auto">
+              <img
+                src={previewImageUrl}
+                alt={previewImageTitle || "Style Item"}
+                className="max-h-[65vh] max-w-full object-contain rounded shadow-md"
+              />
+            </div>
+          </div>
+        </Modal>
       )}
     </>
   );

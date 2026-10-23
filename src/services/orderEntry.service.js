@@ -495,6 +495,7 @@ async function geOrderItemsList(req) {
       StyleItem: {
         select: {
           name: true,
+          styleImage: true,
         },
       },
       _count: {
@@ -509,6 +510,7 @@ async function geOrderItemsList(req) {
     id: item.styleItemId,
     childRecord: item._count.JobCard,
     name: item.StyleItem?.name || "",
+    styleImage: item.StyleItem?.styleImage || null,
     itemGroupId: item.itemGroupId,
     itemGroupName: item.ItemGroup?.name,
     orderQty: item.orderQty,
