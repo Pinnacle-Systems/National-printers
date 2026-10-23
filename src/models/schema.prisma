@@ -859,7 +859,7 @@ model SalesBillItems {
   SalesReturnItems  SalesReturnItems[]
   Uom               Uom?               @relation(fields: [uomId], references: [id], onDelete: Restrict)
   uomId             Int?
-  styleImage        Bytes?             @db.ByteA
+  styleImage        String?
 }
 
 model SalesReturn {
@@ -899,7 +899,7 @@ model SalesReturnItems {
   Stock            Stock?
   Uom              Uom?            @relation(fields: [uomId], references: [id], onDelete: Restrict)
   uomId            Int?
-  styleImage       Bytes?          @db.ByteA
+  styleImage       String?
 }
 
 model OpeningStock {
@@ -993,7 +993,7 @@ model StyleItem {
   Hsn                    Hsn?                     @relation(fields: [hsnId], references: [id])
   hsnId                  Int?
   price                  Float?
-  styleImage             Bytes?                   @db.ByteA
+  styleImage             String?
   DeliveryChallanItems   DeliveryChallanItems[]
   DeliveryInvoiceItems   DeliveryInvoiceItems[]
   poItems                PoItems[]
@@ -1949,7 +1949,7 @@ model OrderItems {
   hsnId          Int?
   Hsn            Hsn?               @relation(fields: [hsnId], references: [id])
   price          Float?
-  styleImage     Bytes?             @db.ByteA
+  styleImage     String?
   sizeBreakup    OrderSizeBreakup[]
   JobCard        JobCard[]
 }
@@ -2042,7 +2042,7 @@ model ProformaInvoiceItem {
   SizeTemplate      SizeTemplate?         @relation(fields: [sizeTemplateId], references: [id])
   remarks           String?
   description       String?
-  styleImage        Bytes?                @db.ByteA
+  styleImage        String?
   sizeBreakup       ProformaSizeBreakup[]
 }
 
@@ -2250,7 +2250,7 @@ model JobCard {
   isRepeatedJobCard    Boolean?               @default(false)
   refJobCardId         Int?
   RefJobCard           JobCard?               @relation("RepeatedJobCard", fields: [refJobCardId], references: [id])
-  styleImage           Bytes?                 @db.ByteA
+  styleImage           String?
   packings             Packing[]
 }
 
@@ -2454,7 +2454,7 @@ model PackingOrderItems {
   gsmId              Int?
   Gsm                Gsm?                 @relation(fields: [gsmId], references: [id])
   orderQty           Int?
-  styleImage         Bytes?               @db.ByteA
+  styleImage         String?
   PackingSizeBreakup PackingSizeBreakup[]
 }
 
@@ -2562,7 +2562,7 @@ model SalesDeliveryItems {
   SizeTemplate         SizeTemplate?          @relation(fields: [sizeTemplateId], references: [id])
   remarks              String?
   description          String?
-  styleImage           Bytes?                 @db.ByteA
+  styleImage           String?
   salesDeliveryBreakUp SalesDeliveryBreakup[]
 }
 

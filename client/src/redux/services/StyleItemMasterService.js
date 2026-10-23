@@ -50,14 +50,18 @@ const StyleItemMasterApi = createApi({
                 url: STYLE_ITEM_API,
                 method: "POST",
                 body: payload,
-                headers: {
-                    "Content-type": "application/json; charset=UTF-8",
-                },
             }),
             invalidatesTags: ["StyleItemMaster"],
         }),
         updateStyleItemMaster: builder.mutation({
             query: (payload) => {
+                if (payload?.id && payload?.body) {
+                    return {
+                        url: `${STYLE_ITEM_API}/${payload.id}`,
+                        method: "PUT",
+                        body: payload.body,
+                    };
+                }
                 const { id, ...body } = payload;
                 return {
                     url: `${STYLE_ITEM_API}/${id}`,

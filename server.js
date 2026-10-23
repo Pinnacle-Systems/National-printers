@@ -175,8 +175,11 @@ apiRouter.use("/machine", machine);
 apiRouter.use("/packing", packing);
 apiRouter.use("/salesDelivery", salesDelivery);
 
-apiRouter.get("/retreiveFile/:fileName", (req, res) => {
-  const { fileName } = req.params;
+apiRouter.get("/retreiveFile/:fileName(*)", (req, res) => {
+  let { fileName } = req.params;
+  if (fileName) {
+    fileName = fileName.replace(/^uploads\//, "");
+  }
   res.sendFile(__dirname + "/uploads/" + fileName);
 });
 
