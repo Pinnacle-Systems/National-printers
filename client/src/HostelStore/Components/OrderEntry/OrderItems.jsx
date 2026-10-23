@@ -49,7 +49,7 @@ const OrderItems = ({
   const EMPTY_ROW = {
     itemGroupId: "",
     styleItemId: "",
-    trackingType: "None",
+    trackingType: "Size Template",
     sizeTemplateId: "",
     uomId: "",
     gsmId: "",
@@ -1481,7 +1481,9 @@ const OrderItems = ({
               <div className="flex items-center gap-2">
                 <FiImage className="text-indigo-600 w-4 h-4" />
                 <h3 className="text-[14px] font-bold text-slate-800 truncate max-w-[400px]">
-                  {previewImageTitle ? `${previewImageTitle} - Image Preview` : "Style Item Image"}
+                  {previewImageTitle
+                    ? `${previewImageTitle} - Image Preview`
+                    : "Style Item Image"}
                 </h3>
               </div>
               <button

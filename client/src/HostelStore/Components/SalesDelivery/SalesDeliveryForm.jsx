@@ -47,7 +47,7 @@ import { receiptTypes } from "../../../Utils/DropdownData.js";
 
 const EMPTY_ROW = {
   styleItemId: "",
-  trackingType: "None",
+  trackingType: "Size Template",
   sizeTemplateId: "",
   sizeId: "",
   barcodeFrom: "",
@@ -260,9 +260,10 @@ const SalesDeliveryForm = ({
 
                 const mappedItems = filteredItems.map((oi) => ({
                   styleItemId: oi.styleItemId,
+                  StyleItem: oi.StyleItem,
                   itemGroupId: oi.itemGroupId,
                   hsnId: oi.hsnId,
-                  trackingType: oi.trackingType || "None",
+                  trackingType: oi.trackingType || "Size Template",
                   uomId: oi.uomId,
                   gsmId: oi.gsmId,
                   qty: parseFloat(oi.qty) || 0,

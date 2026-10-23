@@ -5,7 +5,8 @@ import { useGetSizeMasterQuery } from "../../../redux/services/SizemasterService
 import { useGetGsmMasterQuery } from "../../../redux/services/GsmMasterService";
 import { useGetUomQuery } from "../../../redux/services/UomMasterService";
 import { useGetHsnMasterQuery } from "../../../redux/services/HsnMasterServices";
-import { FiEye } from "react-icons/fi";
+import { FiEye, FiImage } from "react-icons/fi";
+import { getImageUrlPath } from "../../../Constants/index.js";
 import { useGetSizeTemplateQuery } from "../../../redux/services/SizeTemplateMaster";
 import { findFromList, getCommonParams } from "../../../Utils/helper";
 import TaxDetailsFullTemplate from "../TaxDetailsCompleteTemplate";
@@ -22,7 +23,6 @@ const SalesDeliveryItems = ({
   isSupplierOutside,
   receiptType,
 }) => {
-  console.log("salesDeliveryItems", salesDeliveryItems);
   const { companyId } = getCommonParams();
   const { data: styleItemList } = useGetStyleItemMasterQuery({
     params: { companyId },
@@ -37,6 +37,16 @@ const SalesDeliveryItems = ({
 
   const [sizeModalOpen, setSizeModalOpen] = useState(false);
   const [activeRowIndex, setActiveRowIndex] = useState(null);
+  const [imagePreviewModalOpen, setImagePreviewModalOpen] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState("");
+  const [previewImageTitle, setPreviewImageTitle] = useState("");
+
+  const handleOpenImagePreview = (url, title) => {
+    if (!url) return;
+    setPreviewImageUrl(url);
+    setPreviewImageTitle(title || "Style Item Image");
+    setImagePreviewModalOpen(true);
+  };
 
   const EMPTY_ROW = {
     styleItemId: "",
@@ -62,10 +72,19 @@ const SalesDeliveryItems = ({
 
   const handleInputChange = (value, index, field) => {
     const newItems = [...salesDeliveryItems];
-    newItems[index] = {
+    let updatedItem = {
       ...newItems[index],
       [field]: value,
     };
+
+    if (field === "styleItemId") {
+      const found = styleItemList?.data?.find((i) => i.id === value);
+      if (found) {
+        updatedItem.StyleItem = found;
+      }
+    }
+
+    newItems[index] = updatedItem;
 
     setSalesDeliveryItems(newItems);
   };
@@ -434,6 +453,9 @@ const SalesDeliveryItems = ({
               <th className="w-16 px-2 py-1.5 text-center font-medium border border-gray-300">
                 HSN
               </th>
+              <th className="w-14 px-1 py-1.5 text-center font-medium border border-gray-300">
+                Image
+              </th>
               <th className="w-20 px-2 py-1.5 text-center font-medium border border-gray-300">
                 Type
               </th>
@@ -512,8 +534,57 @@ const SalesDeliveryItems = ({
                   <td className="border border-gray-300 text-right pr-1 text-[11px]">
                     {findFromList(item.hsnId, hsnList?.data, "name")}
                   </td>
+                  <td className="border border-gray-300 text-center px-1 py-0.5 w-14">
+                    {(() => {
+                      const currentStyleItem =
+                        item?.StyleItem ||
+                        styleItemList?.data?.find(
+                          (si) => si.id === item?.styleItemId,
+                        );
+                      const rawImage = currentStyleItem?.styleImage;
+                      const imgUrl = rawImage
+                        ? getImageUrlPath(rawImage)
+                        : null;
+                      const itemName = currentStyleItem?.name || "Style Item";
+
+                      if (!imgUrl) {
+                        return (
+                          <div className="flex items-center justify-center text-gray-300 text-[11px]">
+                            -
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="flex items-center justify-center">
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenImagePreview(imgUrl, itemName);
+                            }}
+                            className="relative group p-0.5 rounded border border-gray-200 hover:border-indigo-500 bg-white shadow-2xs hover:shadow-xs transition-all cursor-pointer focus:outline-none"
+                            title="Click to preview image"
+                          >
+                            <img
+                              src={imgUrl}
+                              alt={itemName}
+                              className="w-5 h-5 object-cover rounded-xs"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-black/35 rounded-xs opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                              <FiEye className="text-white w-3 h-3" />
+                            </div>
+                          </button>
+                        </div>
+                      );
+                    })()}
+                  </td>
                   <td className="border border-gray-300 text-left pl-1 text-[11px]">
-                    {item.trackingType || ""}
+                    {item.trackingType || "Size Template"}
                   </td>
                   <td className="border border-gray-300 text-center">
                     <button
@@ -642,7 +713,7 @@ const SalesDeliveryItems = ({
             <tr className="bg-gray-100 h-7 font-bold text-gray-800 text-[11px]">
               <td
                 className="text-right px-2 border border-gray-300"
-                colSpan={6}
+                colSpan={7}
               >
                 Total
               </td>
@@ -766,6 +837,41 @@ const SalesDeliveryItems = ({
             </button>
           </div>
         </div>
+      )}
+
+      {imagePreviewModalOpen && (
+        <Modal
+          isOpen={imagePreviewModalOpen}
+          onClose={() => setImagePreviewModalOpen(false)}
+          widthClass="w-[550px] max-w-[90vw]"
+        >
+          <div className="bg-slate-100 p-3 rounded-lg">
+            <div className="bg-white p-3 rounded-lg flex justify-between items-center mb-3 shadow-xs">
+              <div className="flex items-center gap-2">
+                <FiImage className="text-indigo-600 w-4 h-4" />
+                <h3 className="text-[14px] font-bold text-slate-800 truncate max-w-[400px]">
+                  {previewImageTitle
+                    ? `${previewImageTitle} - Image Preview`
+                    : "Style Item Image"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                className="bg-white text-indigo-600 border border-indigo-600 px-3 py-0.5 rounded text-[12px] hover:bg-indigo-50 font-semibold transition-colors shadow-2xs cursor-pointer"
+                onClick={() => setImagePreviewModalOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="bg-white p-3 rounded-lg shadow-xs border border-slate-200 flex items-center justify-center min-h-[250px] max-h-[70vh] overflow-auto">
+              <img
+                src={previewImageUrl}
+                alt={previewImageTitle || "Style Item"}
+                className="max-h-[65vh] max-w-full object-contain rounded shadow-md"
+              />
+            </div>
+          </div>
+        </Modal>
       )}
     </>
   );

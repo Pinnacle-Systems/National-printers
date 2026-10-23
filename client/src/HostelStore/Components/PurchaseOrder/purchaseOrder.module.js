@@ -76,6 +76,7 @@ export const resolveStyleItemPatch = async ({ styleItemId, getStyleItem }) => {
 
   return {
     styleItemId,
+    StyleItem: response?.data,
     hsnId: response?.data?.hsnId,
     taxPercent: response?.data?.Hsn?.tax,
     itemGroupId: response?.data?.itemGroupId,
