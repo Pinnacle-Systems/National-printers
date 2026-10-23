@@ -1371,17 +1371,22 @@ const JobCardForm = ({
           Other Details
         </h2>
         <div className="flex gap-2 flex-wrap px-1">
-          <div className="w-28">
-            <TextInput
-              name="Tag/Card Ups"
-              value={tagCardUps}
-              setValue={setTagCardUps}
-              readOnly={readOnly}
-              className="w-full text-right"
-              onFocus={(e) => e.target.select()}
-              disabled={isDisabledPermission}
-            />
-          </div>
+          {itemType !== "LABEL" && (
+            <>
+              <div className="w-28">
+                <TextInput
+                  name="Tag/Card Ups"
+                  value={tagCardUps}
+                  setValue={setTagCardUps}
+                  readOnly={readOnly}
+                  className="w-full text-right"
+                  onFocus={(e) => e.target.select()}
+                  disabled={isDisabledPermission}
+                />
+              </div>
+            </>
+          )}
+
           <div className="w-28">
             <TextInput
               name="Job Run Time (Hrs)"
