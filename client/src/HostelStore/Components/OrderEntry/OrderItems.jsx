@@ -49,7 +49,7 @@ const OrderItems = ({
   const EMPTY_ROW = {
     itemGroupId: "",
     styleItemId: "",
-    trackingType: "Size Template",
+    trackingType: "Size",
     sizeTemplateId: "",
     uomId: "",
     gsmId: "",
@@ -86,9 +86,9 @@ const OrderItems = ({
         let elementId = "";
         if (trackingType === "Barcode") {
           elementId = "barcodeFrom-0";
-        } else if (trackingType === "Size Template") {
+        } else if (trackingType === "Size") {
           elementId = "sizeQty-0";
-        } else if (trackingType === "Size Template + Barcode") {
+        } else if (trackingType === "Size + Barcode") {
           elementId = "sizeBarcodeFrom-0";
         }
 
@@ -104,176 +104,6 @@ const OrderItems = ({
   }, [sizeModalOpen, activeRowIndex]);
 
   const handleCloseSizeModal = () => {
-    if (readOnly) {
-      setSizeModalOpen(false);
-      return;
-    }
-
-    if (activeRowIndex !== null && orderItems[activeRowIndex]) {
-      const currentRow = orderItems[activeRowIndex];
-      const trackingType = currentRow?.trackingType;
-      const breakup = currentRow.sizeBreakup || [];
-
-      // Check unique sizes for tracking types with size selection
-      if (
-        trackingType === "Size Template" ||
-        trackingType === "Size Template + Barcode"
-      ) {
-        const selectedSizes = breakup
-          ?.map((item) => item.sizeId)
-          ?.filter(
-            (sizeId) =>
-              sizeId !== undefined && sizeId !== null && sizeId !== "",
-          );
-
-        if (selectedSizes && selectedSizes.length > 0) {
-          const uniqueSizes = new Set(selectedSizes);
-          if (selectedSizes.length !== uniqueSizes.size) {
-            Swal.fire({
-              icon: "warning",
-              title: "Duplicate Size",
-              text: "You have selected the same size multiple times. Each row must have a unique size.",
-              timer: 3000,
-            });
-            return;
-          }
-        }
-      }
-
-      // Tracking Type: Size Template
-      if (trackingType === "Size Template") {
-        const rowsWithSize = breakup.filter(
-          (item) =>
-            item.sizeId !== undefined &&
-            item.sizeId !== null &&
-            item.sizeId !== "",
-        );
-
-        if (rowsWithSize.length === 0) {
-          Swal.fire({
-            icon: "warning",
-            title: "Validation Error",
-            text: "At least one size must be selected.",
-            timer: 3000,
-          });
-          return;
-        }
-
-        for (let i = 0; i < breakup.length; i++) {
-          const item = breakup[i];
-          const hasSize =
-            item.sizeId !== undefined &&
-            item.sizeId !== null &&
-            item.sizeId !== "";
-          const hasQty =
-            item.qty !== undefined &&
-            item.qty !== null &&
-            String(item.qty).trim() !== "" &&
-            Number(item.qty) > 0;
-
-          if (hasSize && !hasQty) {
-            Swal.fire({
-              icon: "warning",
-              title: "Validation Error",
-              text: `Qty is mandatory and must be greater than 0 for selected size at row ${i + 1}.`,
-              timer: 3000,
-            });
-            return;
-          }
-
-          if (!hasSize && hasQty) {
-            Swal.fire({
-              icon: "warning",
-              title: "Validation Error",
-              text: `Size is required for row ${i + 1} where Qty is entered.`,
-              timer: 3000,
-            });
-            return;
-          }
-        }
-      }
-
-      // Tracking Type: Size Template + Barcode
-      if (trackingType === "Size Template + Barcode") {
-        let hasAnyFilled = false;
-        for (let i = 0; i < breakup.length; i++) {
-          const item = breakup[i];
-          const hasSize =
-            item.sizeId !== undefined &&
-            item.sizeId !== null &&
-            item.sizeId !== "";
-          const hasFrom =
-            item.barcodeFrom && String(item.barcodeFrom).trim() !== "";
-          const hasTo = item.barcodeTo && String(item.barcodeTo).trim() !== "";
-          const hasQty =
-            item.qty !== undefined &&
-            item.qty !== null &&
-            String(item.qty).trim() !== "" &&
-            Number(item.qty) > 0;
-
-          if (hasSize || hasFrom || hasTo || hasQty) {
-            hasAnyFilled = true;
-            if (!(hasSize && hasFrom && hasTo && hasQty)) {
-              Swal.fire({
-                icon: "warning",
-                title: "Validation Error",
-                text: `Size, Barcode From, Barcode To, and Qty are all mandatory for row ${i + 1}.`,
-                timer: 3000,
-              });
-              return;
-            }
-          }
-        }
-
-        if (!hasAnyFilled) {
-          Swal.fire({
-            icon: "warning",
-            title: "Validation Error",
-            text: "At least one row with Size, Barcode From, Barcode To, and Qty is required.",
-            timer: 3000,
-          });
-          return;
-        }
-      }
-
-      // Tracking Type: Barcode
-      if (trackingType === "Barcode") {
-        let hasAnyFilled = false;
-        for (let i = 0; i < breakup.length; i++) {
-          const item = breakup[i];
-          const hasFrom =
-            item.barcodeFrom && String(item.barcodeFrom).trim() !== "";
-          const hasTo = item.barcodeTo && String(item.barcodeTo).trim() !== "";
-          const hasQty =
-            item.qty !== undefined &&
-            item.qty !== null &&
-            String(item.qty).trim() !== "" &&
-            Number(item.qty) !== 0;
-
-          if (hasFrom || hasTo || hasQty) {
-            hasAnyFilled = true;
-            if (!(hasFrom && hasTo && hasQty)) {
-              Swal.fire({
-                icon: "warning",
-                title: "Validation Error",
-                text: `Barcode From, Barcode To and Qty are mandatory for row ${i + 1}.`,
-                timer: 3000,
-              });
-              return;
-            }
-          }
-        }
-        if (!hasAnyFilled) {
-          Swal.fire({
-            icon: "warning",
-            title: "Validation Error",
-            text: "At least one row with Barcode From, Barcode To and Qty is required.",
-            timer: 3000,
-          });
-          return;
-        }
-      }
-    }
     setSizeModalOpen(false);
   };
 
@@ -323,7 +153,7 @@ const OrderItems = ({
           }));
         }
       } catch (e) {
-        console.error("Failed to fetch size template details", e);
+        console.error("Failed to fetch Size details", e);
       }
     }
 
@@ -681,11 +511,9 @@ const OrderItems = ({
                   >
                     {/* <option value="None">None</option> */}
 
-                    <option value="Size Template">Size</option>
+                    <option value="Size">Size</option>
                     <option value="Barcode">Barcode</option>
-                    <option value="Size Template + Barcode">
-                      Size + Barcode
-                    </option>
+                    <option value="Size + Barcode">Size + Barcode</option>
                   </select>
                 </td>
                 <td className="border border-gray-300 text-center items-center">
@@ -763,19 +591,15 @@ const OrderItems = ({
                     }}
                     disabled={
                       readOnly ||
-                      [
-                        "Size Template",
-                        "Size Template + Barcode",
-                        "Barcode",
-                      ].includes(row.trackingType)
+                      ["Size", "Size + Barcode", "Barcode"].includes(
+                        row.trackingType,
+                      )
                     }
                     readOnly={
                       readOnly ||
-                      [
-                        "Size Template",
-                        "Size Template + Barcode",
-                        "Barcode",
-                      ].includes(row.trackingType)
+                      ["Size", "Size + Barcode", "Barcode"].includes(
+                        row.trackingType,
+                      )
                     }
                   />
                 </td>
@@ -862,7 +686,7 @@ const OrderItems = ({
                           <img
                             src={imgUrl}
                             alt={itemName}
-                            className="w-5 h-5 object-cover rounded-xs"
+                            className="w-5 h-4 object-cover rounded-xs"
                             onError={(e) => {
                               e.currentTarget.style.display = "none";
                             }}
@@ -998,7 +822,7 @@ const OrderItems = ({
                 {orderItems[activeRowIndex]?.trackingType === "Barcode"
                   ? "Barcode Wise Breakup"
                   : orderItems[activeRowIndex]?.trackingType ===
-                      "Size Template + Barcode"
+                      "Size + Barcode"
                     ? "Size + Barcode Wise Breakup"
                     : "Size Wise Breakup"}
               </h3>
@@ -1017,7 +841,7 @@ const OrderItems = ({
               {/* {orderItems[activeRowIndex]?.trackingType !== "Barcode" && (
                 <div className="mb-3 bg-slate-50 p-2 border border-slate-200 rounded flex items-center gap-3">
                   <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    Size Template
+                    Size
                   </span>
                   <span className="text-[12px] font-bold text-slate-700">
                     {sizeTemplateList?.data?.find(
@@ -1148,9 +972,8 @@ const OrderItems = ({
                   </table>
                 )}
 
-                {/* --- SIZE TEMPLATE TYPE TABLE --- */}
-                {orderItems[activeRowIndex]?.trackingType ===
-                  "Size Template" && (
+                {/* --- Size TYPE TABLE --- */}
+                {orderItems[activeRowIndex]?.trackingType === "Size" && (
                   <table className="w-[450px] border-separate border-spacing-0 border-t border-l border-slate-200">
                     <thead>
                       <tr>
@@ -1275,9 +1098,9 @@ const OrderItems = ({
                   </table>
                 )}
 
-                {/* --- SIZE TEMPLATE + BARCODE TYPE TABLE --- */}
+                {/* --- Size + BARCODE TYPE TABLE --- */}
                 {orderItems[activeRowIndex]?.trackingType ===
-                  "Size Template + Barcode" && (
+                  "Size + Barcode" && (
                   <table className="w-full border-separate border-spacing-0 border-t border-l border-slate-200">
                     <thead>
                       <tr>

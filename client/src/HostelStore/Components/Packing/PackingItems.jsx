@@ -926,7 +926,7 @@ const PackingItems = ({
                             <img
                               src={imgUrl}
                               alt={itemName}
-                              className="w-5 h-5 object-cover rounded-xs"
+                              className="w-5 h-4 object-cover rounded-xs"
                               onError={(e) => {
                                 e.currentTarget.style.display = "none";
                               }}

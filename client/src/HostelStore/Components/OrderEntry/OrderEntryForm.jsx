@@ -55,7 +55,7 @@ const createEmptyOrderItems = (count = 14) =>
   Array.from({ length: count }, () => ({
     itemGroupId: "",
     styleItemId: "",
-    trackingType: "Size Template",
+    trackingType: "Size",
     sizeId: "",
     sizeTemplateId: "",
     barcodeFrom: "",
@@ -209,7 +209,7 @@ const OrderEntryForm = ({
       const initialItems = (data?.orderItems || []).map((item) => ({
         ...item,
         itemGroupId: item.itemGroupId || "",
-        trackingType: item.trackingType || "Size Template",
+        trackingType: item.trackingType || "Size",
         sizeBreakup: item.sizeBreakup || [],
         price: item?.price?.toFixed(2) || "",
       }));
@@ -248,7 +248,11 @@ const OrderEntryForm = ({
     termsId,
     docId,
     orderItems: orderItems
-      ?.map((item, idx) => ({ ...item, uiIndex: idx + 1 }))
+      ?.map((item, idx) => ({
+        ...item,
+        uiIndex: idx + 1,
+        rawSizeBreakup: item.sizeBreakup || [],
+      }))
       ?.filter((i) => i.styleItemId)
       .map((item, idx) => ({
         ...item,
@@ -361,6 +365,8 @@ const OrderEntryForm = ({
 
     items.forEach((item) => {
       const rowIndex = item.uiIndex;
+      const rawBreakup = item.rawSizeBreakup || item.sizeBreakup || [];
+
       if (!item.orderQty || Number(item.orderQty) <= 0) {
         errors.push(`Row ${rowIndex}: Order Qty must be greater than 0`);
       }
@@ -372,59 +378,119 @@ const OrderEntryForm = ({
         errors.push(`Row ${rowIndex}: UOM is required`);
       }
 
-      if (item.trackingType === "Size Template") {
-        const rowsWithSize = (item.sizeBreakup || []).filter(
-          (s) => s.sizeId !== undefined && s.sizeId !== null && s.sizeId !== "",
-        );
-        if (rowsWithSize.length === 0) {
-          errors.push(
-            `Row ${rowIndex}: At least one size is required for Size Template`,
+      // Check unique sizes for tracking types with size selection
+      if (
+        item.trackingType === "Size" ||
+        item.trackingType === "Size + Barcode"
+      ) {
+        const selectedSizes = rawBreakup
+          ?.map((s) => s.sizeId)
+          ?.filter(
+            (sizeId) =>
+              sizeId !== undefined && sizeId !== null && sizeId !== "",
           );
-        } else {
-          const hasMissingQty = rowsWithSize.some(
-            (s) =>
-              s.qty === undefined ||
-              s.qty === null ||
-              String(s.qty).trim() === "" ||
-              Number(s.qty) <= 0,
-          );
-          if (hasMissingQty) {
+
+        if (selectedSizes && selectedSizes.length > 0) {
+          const uniqueSizes = new Set(selectedSizes);
+          if (selectedSizes.length !== uniqueSizes.size) {
             errors.push(
-              `Row ${rowIndex}: Qty must be filled and greater than 0 for all selected sizes`,
+              `Row ${rowIndex}: You have selected the same size multiple times. Each row must have a unique size.`,
             );
           }
         }
       }
 
-      if (item.trackingType === "Size Template + Barcode") {
-        const validRows = (item.sizeBreakup || []).filter(
-          (s) =>
-            s.sizeId &&
-            s.barcodeFrom &&
-            String(s.barcodeFrom).trim() !== "" &&
-            s.barcodeTo &&
-            String(s.barcodeTo).trim() !== "" &&
-            Number(s.qty) > 0,
+      // Tracking Type: Size
+      if (item.trackingType === "Size") {
+        const rowsWithSize = rawBreakup.filter(
+          (s) => s.sizeId !== undefined && s.sizeId !== null && s.sizeId !== "",
         );
-        if (validRows.length === 0) {
+
+        if (rowsWithSize.length === 0) {
+          errors.push(`Row ${rowIndex}: At least one size must be selected.`);
+        } else {
+          for (let i = 0; i < rawBreakup.length; i++) {
+            const s = rawBreakup[i];
+            const hasSize =
+              s.sizeId !== undefined && s.sizeId !== null && s.sizeId !== "";
+            const hasQty =
+              s.qty !== undefined &&
+              s.qty !== null &&
+              String(s.qty).trim() !== "" &&
+              Number(s.qty) > 0;
+
+            if (hasSize && !hasQty) {
+              errors.push(
+                `Row ${rowIndex}: Qty is mandatory and must be greater than 0 for selected size at row ${i + 1}.`,
+              );
+            }
+
+            if (!hasSize && hasQty) {
+              errors.push(
+                `Row ${rowIndex}: Size is required for row ${i + 1} where Qty is entered.`,
+              );
+            }
+          }
+        }
+      }
+
+      // Tracking Type: Size + Barcode
+      if (item.trackingType === "Size + Barcode") {
+        let hasAnyFilled = false;
+        for (let i = 0; i < rawBreakup.length; i++) {
+          const s = rawBreakup[i];
+          const hasSize =
+            s.sizeId !== undefined && s.sizeId !== null && s.sizeId !== "";
+          const hasFrom = s.barcodeFrom && String(s.barcodeFrom).trim() !== "";
+          const hasTo = s.barcodeTo && String(s.barcodeTo).trim() !== "";
+          const hasQty =
+            s.qty !== undefined &&
+            s.qty !== null &&
+            String(s.qty).trim() !== "" &&
+            Number(s.qty) > 0;
+
+          if (hasSize || hasFrom || hasTo || hasQty) {
+            hasAnyFilled = true;
+            if (!(hasSize && hasFrom && hasTo && hasQty)) {
+              errors.push(
+                `Row ${rowIndex}: Size, Barcode From, Barcode To, and Qty are all mandatory for row ${i + 1}.`,
+              );
+            }
+          }
+        }
+
+        if (!hasAnyFilled) {
           errors.push(
-            `Row ${rowIndex}: Size, Barcode From, Barcode To, and Qty are required for Size Template + Barcode`,
+            `Row ${rowIndex}: At least one row with Size, Barcode From, Barcode To, and Qty is required.`,
           );
         }
       }
 
+      // Tracking Type: Barcode
       if (item.trackingType === "Barcode") {
-        const validRows = (item.sizeBreakup || []).filter(
-          (s) =>
-            s.barcodeFrom &&
-            String(s.barcodeFrom).trim() !== "" &&
-            s.barcodeTo &&
-            String(s.barcodeTo).trim() !== "" &&
-            Number(s.qty) > 0,
-        );
-        if (validRows.length === 0) {
+        let hasAnyFilled = false;
+        for (let i = 0; i < rawBreakup.length; i++) {
+          const s = rawBreakup[i];
+          const hasFrom = s.barcodeFrom && String(s.barcodeFrom).trim() !== "";
+          const hasTo = s.barcodeTo && String(s.barcodeTo).trim() !== "";
+          const hasQty =
+            s.qty !== undefined &&
+            s.qty !== null &&
+            String(s.qty).trim() !== "" &&
+            Number(s.qty) !== 0;
+
+          if (hasFrom || hasTo || hasQty) {
+            hasAnyFilled = true;
+            if (!(hasFrom && hasTo && hasQty)) {
+              errors.push(
+                `Row ${rowIndex}: Barcode From, Barcode To and Qty are mandatory for row ${i + 1}.`,
+              );
+            }
+          }
+        }
+        if (!hasAnyFilled) {
           errors.push(
-            `Row ${rowIndex}: Barcode From, Barcode To, and Qty are required for Barcode`,
+            `Row ${rowIndex}: At least one row with Barcode From, Barcode To and Qty is required.`,
           );
         }
       }
