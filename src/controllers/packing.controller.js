@@ -33,9 +33,14 @@ async function geOrderItemsList(req, res, next) {
 
 async function getOne(req, res, next) {
   try {
-    res.json(await _getOne(req.params.id));
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return next();
+    }
+    res.json(await _getOne(id));
   } catch (err) {
     console.error(`Error`, err.message);
+    next(err);
   }
 }
 async function create(req, res, next) {

@@ -3663,7 +3663,8 @@ export function FxSelectWithAdd({
   nextRef,
   advanceOnEnter = false,
   advanceOnSelect = true,
-  menuPortalTarget = null,
+  menuPortalTarget = typeof document !== "undefined" ? document.body : null,
+  menuPlacement = "auto",
 }) {
   const [showAddNewModal, setShowAddNewModal] = useState(false);
   const [searchValue, setSearchValue] = useState("");
@@ -3754,6 +3755,7 @@ export function FxSelectWithAdd({
         styles={customStyles}
         menuPortalTarget={menuPortalTarget}
         menuPosition={menuPortalTarget ? "fixed" : "absolute"}
+        menuPlacement={menuPlacement}
         tabSelectsValue={!!value}
         onInputChange={(value, { action }) => {
           if (action === "input-change") {

@@ -50,6 +50,26 @@ import {
   TransactionActions,
   TransactionLayout,
 } from "../../../Basic/components/Reuseable/index.js";
+import { invalidateItems } from "../../../redux/Dispatch/ItemsInvalidateTags.js";
+
+const createEmptyOrderItems = (count = 14) =>
+  Array.from({ length: count }, () => ({
+    itemGroupId: "",
+    styleItemId: "",
+    trackingType: "Size",
+    sizeId: "",
+    sizeTemplateId: "",
+    barcodeFrom: "",
+    barcodeTo: "",
+    uomId: "",
+    gsmId: "",
+    hsnId: "",
+    orderQty: "",
+    price: "",
+    remarks: "",
+    description: "",
+    sizeBreakup: [],
+  }));
 
 const OrderEntryForm = ({
   onClose,
@@ -109,16 +129,30 @@ const OrderEntryForm = ({
   const [orderQty, setOrderQty] = useState("");
   const [termsId, setTermsId] = useState("");
   const [printModalOpen, setPrintModalOpen] = useState(false);
-  const [orderItems, setOrderItems] = useState(
-    Array.from({ length: 14 }, () => ({
-      styleItemId: "",
-      sizeId: "",
-      uomId: "",
-      gsmId: "",
-      hsnId: "",
-      orderQty: "",
-    })),
-  );
+  const [orderItems, setOrderItems] = useState(() => createEmptyOrderItems(14));
+
+  const handleOrderTypeChange = (val) => {
+    if (val != orderType) {
+      setOrderType(val);
+      setCustomerId("");
+      setOrderBranchId("");
+      setOrderItems(createEmptyOrderItems(14));
+    }
+  };
+
+  const handleCustomerChange = (val) => {
+    if (val != customerId) {
+      setCustomerId(val);
+      setOrderItems(createEmptyOrderItems(14));
+    }
+  };
+
+  const handleOrderBranchChange = (val) => {
+    if (val != orderBranchId) {
+      setOrderBranchId(val);
+      setOrderItems(createEmptyOrderItems(14));
+    }
+  };
 
   // ── Approval state (File 2) ──────────────────────────────────────────────
   const [approvalModal, setApprovalModal] = useState(false);
@@ -176,29 +210,13 @@ const OrderEntryForm = ({
       const initialItems = (data?.orderItems || []).map((item) => ({
         ...item,
         itemGroupId: item.itemGroupId || "",
-        trackingType: item.trackingType || "None",
+        trackingType: item.trackingType || "Size",
         sizeBreakup: item.sizeBreakup || [],
         price: item?.price?.toFixed(2) || "",
       }));
 
       const emptyRowsCount = Math.max(0, 14 - initialItems.length);
-      const emptyRows = Array.from({ length: emptyRowsCount }, () => ({
-        itemGroupId: "",
-        styleItemId: "",
-        trackingType: "None",
-        sizeId: "",
-        sizeTemplateId: "",
-        barcodeFrom: "",
-        barcodeTo: "",
-        uomId: "",
-        gsmId: "",
-        hsnId: "",
-        orderQty: "",
-        price: "",
-        remarks: "",
-        description: "",
-        sizeBreakup: [],
-      }));
+      const emptyRows = createEmptyOrderItems(emptyRowsCount);
 
       setOrderItems([...initialItems, ...emptyRows]);
     },
@@ -231,7 +249,11 @@ const OrderEntryForm = ({
     termsId,
     docId,
     orderItems: orderItems
-      ?.map((item, idx) => ({ ...item, uiIndex: idx + 1 }))
+      ?.map((item, idx) => ({
+        ...item,
+        uiIndex: idx + 1,
+        rawSizeBreakup: item.sizeBreakup || [],
+      }))
       ?.filter((i) => i.styleItemId)
       .map((item, idx) => ({
         ...item,
@@ -240,7 +262,6 @@ const OrderEntryForm = ({
           item.sizeBreakup?.filter((size) => Number(size.qty) > 0) || [],
       })),
   };
-  console.log(data.orderItems, "payloadcheck");
   const handleSubmitCustom = async (callback, data, text, nextProcess) => {
     try {
       const formData = new FormData();
@@ -289,6 +310,7 @@ const OrderEntryForm = ({
           showConfirmButton: false,
           timer: 2000,
           didClose: () => {
+            invalidateItems();
             dispatchInvalidate();
 
             if (returnData.statusCode === 0) {
@@ -345,6 +367,8 @@ const OrderEntryForm = ({
 
     items.forEach((item) => {
       const rowIndex = item.uiIndex;
+      const rawBreakup = item.rawSizeBreakup || item.sizeBreakup || [];
+
       if (!item.orderQty || Number(item.orderQty) <= 0) {
         errors.push(`Row ${rowIndex}: Order Qty must be greater than 0`);
       }
@@ -354,6 +378,123 @@ const OrderEntryForm = ({
 
       if (!item.uomId) {
         errors.push(`Row ${rowIndex}: UOM is required`);
+      }
+
+      // Check unique sizes for tracking types with size selection
+      if (
+        item.trackingType === "Size" ||
+        item.trackingType === "Size + Barcode"
+      ) {
+        const selectedSizes = rawBreakup
+          ?.map((s) => s.sizeId)
+          ?.filter(
+            (sizeId) =>
+              sizeId !== undefined && sizeId !== null && sizeId !== "",
+          );
+
+        if (selectedSizes && selectedSizes.length > 0) {
+          const uniqueSizes = new Set(selectedSizes);
+          if (selectedSizes.length !== uniqueSizes.size) {
+            errors.push(
+              `Row ${rowIndex}: You have selected the same size multiple times. Each row must have a unique size.`,
+            );
+          }
+        }
+      }
+
+      // Tracking Type: Size
+      if (item.trackingType === "Size") {
+        const rowsWithSize = rawBreakup.filter(
+          (s) => s.sizeId !== undefined && s.sizeId !== null && s.sizeId !== "",
+        );
+
+        if (rowsWithSize.length === 0) {
+          errors.push(`Row ${rowIndex}: At least one size must be selected.`);
+        } else {
+          for (let i = 0; i < rawBreakup.length; i++) {
+            const s = rawBreakup[i];
+            const hasSize =
+              s.sizeId !== undefined && s.sizeId !== null && s.sizeId !== "";
+            const hasQty =
+              s.qty !== undefined &&
+              s.qty !== null &&
+              String(s.qty).trim() !== "" &&
+              Number(s.qty) > 0;
+
+            if (hasSize && !hasQty) {
+              errors.push(
+                `Row ${rowIndex}: Qty is mandatory and must be greater than 0 for selected size at row ${i + 1}.`,
+              );
+            }
+
+            if (!hasSize && hasQty) {
+              errors.push(
+                `Row ${rowIndex}: Size is required for row ${i + 1} where Qty is entered.`,
+              );
+            }
+          }
+        }
+      }
+
+      // Tracking Type: Size + Barcode
+      if (item.trackingType === "Size + Barcode") {
+        let hasAnyFilled = false;
+        for (let i = 0; i < rawBreakup.length; i++) {
+          const s = rawBreakup[i];
+          const hasSize =
+            s.sizeId !== undefined && s.sizeId !== null && s.sizeId !== "";
+          const hasFrom = s.barcodeFrom && String(s.barcodeFrom).trim() !== "";
+          const hasTo = s.barcodeTo && String(s.barcodeTo).trim() !== "";
+          const hasQty =
+            s.qty !== undefined &&
+            s.qty !== null &&
+            String(s.qty).trim() !== "" &&
+            Number(s.qty) > 0;
+
+          if (hasSize || hasFrom || hasTo || hasQty) {
+            hasAnyFilled = true;
+            if (!(hasSize && hasFrom && hasTo && hasQty)) {
+              errors.push(
+                `Row ${rowIndex}: Size, Barcode From, Barcode To, and Qty are all mandatory for row ${i + 1}.`,
+              );
+            }
+          }
+        }
+
+        if (!hasAnyFilled) {
+          errors.push(
+            `Row ${rowIndex}: At least one row with Size, Barcode From, Barcode To, and Qty is required.`,
+          );
+        }
+      }
+
+      // Tracking Type: Barcode
+      if (item.trackingType === "Barcode") {
+        let hasAnyFilled = false;
+        for (let i = 0; i < rawBreakup.length; i++) {
+          const s = rawBreakup[i];
+          const hasFrom = s.barcodeFrom && String(s.barcodeFrom).trim() !== "";
+          const hasTo = s.barcodeTo && String(s.barcodeTo).trim() !== "";
+          const hasQty =
+            s.qty !== undefined &&
+            s.qty !== null &&
+            String(s.qty).trim() !== "" &&
+            Number(s.qty) !== 0;
+
+          if (hasFrom || hasTo || hasQty) {
+            hasAnyFilled = true;
+            if (!(hasFrom && hasTo && hasQty)) {
+              errors.push(
+                `Row ${rowIndex}: Barcode From, Barcode To and Qty are mandatory for row ${i + 1}.`,
+              );
+            }
+          }
+        }
+        if (!hasAnyFilled) {
+          errors.push(
+            `Row ${rowIndex}: At least one row with Barcode From, Barcode To and Qty is required.`,
+          );
+        }
       }
     });
 
@@ -613,7 +754,7 @@ const OrderEntryForm = ({
               name="Order Type"
               options={poTypes}
               value={orderType}
-              setValue={setOrderType}
+              setValue={handleOrderTypeChange}
               required={true}
               readOnly={isReadOnly}
               disabled={childRecord.current > 0 || isReadOnly}
@@ -664,7 +805,7 @@ const OrderEntryForm = ({
                     "id",
                   )}
                   value={customerId}
-                  setValue={setCustomerId}
+                  setValue={handleCustomerChange}
                   required={true}
                   readOnly={isReadOnly}
                   addNewLabel="+ Add New Customer"
@@ -707,7 +848,7 @@ const OrderEntryForm = ({
                     "id",
                   )}
                   value={orderBranchId}
-                  setValue={setOrderBranchId}
+                  setValue={handleOrderBranchChange}
                   required={true}
                   readOnly={isReadOnly}
                   disabled={childRecord.current > 0 || isReadOnly}
@@ -733,21 +874,27 @@ const OrderEntryForm = ({
         hasSummaryTitle="Order Summary"
         totalsRows={[
           {
-            key: "totalItems",
-            label: "Total Items",
-            value: orderItems?.filter((item) => item.styleItemId)?.length || 0,
+            key: "",
+            label: " ",
+            value: null,
             summaryColumn: "right",
           },
-          {
-            key: "totalQty",
-            label: "Total Qty",
-            value: orderItems?.reduce((acc, item) => {
-              const qty = parseFloat(item.orderQty) || 0;
-              return acc + qty;
-            }, 0),
-            summaryColumn: "right",
-            emphasized: true,
-          },
+          // {
+          //   key: "totalItems",
+          //   label: "Total Items",
+          //   value: orderItems?.filter((item) => item.styleItemId)?.length || 0,
+          //   summaryColumn: "right",
+          // },
+          // {
+          //   key: "totalQty",
+          //   label: "Total Qty",
+          //   value: orderItems?.reduce((acc, item) => {
+          //     const qty = parseFloat(item.orderQty) || 0;
+          //     return acc + qty;
+          //   }, 0),
+          //   summaryColumn: "right",
+          //   emphasized: true,
+          // },
         ]}
       />
       <div className="flex flex-col md:flex-row gap-2 justify-between mt-4 pb-4 px-2">
@@ -806,7 +953,12 @@ const OrderEntryForm = ({
 
         {/* Right Buttons */}
         <div className="flex gap-2 flex-wrap">
-          {(!(!id || (parentReadOnly && !(singleData?.data?.childRecord > 0)) === false || isDisabled)) && (
+          {!(
+            !id ||
+            (parentReadOnly && !(singleData?.data?.childRecord > 0)) ===
+              false ||
+            isDisabled
+          ) && (
             <button
               onClick={() => setReadOnly(false)}
               className="bg-yellow-600 text-white px-2 py-1 rounded hover:bg-yellow-700 flex items-center text-xs font-medium"

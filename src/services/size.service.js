@@ -15,8 +15,12 @@ async function get(req) {
           sizeTemplateLists: true,
           poItems: true,
           inwardItems: true,
+          orderSizeBreakups: true,
         },
       },
+    },
+    orderBy: {
+      id: "asc",
     },
   });
   return {
@@ -27,7 +31,8 @@ async function get(req) {
         childRecord:
           item._count.sizeTemplateLists +
           item._count.poItems +
-          item._count.inwardItems,
+          item._count.inwardItems +
+          item._count.orderSizeBreakups,
       };
     }),
   };
@@ -44,6 +49,12 @@ async function getOne(id) {
       sizeId: parseInt(id),
     },
   });
+  const childRecordOrder = await prisma.orderSizeBreakup.count({
+    where: {
+      sizeId: parseInt(id),
+    },
+  });
+
   const data = await prisma.size.findUnique({
     where: {
       id: parseInt(id),
@@ -52,7 +63,10 @@ async function getOne(id) {
   if (!data) return NoRecordFound("size");
   return {
     statusCode: 0,
-    data: { ...data, ...{ childRecord: childRecordPo + childRecordInward } },
+    data: {
+      ...data,
+      ...{ childRecord: childRecordPo + childRecordInward + childRecordOrder },
+    },
   };
 }
 

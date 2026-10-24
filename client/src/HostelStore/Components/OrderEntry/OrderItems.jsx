@@ -5,8 +5,9 @@ import { useGetHsnMasterQuery } from "../../../redux/services/HsnMasterServices"
 import { findFromList, getCommonParams } from "../../../Utils/helper";
 import Swal from "sweetalert2";
 import { Gsm, Size, StyleItemMaster, UomMaster } from "..";
-import { FiEye } from "react-icons/fi";
+import { FiEye, FiImage } from "react-icons/fi";
 import Modal from "../../../UiComponents/Modal";
+import { getImageUrlPath } from "../../../Constants/index.js";
 import {
   useGetSizeTemplateQuery,
   useLazyGetSizeTemplateByIdQuery,
@@ -34,15 +35,28 @@ const OrderItems = ({
   });
   const [triggerGetTemplateById] = useLazyGetSizeTemplateByIdQuery();
 
+  const [imagePreviewModalOpen, setImagePreviewModalOpen] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState("");
+  const [previewImageTitle, setPreviewImageTitle] = useState("");
+
+  const handleOpenImagePreview = (url, title) => {
+    if (!url) return;
+    setPreviewImageUrl(url);
+    setPreviewImageTitle(title || "Style Item Image");
+    setImagePreviewModalOpen(true);
+  };
+
   const EMPTY_ROW = {
     itemGroupId: "",
     styleItemId: "",
-    trackingType: "None",
+    trackingType: "Size",
     sizeTemplateId: "",
     uomId: "",
     gsmId: "",
     hsnId: "",
     orderQty: "",
+    price: "",
+    StyleItem: null,
     remarks: "",
     description: "",
     sizeBreakup: [],
@@ -72,9 +86,9 @@ const OrderItems = ({
         let elementId = "";
         if (trackingType === "Barcode") {
           elementId = "barcodeFrom-0";
-        } else if (trackingType === "Size Template") {
+        } else if (trackingType === "Size") {
           elementId = "sizeQty-0";
-        } else if (trackingType === "Size Template + Barcode") {
+        } else if (trackingType === "Size + Barcode") {
           elementId = "sizeBarcodeFrom-0";
         }
 
@@ -90,62 +104,6 @@ const OrderItems = ({
   }, [sizeModalOpen, activeRowIndex]);
 
   const handleCloseSizeModal = () => {
-    if (activeRowIndex !== null && orderItems[activeRowIndex]) {
-      const currentRow = orderItems[activeRowIndex];
-
-      const selectedSizes = currentRow.sizeBreakup
-        ?.map((item) => item.sizeId)
-        ?.filter(
-          (sizeId) => sizeId !== undefined && sizeId !== null && sizeId !== "",
-        );
-
-      if (selectedSizes && selectedSizes.length > 0) {
-        const uniqueSizes = new Set(selectedSizes);
-        if (selectedSizes.length !== uniqueSizes.size) {
-          Swal.fire({
-            icon: "warning",
-            title: "Duplicate Size",
-            text: "You have selected the same size multiple times. Each row must have a unique size.",
-            timer: 3000,
-          });
-          return;
-        }
-      }
-
-      if (
-        currentRow?.trackingType === "Barcode" ||
-        currentRow?.trackingType === "Size Template + Barcode"
-      ) {
-        let hasError = false;
-        for (let i = 0; i < (currentRow.sizeBreakup?.length || 0); i++) {
-          const item = currentRow.sizeBreakup[i];
-          const hasFrom =
-            item.barcodeFrom && String(item.barcodeFrom).trim() !== "";
-          const hasTo = item.barcodeTo && String(item.barcodeTo).trim() !== "";
-          const hasQty =
-            item.qty !== undefined &&
-            item.qty !== null &&
-            String(item.qty).trim() !== "" &&
-            Number(item.qty) !== 0;
-
-          if (hasFrom || hasTo || hasQty) {
-            if (!(hasFrom && hasTo && hasQty)) {
-              hasError = true;
-              break;
-            }
-          }
-        }
-        if (hasError) {
-          Swal.fire({
-            icon: "warning",
-            title: "Validation Error",
-            text: "Barcode From, Barcode To and Qty are mandatory for a row.",
-            timer: 3000,
-          });
-          return;
-        }
-      }
-    }
     setSizeModalOpen(false);
   };
 
@@ -195,7 +153,7 @@ const OrderItems = ({
           }));
         }
       } catch (e) {
-        console.error("Failed to fetch size template details", e);
+        console.error("Failed to fetch Size details", e);
       }
     }
 
@@ -288,11 +246,17 @@ const OrderItems = ({
           hsnId: selectedItem.hsnId || "",
           sizeTemplateId: selectedItem.sizeTemplateId || "",
           price: selectedItem.price?.toFixed(2) || "",
+          StyleItem: selectedItem,
           sizeBreakup: [],
           orderQty: "",
           barcodeFrom: "",
           barcodeTo: "",
           description: "",
+        };
+      } else {
+        updatedRow = {
+          ...updatedRow,
+          StyleItem: null,
         };
       }
     }
@@ -400,10 +364,10 @@ const OrderItems = ({
               <th className="w-6 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 S.No
               </th>
-              <th className="w-80 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="w-[400px] px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Description of Goods
               </th>
-              <th className="w-36 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="w-44 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Item Group
               </th>
               <th className="w-24 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
@@ -423,6 +387,9 @@ const OrderItems = ({
               </th>
               <th className="w-24 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Price
+              </th>
+              <th className="w-16 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+                Image
               </th>
               <th className="w-full px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
                 Remarks
@@ -544,11 +511,9 @@ const OrderItems = ({
                   >
                     {/* <option value="None">None</option> */}
 
-                    <option value="Size Template">Size</option>
+                    <option value="Size">Size</option>
                     <option value="Barcode">Barcode</option>
-                    <option value="Size Template + Barcode">
-                      Size + Barcode
-                    </option>
+                    <option value="Size + Barcode">Size + Barcode</option>
                   </select>
                 </td>
                 <td className="border border-gray-300 text-center items-center">
@@ -626,19 +591,15 @@ const OrderItems = ({
                     }}
                     disabled={
                       readOnly ||
-                      [
-                        "Size Template",
-                        "Size Template + Barcode",
-                        "Barcode",
-                      ].includes(row.trackingType)
+                      ["Size", "Size + Barcode", "Barcode"].includes(
+                        row.trackingType,
+                      )
                     }
                     readOnly={
                       readOnly ||
-                      [
-                        "Size Template",
-                        "Size Template + Barcode",
-                        "Barcode",
-                      ].includes(row.trackingType)
+                      ["Size", "Size + Barcode", "Barcode"].includes(
+                        row.trackingType,
+                      )
                     }
                   />
                 </td>
@@ -689,6 +650,54 @@ const OrderItems = ({
                     }}
                     disabled={readOnly}
                   ></input>
+                </td>
+
+                <td className="border border-gray-300 text-center px-1 py-0.5 w-16">
+                  {(() => {
+                    const currentStyleItem =
+                      row?.StyleItem ||
+                      styleItemList?.data?.find(
+                        (item) => item.id === row?.styleItemId,
+                      );
+                    const rawImage = currentStyleItem?.styleImage;
+                    const imgUrl = rawImage ? getImageUrlPath(rawImage) : null;
+                    const itemName = currentStyleItem?.name || "Style Item";
+
+                    if (!imgUrl) {
+                      return (
+                        <div className="flex items-center justify-center text-gray-300 text-[11px]">
+                          -
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="flex items-center justify-center">
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenImagePreview(imgUrl, itemName);
+                          }}
+                          className="relative group p-0.5 rounded border border-gray-200 hover:border-indigo-500 bg-white shadow-2xs hover:shadow-xs transition-all cursor-pointer focus:outline-none"
+                          title="Click to preview image"
+                        >
+                          <img
+                            src={imgUrl}
+                            alt={itemName}
+                            className="w-5 h-4 object-cover rounded-xs"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-black/35 rounded-xs opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                            <FiEye className="text-white w-3 h-3" />
+                          </div>
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </td>
 
                 <td className="border border-gray-300 grid-editable-cell">
@@ -749,6 +758,7 @@ const OrderItems = ({
                   ?.reduce((sum, row) => sum + (Number(row.price) || 0), 0)
                   .toFixed(2)}
               </td>
+              <td className="border border-gray-300"></td>
               <td className="border border-gray-300"></td>
             </tr>
           </tfoot>
@@ -812,7 +822,7 @@ const OrderItems = ({
                 {orderItems[activeRowIndex]?.trackingType === "Barcode"
                   ? "Barcode Wise Breakup"
                   : orderItems[activeRowIndex]?.trackingType ===
-                      "Size Template + Barcode"
+                      "Size + Barcode"
                     ? "Size + Barcode Wise Breakup"
                     : "Size Wise Breakup"}
               </h3>
@@ -831,7 +841,7 @@ const OrderItems = ({
               {/* {orderItems[activeRowIndex]?.trackingType !== "Barcode" && (
                 <div className="mb-3 bg-slate-50 p-2 border border-slate-200 rounded flex items-center gap-3">
                   <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    Size Template
+                    Size
                   </span>
                   <span className="text-[12px] font-bold text-slate-700">
                     {sizeTemplateList?.data?.find(
@@ -962,9 +972,8 @@ const OrderItems = ({
                   </table>
                 )}
 
-                {/* --- SIZE TEMPLATE TYPE TABLE --- */}
-                {orderItems[activeRowIndex]?.trackingType ===
-                  "Size Template" && (
+                {/* --- Size TYPE TABLE --- */}
+                {orderItems[activeRowIndex]?.trackingType === "Size" && (
                   <table className="w-[450px] border-separate border-spacing-0 border-t border-l border-slate-200">
                     <thead>
                       <tr>
@@ -992,7 +1001,40 @@ const OrderItems = ({
                             <td className="border-b border-r border-slate-200 px-1 py-0 text-center text-[11px] text-black">
                               {idx + 1}
                             </td>
-                            <td className="border-b border-r border-slate-200 px-1 py-0 text-[11px] text-black">
+                            <td
+                              data-grid-row={idx}
+                              data-grid-col={1}
+                              data-grid-editable="true"
+                              className="grid-editable-cell border border-gray-300 text-[11px]"
+                            >
+                              <FxSelectWithAdd
+                                value={item.sizeId || ""}
+                                onChange={(val) =>
+                                  handleSizeBreakupChange(idx, "sizeId", val)
+                                }
+                                disabled={readOnly}
+                                options={(sizeList?.data || [])
+                                  .filter((item) => (id ? true : item.active))
+                                  .map((item) => ({
+                                    label: item.name,
+                                    value: item.id,
+                                  }))}
+                                readOnly={readOnly}
+                                placeholder=""
+                                onKeyDown={(event) => {
+                                  if (event.key === "Delete") {
+                                    handleSizeBreakupChange(idx, "sizeId", "");
+                                  }
+                                }}
+                                addNew={true}
+                                childComponent={Size}
+                                addNewModalWidth="w-[30%] h-[45%]"
+                                advanceOnEnter
+                                advanceOnSelect
+                                menuPortalTarget={document.body}
+                              />
+                            </td>
+                            {/* <td className="border-b border-r border-slate-200 px-1 py-0 text-[11px] text-black">
                               <select
                                 className="w-full h-7 border-none bg-transparent px-1 text-[11px] text-black outline-none focus:bg-white"
                                 value={item.sizeId || ""}
@@ -1012,7 +1054,7 @@ const OrderItems = ({
                                   </option>
                                 ))}
                               </select>
-                            </td>
+                            </td> */}
                             <td className="border-b border-r border-slate-200 px-1 py-0">
                               <input
                                 id={`sizeQty-${idx}`}
@@ -1056,9 +1098,9 @@ const OrderItems = ({
                   </table>
                 )}
 
-                {/* --- SIZE TEMPLATE + BARCODE TYPE TABLE --- */}
+                {/* --- Size + BARCODE TYPE TABLE --- */}
                 {orderItems[activeRowIndex]?.trackingType ===
-                  "Size Template + Barcode" && (
+                  "Size + Barcode" && (
                   <table className="w-full border-separate border-spacing-0 border-t border-l border-slate-200">
                     <thead>
                       <tr>
@@ -1092,7 +1134,40 @@ const OrderItems = ({
                             <td className="border-b border-r border-slate-200 px-1 py-0 text-center text-[11px] text-black ">
                               {idx + 1}
                             </td>
-                            <td className="border-b border-r border-slate-200 px-1 py-0 text-[11px] text-black">
+                            <td
+                              data-grid-row={idx}
+                              data-grid-col={1}
+                              data-grid-editable="true"
+                              className="grid-editable-cell border border-gray-300 text-[11px]"
+                            >
+                              <FxSelectWithAdd
+                                value={item.sizeId || ""}
+                                onChange={(val) =>
+                                  handleSizeBreakupChange(idx, "sizeId", val)
+                                }
+                                disabled={readOnly}
+                                options={(sizeList?.data || [])
+                                  .filter((item) => (id ? true : item.active))
+                                  .map((item) => ({
+                                    label: item.name,
+                                    value: item.id,
+                                  }))}
+                                readOnly={readOnly}
+                                placeholder=""
+                                onKeyDown={(event) => {
+                                  if (event.key === "Delete") {
+                                    handleSizeBreakupChange(idx, "sizeId", "");
+                                  }
+                                }}
+                                addNew={true}
+                                childComponent={Size}
+                                addNewModalWidth="w-[30%] h-[45%]"
+                                advanceOnEnter
+                                advanceOnSelect
+                                menuPortalTarget={document.body}
+                              />
+                            </td>
+                            {/* <td className="border-b border-r border-slate-200 px-1 py-0 text-[11px] text-black">
                               <select
                                 className="w-full h-7 border-none bg-transparent px-1 text-[11px] text-black outline-none focus:bg-white"
                                 value={item.sizeId || ""}
@@ -1112,7 +1187,7 @@ const OrderItems = ({
                                   </option>
                                 ))}
                               </select>
-                            </td>
+                            </td> */}
                             <td className="border-b border-r border-slate-200 px-1 py-0">
                               <input
                                 id={`sizeBarcodeFrom-${idx}`}
@@ -1213,6 +1288,41 @@ const OrderItems = ({
                   placeholder="Enter description here..."
                 />
               </div>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {imagePreviewModalOpen && (
+        <Modal
+          isOpen={imagePreviewModalOpen}
+          onClose={() => setImagePreviewModalOpen(false)}
+          widthClass="w-[550px] max-w-[90vw]"
+        >
+          <div className="bg-slate-100 p-3 rounded-lg">
+            <div className="bg-white p-3 rounded-lg flex justify-between items-center mb-3 shadow-xs">
+              <div className="flex items-center gap-2">
+                <FiImage className="text-indigo-600 w-4 h-4" />
+                <h3 className="text-[14px] font-bold text-slate-800 truncate max-w-[400px]">
+                  {previewImageTitle
+                    ? `${previewImageTitle} - Image Preview`
+                    : "Style Item Image"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                className="bg-white text-indigo-600 border border-indigo-600 px-3 py-0.5 rounded text-[12px] hover:bg-indigo-50 font-semibold transition-colors shadow-2xs cursor-pointer"
+                onClick={() => setImagePreviewModalOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="bg-white p-3 rounded-lg shadow-xs border border-slate-200 flex items-center justify-center min-h-[250px] max-h-[70vh] overflow-auto">
+              <img
+                src={previewImageUrl}
+                alt={previewImageTitle || "Style Item"}
+                className="max-h-[65vh] max-w-full object-contain rounded shadow-md"
+              />
             </div>
           </div>
         </Modal>

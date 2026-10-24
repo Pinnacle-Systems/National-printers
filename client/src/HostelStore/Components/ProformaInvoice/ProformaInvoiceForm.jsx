@@ -4,12 +4,14 @@ import { TextInput, DropdownInput, DateInputNew } from "../../../Inputs";
 import {
   useAddProformaInvoiceMutation,
   useUpdateProformaInvoiceMutation,
-  useDeleteProformaInvoiceMutation,
   useGetProformaInvoiceByIdQuery,
   useGetProformaInvoiceQuery,
 } from "../../../redux/uniformService/ProformaInvoiceService";
 import { findFromList, getCommonParams, ModeChip } from "../../../Utils/helper";
-import { dropDownListObject } from "../../../Utils/contructObject";
+import {
+  dropDownListObject,
+  dropDownListObjectMultiple,
+} from "../../../Utils/contructObject";
 import ProformaInvoiceItems from "./ProformaInvoiceItems.jsx";
 import moment from "moment";
 import { PDFViewer } from "@react-pdf/renderer";
@@ -22,6 +24,7 @@ import { HiOutlineRefresh, HiX } from "react-icons/hi";
 import {
   useGetOrderEntryQuery,
   useLazyGetOrderEntryByIdQuery,
+  useGetOrderEntryPiQuery,
 } from "../../../redux/uniformService/OrderEntryService";
 import {
   CommonFormFooter,
@@ -36,9 +39,13 @@ import { calculateTaxWithHSNBreakupAndInsertIntoPoItems } from "../../../Utils/t
 import PoSummary from "../PurchaseOrder/PoSummary";
 import { useGetPartyByIdQuery } from "../../../redux/services/PartyMasterService";
 import { invalidateOrderEntryModule } from "../../../redux/Dispatch/OrderInvalidateTags";
+import { useGetbankQuery } from "../../../redux/services/BankMasterService.js";
+import { DropdownWithModal } from "../../../Inputs/Reuseable.js";
+import { BankMaster } from "../../../Basic/components/index.js";
+
 const EMPTY_ROW = {
   styleItemId: "",
-  trackingType: "None",
+  trackingType: "Size",
   sizeTemplateId: "",
   sizeId: "",
   barcodeFrom: "",
@@ -100,23 +107,25 @@ const ProformaInvoiceForm = ({
   const [availableVersions, setAvailableVersions] = useState([]);
   const isOldVersion = selectedQuoteVersion !== "Latest";
   const effectiveReadOnly = readOnly || isOldVersion;
-  console.log(deliveryCustomer, "ddeliveryCustomere");
-
+  const [orderDocId, setOrderDocId] = useState("");
   const [customerDetails, setCustomerDetails] = useState({
     name: "",
     contactPerson: "",
     phone: "",
   });
-
+  const [bankId, setBankId] = useState("");
+  const [validTo, setValidTo] = useState("");
   const customerRef = useRef(null);
 
   const { data: allData } = useGetProformaInvoiceQuery({
     params: { branchId },
   });
+  const { data: bankList } = useGetbankQuery({ params: { branchId } });
+
   const { data: singleData } = useGetProformaInvoiceByIdQuery(id, {
     skip: !id,
   });
-  const { data: orderList } = useGetOrderEntryQuery({ params: { branchId } });
+  const { data: orderList } = useGetOrderEntryPiQuery({ params: { branchId } });
   const { data: taxTypeList } = useGetTaxTemplateQuery({
     params: { companyId },
   });
@@ -170,7 +179,6 @@ const ProformaInvoiceForm = ({
       setDeliveryCustomer(data.deliveryCustomerId || "");
       setModeOfPayment(data.modeOfPayment || "By cash");
       setDeliveryCharge(data.deliveryCharge || "");
-      console.log(data.deliveryCustomerId, "deliveryCustomerId");
       let loadedVersions = [];
       if (data.items?.length > 0) {
         loadedVersions = [
@@ -199,6 +207,11 @@ const ProformaInvoiceForm = ({
           phone: cust.contactNumber || "",
         });
       }
+      setOrderDocId(data?.OrderEntry?.docId);
+      setBankId(data?.bankId || "");
+      setValidTo(
+        data?.validTo ? moment(data.validTo).format("YYYY-MM-DD") : "",
+      );
     }
   }, [id, singleData]);
 
@@ -262,6 +275,7 @@ const ProformaInvoiceForm = ({
               if (order.orderItems && order.orderItems.length > 0) {
                 const mappedItems = order.orderItems.map((oi) => ({
                   styleItemId: oi.styleItemId,
+                  StyleItem: oi.StyleItem,
                   itemGroupId: oi.itemGroupId,
                   trackingType: oi.trackingType || "None",
                   sizeTemplateId: oi.sizeTemplateId || "",
@@ -371,6 +385,8 @@ const ProformaInvoiceForm = ({
       items: JSON.stringify(filteredItems),
       discountType,
       discountValue,
+      bankId: bankId ? parseInt(bankId) : null,
+      validTo: validTo ? new Date(validTo) : null,
     };
 
     try {
@@ -443,6 +459,8 @@ const ProformaInvoiceForm = ({
     setCustomerDetails({ name: "", contactPerson: "", phone: "" });
     setSelectedQuoteVersion("Latest");
     setAvailableVersions([]);
+    setBankId("");
+    setValidTo("");
   };
 
   useEffect(() => {
@@ -460,6 +478,7 @@ const ProformaInvoiceForm = ({
     (sum, item) => sum + (parseFloat(item.qty) || 0),
     0,
   );
+  const isCustomerExport = supplierData?.data?.isCustomerExport;
 
   const actionButtonClass =
     "px-3 py-2 rounded-md flex items-center justify-center text-sm text-white transition";
@@ -534,16 +553,28 @@ const ProformaInvoiceForm = ({
               disabled={true}
             />
           </div>
-          <div className="w-36">
-            <DropdownInput
-              name="Order No"
-              options={dropDownListObject(filteredOrderList, "docId", "id")}
-              value={orderEntryId}
-              setValue={setOrderEntryId}
-              readOnly={effectiveReadOnly || !!id}
-              required={true}
-            />
-          </div>
+          {id ? (
+            <>
+              {" "}
+              <div className="w-36">
+                <TextInput name="Order No" value={orderDocId} disabled={true} />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="w-36">
+                <DropdownInput
+                  name="Order No"
+                  options={dropDownListObject(filteredOrderList, "docId", "id")}
+                  value={orderEntryId}
+                  setValue={setOrderEntryId}
+                  readOnly={effectiveReadOnly}
+                  required={true}
+                />
+              </div>
+            </>
+          )}
+
           <div className="w-24">
             <DropdownInput
               name="Tax Type"
@@ -556,6 +587,39 @@ const ProformaInvoiceForm = ({
               setValue={setTaxTemplateId}
               required={true}
               readOnly={effectiveReadOnly || !!id}
+            />
+          </div>
+        </div>
+        <div className="flex gap-2 mt-1">
+          <div className="w-28">
+            <DateInputNew
+              name="Valid To"
+              value={validTo}
+              setValue={setValidTo}
+              readOnly={effectiveReadOnly}
+              required={true}
+              type="date"
+            />
+          </div>
+          <div className="w-72">
+            <DropdownWithModal
+              name="Advising Bank"
+              options={dropDownListObjectMultiple(
+                id
+                  ? bankList?.data
+                  : bankList?.data?.filter((item) => item?.active),
+                ["name", "Branch.name"],
+                "id",
+              )}
+              value={bankId}
+              setValue={setBankId}
+              required={isCustomerExport}
+              readOnly={effectiveReadOnly}
+              className={`w-[150px]`}
+              addNewLabel="+ Add New Bank"
+              childComponent={BankMaster}
+              addNewModalWidth="w-[45%] h-[64%]"
+              disabled={readOnly}
             />
           </div>
         </div>

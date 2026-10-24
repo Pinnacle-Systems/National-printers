@@ -72,6 +72,7 @@ model Company {
   machines            Machine[]
   salesDeliveries     SalesDelivery[]
   currencies          Currency[]
+  banks               Bank[]
 }
 
 model Subscription {
@@ -275,10 +276,9 @@ model Employee {
   createdAt          DateTime?         @default(now())
   updatedAt          DateTime?         @updatedAt
   employeeId         String?
-
-  User            User[]
-  JobCardDesigner JobCard[] @relation("designer")
-  JobCardFollowUp JobCard[] @relation("followUp")
+  User               User[]
+  JobCardDesigner    JobCard[]         @relation("designer")
+  JobCardFollowUp    JobCard[]         @relation("followUp")
 }
 
 model FinYear {
@@ -345,6 +345,7 @@ model City {
   doctorPermCity  Employee[]    @relation(name: "permCity")
   Party           Party[]
   PartyBranch     PartyBranch[]
+  banks           Bank[]
 }
 
 model Department {
@@ -860,6 +861,7 @@ model SalesBillItems {
   SalesReturnItems  SalesReturnItems[]
   Uom               Uom?               @relation(fields: [uomId], references: [id], onDelete: Restrict)
   uomId             Int?
+  styleImage        String?
 }
 
 model SalesReturn {
@@ -899,6 +901,7 @@ model SalesReturnItems {
   Stock            Stock?
   Uom              Uom?            @relation(fields: [uomId], references: [id], onDelete: Restrict)
   uomId            Int?
+  styleImage       String?
 }
 
 model OpeningStock {
@@ -989,14 +992,15 @@ model StyleItem {
   uomId                  Int?
   Gsm                    Gsm?                     @relation(fields: [gsmId], references: [id])
   gsmId                  Int?
+  Hsn                    Hsn?                     @relation(fields: [hsnId], references: [id])
+  hsnId                  Int?
+  price                  Float?
+  styleImage             String?
   DeliveryChallanItems   DeliveryChallanItems[]
   DeliveryInvoiceItems   DeliveryInvoiceItems[]
   poItems                PoItems[]
   inwardItems            InwardItems[]
   stocks                 Stock[]
-  Hsn                    Hsn?                     @relation(fields: [hsnId], references: [id])
-  hsnId                  Int?
-  price                  Float?
   purchaseReturnItems    PurchaseReturnItems[]
   purchaseCancelItems    PurchaseCancelItems[]
   purchaseBillEntryItems PurchaseBillEntryItems[]
@@ -1947,6 +1951,7 @@ model OrderItems {
   hsnId          Int?
   Hsn            Hsn?               @relation(fields: [hsnId], references: [id])
   price          Float?
+  styleImage     String?
   sizeBreakup    OrderSizeBreakup[]
   JobCard        JobCard[]
 }
@@ -2004,44 +2009,46 @@ model ProformaInvoice {
   deliveryCharge     Float?
   discountType       String?
   discountValue      Float?
+  Bank               Bank?                 @relation(fields: [bankId], references: [id])
+  bankId             Int?
+  validTo            DateTime?
   JobCards           JobCard[]
   salesDeliveries    SalesDelivery[]
   stocks             Stock[]
 }
 
 model ProformaInvoiceItem {
-  id                Int             @id @default(autoincrement())
-  ProformaInvoice   ProformaInvoice @relation(fields: [proformaInvoiceId], references: [id], onDelete: Cascade)
+  id                Int                   @id @default(autoincrement())
+  ProformaInvoice   ProformaInvoice       @relation(fields: [proformaInvoiceId], references: [id], onDelete: Cascade)
   proformaInvoiceId Int
   styleItemId       Int?
-  StyleItem         StyleItem?      @relation(fields: [styleItemId], references: [id])
+  StyleItem         StyleItem?            @relation(fields: [styleItemId], references: [id])
   itemGroupId       Int?
-  ItemGroup         ItemGroup?      @relation(fields: [itemGroupId], references: [id])
+  ItemGroup         ItemGroup?            @relation(fields: [itemGroupId], references: [id])
   qty               Float?
   price             Float?
   taxPercent        Float?
   discountType      String?
   discountValue     Float?
   sizeId            Int?
-  Size              Size?           @relation(fields: [sizeId], references: [id])
+  Size              Size?                 @relation(fields: [sizeId], references: [id])
   uomId             Int?
-  Uom               Uom?            @relation(fields: [uomId], references: [id])
+  Uom               Uom?                  @relation(fields: [uomId], references: [id])
   gsmId             Int?
-  Gsm               Gsm?            @relation(fields: [gsmId], references: [id])
+  Gsm               Gsm?                  @relation(fields: [gsmId], references: [id])
   hsnId             Int?
-  Hsn               Hsn?            @relation(fields: [hsnId], references: [id])
-  product           Product?        @relation(fields: [productId], references: [id])
+  Hsn               Hsn?                  @relation(fields: [hsnId], references: [id])
+  product           Product?              @relation(fields: [productId], references: [id])
   productId         Int?
-  quoteVersion      Int             @default(1)
-
-  itemOrder      Int           @default(0)
-  trackingType   String?
-  sizeTemplateId Int?
-  SizeTemplate   SizeTemplate? @relation(fields: [sizeTemplateId], references: [id])
-  remarks        String?
-  description    String?
-
-  sizeBreakup ProformaSizeBreakup[]
+  quoteVersion      Int                   @default(1)
+  itemOrder         Int                   @default(0)
+  trackingType      String?
+  sizeTemplateId    Int?
+  SizeTemplate      SizeTemplate?         @relation(fields: [sizeTemplateId], references: [id])
+  remarks           String?
+  description       String?
+  styleImage        String?
+  sizeBreakup       ProformaSizeBreakup[]
 }
 
 model ProformaSizeBreakup {
@@ -2248,6 +2255,7 @@ model JobCard {
   isRepeatedJobCard    Boolean?               @default(false)
   refJobCardId         Int?
   RefJobCard           JobCard?               @relation("RepeatedJobCard", fields: [refJobCardId], references: [id])
+  styleImage           String?
   packings             Packing[]
 }
 
@@ -2451,6 +2459,7 @@ model PackingOrderItems {
   gsmId              Int?
   Gsm                Gsm?                 @relation(fields: [gsmId], references: [id])
   orderQty           Int?
+  styleImage         String?
   PackingSizeBreakup PackingSizeBreakup[]
 }
 
@@ -2530,35 +2539,35 @@ model SalesDelivery {
 }
 
 model SalesDeliveryItems {
-  id              Int           @id @default(autoincrement())
-  SalesDelivery   SalesDelivery @relation(fields: [salesDeliveryId], references: [id], onDelete: Cascade)
-  salesDeliveryId Int
-  styleItemId     Int?
-  StyleItem       StyleItem?    @relation(fields: [styleItemId], references: [id])
-  itemGroupId     Int?
-  ItemGroup       ItemGroup?    @relation(fields: [itemGroupId], references: [id])
-  qty             Float?
-  price           Float?
-  taxPercent      Float?
-  discountType    String?
-  discountValue   Float?
-  sizeId          Int?
-  Size            Size?         @relation(fields: [sizeId], references: [id])
-  uomId           Int?
-  Uom             Uom?          @relation(fields: [uomId], references: [id])
-  gsmId           Int?
-  Gsm             Gsm?          @relation(fields: [gsmId], references: [id])
-  hsnId           Int?
-  Hsn             Hsn?          @relation(fields: [hsnId], references: [id])
-  product         Product?      @relation(fields: [productId], references: [id])
-  productId       Int?
-  itemOrder       Int           @default(0)
-  trackingType    String?
-  sizeTemplateId  Int?
-  SizeTemplate    SizeTemplate? @relation(fields: [sizeTemplateId], references: [id])
-  remarks         String?
-  description     String?
-
+  id                   Int                    @id @default(autoincrement())
+  SalesDelivery        SalesDelivery          @relation(fields: [salesDeliveryId], references: [id], onDelete: Cascade)
+  salesDeliveryId      Int
+  styleItemId          Int?
+  StyleItem            StyleItem?             @relation(fields: [styleItemId], references: [id])
+  itemGroupId          Int?
+  ItemGroup            ItemGroup?             @relation(fields: [itemGroupId], references: [id])
+  qty                  Float?
+  price                Float?
+  taxPercent           Float?
+  discountType         String?
+  discountValue        Float?
+  sizeId               Int?
+  Size                 Size?                  @relation(fields: [sizeId], references: [id])
+  uomId                Int?
+  Uom                  Uom?                   @relation(fields: [uomId], references: [id])
+  gsmId                Int?
+  Gsm                  Gsm?                   @relation(fields: [gsmId], references: [id])
+  hsnId                Int?
+  Hsn                  Hsn?                   @relation(fields: [hsnId], references: [id])
+  product              Product?               @relation(fields: [productId], references: [id])
+  productId            Int?
+  itemOrder            Int                    @default(0)
+  trackingType         String?
+  sizeTemplateId       Int?
+  SizeTemplate         SizeTemplate?          @relation(fields: [sizeTemplateId], references: [id])
+  remarks              String?
+  description          String?
+  styleImage           String?
   salesDeliveryBreakUp SalesDeliveryBreakup[]
 }
 
@@ -2589,4 +2598,19 @@ model Currency {
   active         Boolean  @default(true)
 
   Ledger Ledger[]
+}
+
+model Bank {
+  id               Int               @id @default(autoincrement())
+  companyId        Int?
+  Company          Company?          @relation(fields: [companyId], references: [id])
+  name             String?
+  accNo            String?
+  ifsc             String?
+  swiftCode        String?
+  branchId         Int?
+  Branch           City?             @relation(fields: [branchId], references: [id])
+  active           Boolean           @default(true)
+  bankHolderName   String?
+  proformaInvoices ProformaInvoice[]
 }

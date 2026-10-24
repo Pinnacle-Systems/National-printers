@@ -38,7 +38,7 @@ async function getSearch(req, res, next) {
 
 async function create(req, res, next) {
   try {
-    res.json(await _create(req.body));
+    res.json(await _create(req.body, req.files));
     console.log(res.statusCode);
   } catch (error) {
     console.error(`Error`, error.message);
@@ -61,7 +61,7 @@ async function create(req, res, next) {
 
 async function update(req, res, next) {
   try {
-    res.json(await _update(req.params.id, req.body));
+    res.json(await _update(req.params.id, req.body, req.files));
     console.log(res.statusCode);
   } catch (error) {
     console.error(`Error`, error.message);

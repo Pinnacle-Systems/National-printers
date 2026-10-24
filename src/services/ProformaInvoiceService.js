@@ -122,6 +122,7 @@ async function getOne(id) {
       OrderEntry: {
         include: {
           customer: true,
+
           orderItems: {
             include: {
               StyleItem: true,
@@ -180,6 +181,8 @@ async function create(body) {
     deliveryCharge,
     discountType,
     discountValue,
+    bankId,
+    validTo,
   } = body;
 
   let finYearDate = await getFinYearStartTimeEndTime(finYearId);
@@ -227,6 +230,8 @@ async function create(body) {
       remarks,
       termsAndCondition,
       termsId: termsId ? parseInt(termsId) : null,
+      bankId: bankId ? parseInt(bankId) : null,
+      validTo: validTo ? new Date(validTo) : null,
       items: {
         create: JSON.parse(items || "[]").map((item, idx) => ({
           StyleItem: item.styleItemId
@@ -312,6 +317,8 @@ async function update(id, body, files) {
     deliveryCharge,
     discountValue,
     discountType,
+    bankId,
+    validTo,
   } = body;
 
   const parseItems = JSON.parse(items || "[]");
@@ -452,6 +459,8 @@ async function update(id, body, files) {
           ? parseFloat(discountValue)
           : null,
       discountType: discountType,
+      bankId: bankId ? parseInt(bankId) : null,
+      validTo: validTo ? new Date(validTo) : null,
       quoteVersion: nextQuoteVersion,
       ...(isApproved !== undefined && {
         isApproved: isApproved === "true" || isApproved === true,

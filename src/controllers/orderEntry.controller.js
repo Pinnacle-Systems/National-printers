@@ -7,6 +7,7 @@ import {
   remove as _remove,
   getRefList as _getRefList,
   geOrderItemsList as _geOrderItemsList,
+  getPIList as _getPIList,
 } from "../services/orderEntry.service.js";
 
 async function get(req, res, next) {
@@ -34,9 +35,14 @@ async function geOrderItemsList(req, res, next) {
 
 async function getOne(req, res, next) {
   try {
-    res.json(await _getOne(req.params.id));
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return next();
+    }
+    res.json(await _getOne(id));
   } catch (err) {
     console.error(`Error`, err.message);
+    next(err);
   }
 }
 async function create(req, res, next) {
@@ -97,5 +103,21 @@ async function remove(req, res, next) {
     console.log(`Error`, error.message);
   }
 }
-
-export { get, getOne, create, update, remove, getRefList, geOrderItemsList };
+async function getPIList(req, res, next) {
+  try {
+    res.json(await _getPIList(req));
+  } catch (err) {
+    console.error(`Error `, err.message);
+    next(err);
+  }
+}
+export {
+  get,
+  getOne,
+  create,
+  update,
+  remove,
+  getRefList,
+  geOrderItemsList,
+  getPIList,
+};

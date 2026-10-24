@@ -9,7 +9,15 @@ import {
   useUpdateStyleItemMasterMutation,
 } from "../../../redux/services/StyleItemMasterService";
 import Swal from "sweetalert2";
-import { Check, Power } from "lucide-react";
+import {
+  Check,
+  Power,
+  UploadCloud,
+  Eye,
+  Trash2,
+  Image as ImageIcon,
+  X,
+} from "lucide-react";
 import {
   DropdownInput,
   ReusableTable,
@@ -29,6 +37,8 @@ import { ItemGroup, UomMaster, SizeTemplate, HsnMaster, Gsm } from "..";
 import useInvalidateTags from "../../../CustomHooks/useInvalidateTags";
 import { useFormKeyboardNavigation } from "../../../CustomHooks/useFormKeyboardNavigation";
 import { useGetGsmMasterQuery } from "../../../redux/services/GsmMasterService";
+import { renameFile } from "../../../Utils/helper";
+import { getImageUrlPath } from "../../../Constants";
 
 const MODEL = "Item Master";
 export default function Form({ onSuccess, defaultName = "" }) {
@@ -39,7 +49,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
   const [name, setName] = useState(defaultName || "");
   const [price, setPrice] = useState(false);
   const [active, setActive] = useState(false);
-  const [aliasName, setAliasName] = useState(defaultName || "");
+  const [aliasName, setAliasName] = useState("");
   const [hsnId, setHsnId] = useState("");
   const [searchValue, setSearchValue] = useState("");
   const childRecord = useRef(0);
@@ -47,7 +57,10 @@ export default function Form({ onSuccess, defaultName = "" }) {
   const [sizeTemplateId, setSizeTemplateId] = useState("");
   const [uomId, setUomId] = useState("");
   const [gsmId, setGsmId] = useState("");
-
+  const [styleImage, setStyleImage] = useState(null);
+  const [isDeleteImage, setIsDeleteImage] = useState(false);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState("");
   const [dispatchInvalidate] = useInvalidateTags();
   const { refs, handlers, focusFirstInput } = useFormKeyboardNavigation();
 
@@ -79,11 +92,34 @@ export default function Form({ onSuccess, defaultName = "" }) {
   const [updateData] = useUpdateStyleItemMasterMutation();
   const [removeData] = useDeleteStyleItemMasterMutation();
 
+  const getImgSrc = (img) => {
+    if (!img) return "";
+    if (img instanceof File) return URL.createObjectURL(img);
+    if (typeof img === "string" && img.startsWith("data:")) return img;
+    return getImageUrlPath(img);
+  };
+
+  function openPreview(filePath) {
+    if (!filePath) return;
+    setPreviewImageUrl(getImgSrc(filePath));
+    setPreviewModalOpen(true);
+  }
+
+  useEffect(() => {
+    const handleKeyDownModal = (e) => {
+      if (e.key === "Escape" && previewModalOpen) {
+        setPreviewModalOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDownModal);
+    return () => window.removeEventListener("keydown", handleKeyDownModal);
+  }, [previewModalOpen]);
+
   const syncFormWithDb = useCallback(
     (data) => {
       setName(data?.name || defaultName || "");
       setActive(id ? (data?.active ?? false) : true);
-      setAliasName(data?.aliasName || defaultName || "");
+      setAliasName(data?.aliasName || "");
       setHsnId(data?.hsnId ? data?.hsnId : "");
       setItemGroupId(data?.itemGroupId ? data?.itemGroupId : "");
       setUomId(data?.uomId ? data?.uomId : "");
@@ -91,8 +127,10 @@ export default function Form({ onSuccess, defaultName = "" }) {
       setGsmId(data?.gsmId ? data?.gsmId : "");
       setPrice(data?.price ? data?.price?.toFixed(2) : "");
       childRecord.current = data?.childRecord ? data?.childRecord : 0;
+      setStyleImage(data?.styleImage || null);
+      setIsDeleteImage(false);
     },
-    [id],
+    [id, defaultName],
   );
 
   useEffect(() => {
@@ -113,6 +151,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
     uomId,
     gsmId,
     price,
+    styleImage,
   };
 
   const validateData = (data) => {
@@ -124,14 +163,40 @@ export default function Form({ onSuccess, defaultName = "" }) {
 
   const handleSubmitCustom = async (callback, data, text, nextProcess) => {
     try {
-      let returnData = await callback(data).unwrap();
-      setId(returnData.data.id);
+      const formData = new FormData();
+      for (let key in data) {
+        if (key === "styleImage") {
+          if (data[key] instanceof File) {
+            formData.append("images", data[key]);
+            formData.append("styleImage", data[key].name);
+          } else if (data[key]) {
+            formData.append("styleImage", data[key]);
+          } else {
+            formData.append("styleImage", "");
+          }
+        } else if (
+          Array.isArray(data[key]) ||
+          (typeof data[key] === "object" && data[key] !== null)
+        ) {
+          formData.append(key, JSON.stringify(data[key]));
+        } else {
+          formData.append(key, data[key]);
+        }
+      }
+      formData.append("isDeleteImage", isDeleteImage ? "true" : "false");
+      let returnData;
+      if (text === "Updated") {
+        returnData = await callback({ id, body: formData }).unwrap();
+      } else {
+        returnData = await callback(formData).unwrap();
+      }
+      setId(returnData?.data?.id);
       if (onSuccess) {
         await Swal.fire({
           title: text + "  " + "Successfully",
           icon: "success",
         });
-        onSuccess(returnData?.data.id);
+        onSuccess(returnData?.data?.id);
         return;
       }
       if (nextProcess == "new") {
@@ -144,18 +209,17 @@ export default function Form({ onSuccess, defaultName = "" }) {
       Swal.fire({
         title: text + "  " + "Successfully",
         icon: "success",
-        // draggable: true,
-        // timer: 1000,
-        // showConfirmButton: false,
-        // didOpen: () => {
-        //   Swal.showLoading();
-        // },
       });
       syncFormWithDb(undefined);
 
       dispatchInvalidate();
     } catch (error) {
-      console.log("handle");
+      console.log("handle", error);
+      Swal.fire({
+        icon: "error",
+        title: "Submission error",
+        text: error?.data?.message || "Something went wrong!",
+      });
     }
   };
 
@@ -268,6 +332,8 @@ export default function Form({ onSuccess, defaultName = "" }) {
     setSearchValue("");
     setReadOnly(false);
     syncFormWithDb(undefined);
+    setStyleImage(null);
+    setIsDeleteImage(false);
   };
 
   const ACTIVE = (
@@ -328,181 +394,371 @@ export default function Form({ onSuccess, defaultName = "" }) {
 
   const formBody = (
     <div className="flex-1 p-3">
-      <div className="grid grid-cols-1  gap-3  h-full">
-        <div className="lg:col-span- space-y-3">
-          <div className="bg-white p-3 rounded-md border border-gray-200 h-full">
-            <fieldset className=" rounded mt-2">
-              <div className="w-full grid grid-cols-3 gap-3">
-                <div className="mb-3">
-                  <TextInputNew1
-                    ref={countryNameRef}
-                    name="Item Name"
-                    type="text"
-                    value={name}
-                    setValue={setName}
-                    required={true}
-                    readOnly={readOnly}
-                    disabled={childRecord.current > 0}
-                  />
-                </div>
-                <div className="mb-3">
-                  <TextInputNew1
-                    name="Alias Name"
-                    type="text"
-                    value={aliasName}
-                    setValue={setAliasName}
-                    readOnly={readOnly}
-                  />
-                </div>
-                <div className="mb-3">
-                  <DropdownWithModal
-                    name="Item Group"
-                    options={dropDownListObject(
-                      id
-                        ? itemGroupList?.data
-                        : itemGroupList?.data?.filter((item) => item?.active),
-                      "name",
-                      "id",
-                    )}
-                    value={itemGroupId}
-                    setValue={setItemGroupId}
-                    required={true}
-                    readOnly={readOnly}
-                    className={`w-[150px]`}
-                    disabled={childRecord.current > 0}
-                    addNewLabel="+ Add New Item Group"
-                    childComponent={ItemGroup}
-                    addNewModalWidth="w-[40%] h-[45%]"
-                  />
-                </div>
-                <div className="mb-3">
-                  <DropdownWithModal
-                    name="Uom"
-                    options={dropDownListObject(
-                      id
-                        ? uomList?.data
-                        : uomList?.data?.filter((item) => item?.active),
-                      "name",
-                      "id",
-                    )}
-                    value={uomId}
-                    setValue={setUomId}
-                    required={true}
-                    readOnly={readOnly}
-                    className={`w-[150px]`}
-                    disabled={childRecord.current > 0}
-                    addNewLabel="+ Add New Uom"
-                    childComponent={UomMaster}
-                    addNewModalWidth="w-[40%] h-[45%]"
-                  />
-                </div>
-                <div className="mb-3">
-                  <DropdownWithModal
-                    name="Size Template"
-                    options={dropDownListObject(
-                      id
-                        ? sizeTemplateList?.data
-                        : sizeTemplateList?.data?.filter(
-                            (item) => item?.active,
-                          ),
-                      "name",
-                      "id",
-                    )}
-                    value={sizeTemplateId}
-                    setValue={setSizeTemplateId}
-                    readOnly={readOnly}
-                    className={`w-[150px]`}
-                    disabled={childRecord.current > 0}
-                    addNewLabel="+ Add New Size Template"
-                    childComponent={SizeTemplate}
-                    addNewModalWidth="w-[40%] h-[62%]"
-                  />
-                </div>
-                <div className="mb-3">
-                  <DropdownWithModal
-                    name="Hsn"
-                    options={dropDownListObject(
-                      id
-                        ? hsnList?.data
-                        : hsnList?.data?.filter((item) => item?.active),
-                      "name",
-                      "id",
-                    )}
-                    value={hsnId}
-                    setValue={setHsnId}
-                    required={true}
-                    readOnly={readOnly}
-                    className={`w-[150px]`}
-                    disabled={childRecord.current > 0}
-                    addNewLabel="+ Add New Hsn"
-                    childComponent={HsnMaster}
-                    addNewModalWidth="w-[40%] h-[50%]"
-                  />
-                </div>
-                <div className="mb-3">
-                  <DropdownWithModal
-                    name="GSM"
-                    options={dropDownListObject(
-                      id
-                        ? gsmList?.data
-                        : gsmList?.data?.filter((item) => item?.active),
-                      "name",
-                      "id",
-                    )}
-                    value={gsmId}
-                    setValue={setGsmId}
-                    readOnly={readOnly}
-                    className={`w-[150px]`}
-                    disabled={childRecord.current > 0}
-                    addNewLabel="+ Add New Gsm"
-                    childComponent={Gsm}
-                    addNewModalWidth="w-[40%] h-[50%]"
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="block text-[11px] font-bold text-gray-600 mb-1">
-                    Price
-                  </label>
-                  <input
-                    type="number"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    className={`w-full px-3 py-1.5 text-xs border text-right pr-2 border-gray-300 rounded-lg
-          focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
-          transition-all duration-150 shadow-sm ${readOnly ? "bg-slate-100" : ""}
-       `}
-                    placeholder="0.00"
-                    onBlur={(e) => {
-                      const formattedValue =
-                        e.target.value === ""
-                          ? ""
-                          : Number(e.target.value).toFixed(2);
-
-                      setPrice(formattedValue);
-                    }}
-                    disabled={childRecord.current > 0}
-                  />
-                </div>
-                <div className="mb-5">
-                  <ToggleButton
-                    name="Status"
-                    options={statusDropdown}
-                    value={active}
-                    setActive={setActive}
-                    required={true}
-                    readOnly={readOnly}
-                    ref={toggleButtonRef}
-                    onKeyDown={handlers.handleToggleKeyDown}
-                    tabIndex={0}
-                  />
-                </div>
+      <div className="bg-white p-3 rounded-md border border-gray-200">
+        <fieldset className="rounded">
+          <div className="w-full grid grid-cols-12 gap-4">
+            {/* Left 8 columns: Form Inputs in 2 columns */}
+            <div className="col-span-8 grid grid-cols-2 gap-3">
+              <div>
+                <TextInputNew1
+                  ref={countryNameRef}
+                  name="Item Name"
+                  type="text"
+                  value={name}
+                  setValue={setName}
+                  required={true}
+                  readOnly={readOnly}
+                  disabled={childRecord.current > 0}
+                />
               </div>
-            </fieldset>
+              <div>
+                <TextInputNew1
+                  name="Alias Name"
+                  type="text"
+                  value={aliasName}
+                  setValue={setAliasName}
+                  readOnly={readOnly}
+                />
+              </div>
+
+              <div>
+                <DropdownWithModal
+                  name="Item Group"
+                  options={dropDownListObject(
+                    id
+                      ? itemGroupList?.data
+                      : itemGroupList?.data?.filter((item) => item?.active),
+                    "name",
+                    "id",
+                  )}
+                  value={itemGroupId}
+                  setValue={setItemGroupId}
+                  required={true}
+                  readOnly={readOnly}
+                  className={`w-full`}
+                  disabled={childRecord.current > 0}
+                  addNewLabel="+ Add New Item Group"
+                  childComponent={ItemGroup}
+                  addNewModalWidth="w-[40%] h-[45%]"
+                />
+              </div>
+              <div>
+                <DropdownWithModal
+                  name="Uom"
+                  options={dropDownListObject(
+                    id
+                      ? uomList?.data
+                      : uomList?.data?.filter((item) => item?.active),
+                    "name",
+                    "id",
+                  )}
+                  value={uomId}
+                  setValue={setUomId}
+                  required={true}
+                  readOnly={readOnly}
+                  className={`w-full`}
+                  disabled={childRecord.current > 0}
+                  addNewLabel="+ Add New Uom"
+                  childComponent={UomMaster}
+                  addNewModalWidth="w-[40%] h-[45%]"
+                />
+              </div>
+
+              <div>
+                <DropdownWithModal
+                  name="Hsn"
+                  options={dropDownListObject(
+                    id
+                      ? hsnList?.data
+                      : hsnList?.data?.filter((item) => item?.active),
+                    "name",
+                    "id",
+                  )}
+                  value={hsnId}
+                  setValue={setHsnId}
+                  required={true}
+                  readOnly={readOnly}
+                  className={`w-full`}
+                  disabled={childRecord.current > 0}
+                  addNewLabel="+ Add New Hsn"
+                  childComponent={HsnMaster}
+                  addNewModalWidth="w-[40%] h-[50%]"
+                />
+              </div>
+              <div>
+                <DropdownWithModal
+                  name="GSM"
+                  options={dropDownListObject(
+                    id
+                      ? gsmList?.data
+                      : gsmList?.data?.filter((item) => item?.active),
+                    "name",
+                    "id",
+                  )}
+                  value={gsmId}
+                  setValue={setGsmId}
+                  readOnly={readOnly}
+                  className={`w-full`}
+                  disabled={childRecord.current > 0}
+                  addNewLabel="+ Add New Gsm"
+                  childComponent={Gsm}
+                  addNewModalWidth="w-[40%] h-[50%]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                  Price
+                </label>
+                <input
+                  type="number"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  className={`w-full px-3 py-1.5 text-xs border text-right pr-2 border-gray-300 rounded-lg
+focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
+transition-all duration-150 shadow-2xs ${readOnly ? "bg-slate-100" : ""}
+`}
+                  placeholder="0.00"
+                  onBlur={(e) => {
+                    const formattedValue =
+                      e.target.value === ""
+                        ? ""
+                        : Number(e.target.value).toFixed(2);
+
+                    setPrice(formattedValue);
+                  }}
+                  disabled={childRecord.current > 0}
+                />
+              </div>
+              <div>
+                <ToggleButton
+                  name="Status"
+                  options={statusDropdown}
+                  value={active}
+                  setActive={setActive}
+                  required={true}
+                  readOnly={readOnly}
+                  ref={toggleButtonRef}
+                  onKeyDown={handlers.handleToggleKeyDown}
+                  tabIndex={0}
+                />
+              </div>
+            </div>
+
+            {/* Right 4 columns: Dedicated Large Item Image UI */}
+            <div className="col-span-4 flex flex-col h-full">
+              <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                Item Image
+              </label>
+              <div className="flex-1 min-h-[250px] p-2.5 border border-gray-200 rounded-xl bg-slate-50/50 shadow-2xs flex flex-col justify-between">
+                {styleImage ? (
+                  <div className="flex flex-col h-full justify-between">
+                    <div
+                      className="relative flex-1 min-h-[185px] max-h-[200px] w-full rounded-lg bg-white border border-gray-200 flex items-center justify-center p-2 cursor-pointer group overflow-hidden shadow-2xs hover:border-blue-400 transition"
+                      onClick={() => openPreview(styleImage)}
+                      title="Click to view full image in modal"
+                    >
+                      <img
+                        src={getImgSrc(styleImage)}
+                        alt={name || "Item Preview"}
+                        className="w-full h-full object-contain transition-transform duration-200 group-hover:scale-105"
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 text-white">
+                        <Eye size={24} className="drop-shadow" />
+                        <span className="text-[11px] font-semibold drop-shadow">
+                          Click to enlarge
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-2 pt-2 border-t border-gray-200 flex items-center justify-between gap-1">
+                      <span
+                        className="truncate text-[11px] text-green-700 font-semibold max-w-[130px]"
+                        title={
+                          styleImage instanceof File
+                            ? styleImage.name
+                            : typeof styleImage === "string" &&
+                              styleImage.startsWith("data:")
+                            ? "Attached Image"
+                            : styleImage
+                        }
+                      >
+                        ✅{" "}
+                        {styleImage instanceof File
+                          ? styleImage.name
+                          : typeof styleImage === "string" &&
+                            styleImage.startsWith("data:")
+                          ? "Attached Image"
+                          : styleImage}
+                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => openPreview(styleImage)}
+                          className="px-2 py-0.5 text-xs text-blue-600 hover:bg-blue-100 rounded font-medium flex items-center gap-1 border border-blue-300"
+                          title="View in modal"
+                        >
+                          <Eye size={12} /> View
+                        </button>
+                        {!readOnly && (
+                          <label
+                            htmlFor={
+                              childRecord.current <= 0
+                                ? "style-image-upload"
+                                : undefined
+                            }
+                            className={`px-2 py-0.5 text-xs rounded font-medium border ${
+                              childRecord.current > 0
+                                ? "bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed"
+                                : "text-indigo-600 hover:bg-indigo-100 border-indigo-300 cursor-pointer"
+                            }`}
+                            title={
+                              childRecord.current > 0
+                                ? "Cannot change: Child record exists"
+                                : "Change image"
+                            }
+                          >
+                            Change
+                          </label>
+                        )}
+                        {!readOnly && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (childRecord.current > 0) return;
+                              setStyleImage(null);
+                              setIsDeleteImage(true);
+                            }}
+                            disabled={childRecord.current > 0}
+                            className={`px-1.5 py-0.5 text-xs rounded font-bold border ${
+                              childRecord.current > 0
+                                ? "bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed"
+                                : "text-red-600 hover:bg-red-100 border-red-300"
+                            }`}
+                            title={
+                              childRecord.current > 0
+                                ? "Cannot delete: Child record exists"
+                                : "Remove image"
+                            }
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <label
+                    htmlFor={
+                      !readOnly && childRecord.current <= 0
+                        ? "style-image-upload"
+                        : undefined
+                    }
+                    className={`w-full h-full min-h-[220px] border-2 border-dashed border-gray-300 rounded-xl bg-white p-4 flex flex-col items-center justify-center text-center transition ${
+                      !readOnly && childRecord.current <= 0
+                        ? "cursor-pointer hover:border-blue-500 hover:bg-blue-50/40 group"
+                        : "cursor-not-allowed bg-slate-50 opacity-75"
+                    }`}
+                  >
+                    <div
+                      className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-transform border ${
+                        !readOnly && childRecord.current <= 0
+                          ? "bg-blue-50 text-blue-600 border-blue-100 group-hover:scale-110"
+                          : "bg-gray-100 text-gray-400 border-gray-200"
+                      }`}
+                    >
+                      <UploadCloud size={24} />
+                    </div>
+                    <span className="text-xs font-semibold text-gray-700">
+                      {!readOnly && childRecord.current <= 0
+                        ? "Upload Item Image"
+                        : "Item Image"}
+                    </span>
+                    <span className="text-[10px] text-gray-400 mt-0.5">
+                      {childRecord.current > 0
+                        ? "Disabled: Child record exists"
+                        : !readOnly
+                        ? "Click to browse (PNG, JPG, WebP)"
+                        : "No image attached"}
+                    </span>
+                    {!readOnly && (
+                      <span
+                        className={`mt-3 px-3 py-1 border rounded-md text-xs font-medium shadow-2xs transition-colors ${
+                          childRecord.current > 0
+                            ? "bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed"
+                            : "bg-white text-gray-700 border-gray-300 group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600"
+                        }`}
+                      >
+                        Browse File
+                      </span>
+                    )}
+                  </label>
+                )}
+
+                <input
+                  type="file"
+                  id="style-image-upload"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (childRecord.current > 0) return;
+                    if (e.target.files[0]) {
+                      setStyleImage(renameFile(e.target.files[0]));
+                      setIsDeleteImage(false);
+                      e.target.value = "";
+                    }
+                  }}
+                  disabled={readOnly || childRecord.current > 0}
+                />
+              </div>
+            </div>
           </div>
-        </div>
+        </fieldset>
       </div>
     </div>
   );
+
+  const renderImagePreviewModal = () => {
+    if (!previewModalOpen) return null;
+    return (
+      <div
+        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+        onClick={() => setPreviewModalOpen(false)}
+      >
+        <div
+          className="relative max-w-4xl w-full max-h-[90vh] bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col border border-gray-700"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between px-4 py-2.5 bg-gray-900 text-white">
+            <div className="flex items-center gap-2">
+              <ImageIcon size={18} className="text-blue-400" />
+              <span className="text-sm font-semibold truncate max-w-lg">
+                {name ? `${name} - Image Preview` : "Item Image Preview"}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPreviewModalOpen(false)}
+              className="text-gray-300 hover:text-white hover:bg-gray-800 p-1 rounded-md transition"
+              title="Close (Esc)"
+            >
+              <X size={18} />
+            </button>
+          </div>
+          <div className="p-4 flex items-center justify-center bg-gray-950 max-h-[80vh] overflow-auto">
+            <img
+              src={previewImageUrl}
+              alt={name || "Style Item Large Preview"}
+              className="max-h-[74vh] max-w-full object-contain rounded-md shadow-lg"
+            />
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   if (onSuccess) {
     return (
@@ -527,6 +783,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
         </div>
 
         {formBody}
+        {renderImagePreviewModal()}
       </div>
     );
   }
@@ -563,7 +820,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
         <Modal
           isOpen={form}
           form={form}
-          widthClass={"w-[800px] max-w-6xl h-[400px]"}
+          widthClass={"w-[1050px] max-w-[95vw]"}
           onClose={() => {
             setForm(false);
             syncFormWithDb(undefined);
@@ -640,6 +897,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
           </div>
         </Modal>
       )}
+      {renderImagePreviewModal()}
     </div>
   );
 }

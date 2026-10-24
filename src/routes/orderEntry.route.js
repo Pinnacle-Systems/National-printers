@@ -8,6 +8,7 @@ import {
   remove,
   getRefList,
   geOrderItemsList,
+  getPIList,
 } from "../controllers/orderEntry.controller.js";
 import { multerUploadForGrid } from "../utils/multerUpload.js";
 
@@ -17,8 +18,9 @@ router.get("/", get);
 router.get("/refList", getRefList);
 
 router.get("/orderitemsList", geOrderItemsList);
-router.put("/:id", multerUploadForGrid.array("images"), update);
+router.get("/getOrderEntryPi", getPIList);
 
+router.put("/:id", multerUploadForGrid.array("images"), update);
 router.get("/:id", getOne);
 router.delete("/:id", remove);
 

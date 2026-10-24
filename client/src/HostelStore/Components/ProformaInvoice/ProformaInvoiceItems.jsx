@@ -5,12 +5,13 @@ import { useGetSizeMasterQuery } from "../../../redux/services/SizemasterService
 import { useGetGsmMasterQuery } from "../../../redux/services/GsmMasterService";
 import { useGetUomQuery } from "../../../redux/services/UomMasterService";
 import { useGetHsnMasterQuery } from "../../../redux/services/HsnMasterServices";
-import { FiEye } from "react-icons/fi";
+import { FiEye, FiImage } from "react-icons/fi";
 import { useGetSizeTemplateQuery } from "../../../redux/services/SizeTemplateMaster";
 import { findFromList, getCommonParams } from "../../../Utils/helper";
 import TaxDetailsFullTemplate from "../TaxDetailsCompleteTemplate";
 import Swal from "sweetalert2";
 import Modal from "../../../UiComponents/Modal";
+import { getImageUrlPath } from "../../../Constants/index.js";
 
 const ProformaInvoiceItems = ({
   items,
@@ -21,7 +22,6 @@ const ProformaInvoiceItems = ({
   id,
   isSupplierOutside,
 }) => {
-  console.log("items", items);
   const { companyId } = getCommonParams();
   const { data: styleItemList } = useGetStyleItemMasterQuery({
     params: { companyId },
@@ -36,6 +36,16 @@ const ProformaInvoiceItems = ({
 
   const [sizeModalOpen, setSizeModalOpen] = useState(false);
   const [activeRowIndex, setActiveRowIndex] = useState(null);
+  const [imagePreviewModalOpen, setImagePreviewModalOpen] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState("");
+  const [previewImageTitle, setPreviewImageTitle] = useState("");
+
+  const handleOpenImagePreview = (url, title) => {
+    if (!url) return;
+    setPreviewImageUrl(url);
+    setPreviewImageTitle(title || "Style Item Image");
+    setImagePreviewModalOpen(true);
+  };
 
   const EMPTY_ROW = {
     styleItemId: "",
@@ -142,8 +152,7 @@ const ProformaInvoiceItems = ({
               <h3 className="text-[16px] font-bold text-slate-800">
                 {items[activeRowIndex]?.trackingType === "Barcode"
                   ? "Barcode Wise Breakup"
-                  : items[activeRowIndex]?.trackingType ===
-                      "Size Template + Barcode"
+                  : items[activeRowIndex]?.trackingType === "Size + Barcode"
                     ? "Size + Barcode Wise Breakup"
                     : "Size Wise Breakup"}
               </h3>
@@ -159,7 +168,7 @@ const ProformaInvoiceItems = ({
               {/* {items[activeRowIndex]?.trackingType !== "Barcode" && (
                 <div className="mb-3 bg-slate-50 p-2 border border-slate-200 rounded flex items-center gap-3">
                   <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    Size Template
+                    Size
                   </span>
                   <span className="text-[12px] font-bold text-slate-700">
                     {sizeTemplateList?.data?.find(
@@ -182,7 +191,7 @@ const ProformaInvoiceItems = ({
                       )}
                       {(items[activeRowIndex]?.trackingType === "Barcode" ||
                         items[activeRowIndex]?.trackingType ===
-                          "Size Template + Barcode") && (
+                          "Size + Barcode") && (
                         <>
                           <th className="border-b border-r border-slate-200 px-2 py-1 text-center text-[11px] font-bold uppercase">
                             Barcode From
@@ -222,7 +231,7 @@ const ProformaInvoiceItems = ({
                         )}
                         {(items[activeRowIndex]?.trackingType === "Barcode" ||
                           items[activeRowIndex]?.trackingType ===
-                            "Size Template + Barcode") && (
+                            "Size + Barcode") && (
                           <>
                             <td className="border-b border-r border-slate-200 text-left pl-1  text-[11px]">
                               {breakup.barcodeFrom}
@@ -245,7 +254,7 @@ const ProformaInvoiceItems = ({
                           items[activeRowIndex]?.trackingType === "Barcode"
                             ? 3
                             : items[activeRowIndex]?.trackingType ===
-                                "Size Template + Barcode"
+                                "Size + Barcode"
                               ? 4
                               : 2
                         }
@@ -295,6 +304,9 @@ const ProformaInvoiceItems = ({
               </th>
               <th className="w-12 px-1 py-1.5 text-center font-medium border border-gray-300">
                 Price
+              </th>
+              <th className="w-14 px-1 py-1.5 text-center font-medium border border-gray-300">
+                Image
               </th>
               <th className="w-16 px-1 py-1.5 text-center font-medium border border-gray-300">
                 Gross Amt
@@ -417,6 +429,55 @@ const ProformaInvoiceItems = ({
                       }}
                     />
                   </td>
+                  <td className="border border-gray-300 text-center px-1 py-0.5 w-14">
+                    {(() => {
+                      const currentStyleItem =
+                        item?.StyleItem ||
+                        styleItemList?.data?.find(
+                          (s) => s.id === item?.styleItemId,
+                        );
+                      const rawImage = currentStyleItem?.styleImage;
+                      const imgUrl = rawImage
+                        ? getImageUrlPath(rawImage)
+                        : null;
+                      const itemName = currentStyleItem?.name || "Style Item";
+
+                      if (!imgUrl) {
+                        return (
+                          <div className="flex items-center justify-center text-gray-300 text-[11px]">
+                            -
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="flex items-center justify-center">
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenImagePreview(imgUrl, itemName);
+                            }}
+                            className="relative group p-0.5 rounded border border-gray-200 hover:border-indigo-500 bg-white shadow-2xs hover:shadow-xs transition-all cursor-pointer focus:outline-none"
+                            title="Click to preview image"
+                          >
+                            <img
+                              src={imgUrl}
+                              alt={itemName}
+                              className="w-5 h-4 object-cover rounded-xs"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-black/35 rounded-xs opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                              <FiEye className="text-white w-3 h-3" />
+                            </div>
+                          </button>
+                        </div>
+                      );
+                    })()}
+                  </td>
                   <td className="border border-gray-300 text-right px-1 text-[11px]">
                     {item.styleItemId
                       ? parseFloat(item.qty * item.price || 0).toFixed(2)
@@ -481,6 +542,7 @@ const ProformaInvoiceItems = ({
               <td className="text-right pr-1 border border-gray-300">
                 {items?.reduce((sum, i) => sum + (parseFloat(i.price) || 0), 0)}
               </td>
+              <td className="border border-gray-300"></td>
               <td className="text-right px-1 border border-gray-300">
                 {items
                   ?.reduce(
@@ -535,6 +597,41 @@ const ProformaInvoiceItems = ({
           </div>
         </div>
       )} */}
+
+      {imagePreviewModalOpen && (
+        <Modal
+          isOpen={imagePreviewModalOpen}
+          onClose={() => setImagePreviewModalOpen(false)}
+          widthClass="w-[550px] max-w-[90vw]"
+        >
+          <div className="bg-slate-100 p-3 rounded-lg">
+            <div className="bg-white p-3 rounded-lg flex justify-between items-center mb-3 shadow-xs">
+              <div className="flex items-center gap-2">
+                <FiImage className="text-indigo-600 w-4 h-4" />
+                <h3 className="text-[14px] font-bold text-slate-800 truncate max-w-[400px]">
+                  {previewImageTitle
+                    ? `${previewImageTitle} - Image Preview`
+                    : "Style Item Image"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                className="bg-white text-indigo-600 border border-indigo-600 px-3 py-0.5 rounded text-[12px] hover:bg-indigo-50 font-semibold transition-colors shadow-2xs cursor-pointer"
+                onClick={() => setImagePreviewModalOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="bg-white p-3 rounded-lg shadow-xs border border-slate-200 flex items-center justify-center min-h-[250px] max-h-[70vh] overflow-auto">
+              <img
+                src={previewImageUrl}
+                alt={previewImageTitle || "Style Item"}
+                className="max-h-[65vh] max-w-full object-contain rounded shadow-md"
+              />
+            </div>
+          </div>
+        </Modal>
+      )}
     </>
   );
 };

@@ -70,6 +70,7 @@ import {
   machine,
   packing,
   salesDelivery,
+  bank,
 } from "./src/routes/index.js";
 import { setIo } from "./src/utils/notificationHelper.js";
 import { socketMain } from "./src/sockets/socket.js";
@@ -174,9 +175,13 @@ apiRouter.use("/productionAllocation", productionalallocation);
 apiRouter.use("/machine", machine);
 apiRouter.use("/packing", packing);
 apiRouter.use("/salesDelivery", salesDelivery);
+apiRouter.use("/bank", bank);
 
-apiRouter.get("/retreiveFile/:fileName", (req, res) => {
-  const { fileName } = req.params;
+apiRouter.get("/retreiveFile/:fileName(*)", (req, res) => {
+  let { fileName } = req.params;
+  if (fileName) {
+    fileName = fileName.replace(/^uploads\//, "");
+  }
   res.sendFile(__dirname + "/uploads/" + fileName);
 });
 

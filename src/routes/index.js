@@ -67,3 +67,4 @@ export { default as productionalallocation } from "./productionAllocation.route.
 export { default as machine } from "./machine.route.js";
 export { default as packing } from "./packing.route.js";
 export { default as salesDelivery } from "./salesDelivery.route.js";
+export { default as bank } from "./bank.route.js";

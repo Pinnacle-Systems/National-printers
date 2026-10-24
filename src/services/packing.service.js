@@ -400,6 +400,7 @@ async function geOrderItemsList(req) {
       StyleItem: {
         select: {
           name: true,
+          styleImage: true,
         },
       },
       _count: {
@@ -414,6 +415,7 @@ async function geOrderItemsList(req) {
     id: item.styleItemId,
     childRecord: item._count.jobCards,
     name: item.StyleItem?.name || "",
+    styleImage: item.StyleItem?.styleImage || null,
     itemGroupId: item.itemGroupId,
     itemGroupName: item.ItemGroup?.name,
   }));
@@ -429,6 +431,7 @@ async function getOne(id) {
     include: {
       PackingOrderItems: {
         include: {
+          StyleItem: true,
           PackingSizeBreakup: {
             include: {
               PackingItems: true,

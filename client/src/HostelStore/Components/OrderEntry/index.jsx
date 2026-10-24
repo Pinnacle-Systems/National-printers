@@ -14,6 +14,7 @@ import OrderEntryReport from "./OrderEntryReport.jsx";
 import OrderEntryForm from "./OrderEntryForm.jsx";
 import { useIsApprover } from "../../../CustomHooks/userIsApprover.js";
 import Swal from "sweetalert2";
+import { invalidateItems } from "../../../redux/Dispatch/ItemsInvalidateTags.js";
 
 const index = () => {
   const [showForm, setShowForm] = useState(false);
@@ -65,6 +66,7 @@ const index = () => {
 
       try {
         let deldata = await removeData(id).unwrap();
+        invalidateItems();
         if (deldata?.statusCode == 1) {
           Swal.fire({
             icon: "error",

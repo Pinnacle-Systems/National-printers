@@ -5,5 +5,10 @@ const BASE_URL = process.env.REACT_APP_SERVER_URL;
 export const IMAGE_UPLOAD_URL = BASE_URL + 'retreiveFile/' 
 
 export function getImageUrlPath(fileName) {
-    return `${IMAGE_UPLOAD_URL}${fileName}`
+    if (!fileName) return "";
+    if (fileName.startsWith("http://") || fileName.startsWith("https://") || fileName.startsWith("data:")) {
+        return fileName;
+    }
+    const cleanFileName = fileName.replace(/^uploads\//, "");
+    return `${IMAGE_UPLOAD_URL}${cleanFileName}`;
 }
