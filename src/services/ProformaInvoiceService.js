@@ -117,6 +117,12 @@ async function getOne(id) {
       },
       attachments: true,
       Branch: true,
+      Bank: {
+        include: {
+          Branch: true,
+        },
+      },
+      Terms: true,
       customer: true,
       deliveryCustomer: true,
       OrderEntry: {

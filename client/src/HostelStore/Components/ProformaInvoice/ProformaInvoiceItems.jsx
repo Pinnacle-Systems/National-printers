@@ -21,6 +21,7 @@ const ProformaInvoiceItems = ({
   taxTemplateId,
   id,
   isSupplierOutside,
+  isCustomerExport = false,
 }) => {
   const { companyId } = getCommonParams();
   const { data: styleItemList } = useGetStyleItemMasterQuery({
@@ -96,7 +97,7 @@ const ProformaInvoiceItems = ({
   return (
     <>
       <Modal
-        isOpen={Number.isInteger(currentSelectedIndex)}
+        isOpen={!isCustomerExport && Number.isInteger(currentSelectedIndex)}
         onClose={() => {
           const index = currentSelectedIndex;
           setCurrentSelectedIndex(null);
@@ -108,7 +109,7 @@ const ProformaInvoiceItems = ({
         }}
       >
         <TaxDetailsFullTemplate
-          readOnly={readOnly}
+          readOnly={readOnly || isCustomerExport}
           taxTypeId={taxTemplateId}
           currentIndex={currentSelectedIndex}
           setCurrentSelectedIndex={setCurrentSelectedIndex}
@@ -247,8 +248,8 @@ const ProformaInvoiceItems = ({
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot>
-                    <tr className="bg-slate-50 font-bold">
+                  <tfoot className="sticky bottom-0 z-10 bg-slate-50">
+                    <tr className="bg-slate-50 font-bold sticky bottom-0">
                       <td
                         colSpan={
                           items[activeRowIndex]?.trackingType === "Barcode"
@@ -258,11 +259,11 @@ const ProformaInvoiceItems = ({
                               ? 4
                               : 2
                         }
-                        className="border-b border-r border-slate-200 px-2 py-1 text-right text-[11px]"
+                        className="border-b border-r border-slate-200 px-2 py-1 text-right text-[11px] bg-slate-50"
                       >
                         Total
                       </td>
-                      <td className="border-b border-r border-slate-200 px-2 py-1 text-right text-[11px]">
+                      <td className="border-b border-r border-slate-200 px-2 py-1 text-right text-[11px] bg-slate-50">
                         {(items[activeRowIndex]?.sizeBreakup || []).reduce(
                           (sum, b) => sum + (Number(b.qty) || 0),
                           0,
@@ -337,7 +338,9 @@ const ProformaInvoiceItems = ({
               let netAmountStr = "";
 
               if (enrichedItem) {
-                const taxPct = Number(enrichedItem._taxPct) || 0;
+                const taxPct = isCustomerExport
+                  ? 0
+                  : Number(enrichedItem._taxPct) || 0;
                 taxPercentStr = `${taxPct}%`;
                 netAmountStr = enrichedItem.totals?.net?.toFixed(2) || "";
               }
@@ -486,9 +489,15 @@ const ProformaInvoiceItems = ({
                   <td className="border border-gray-300 text-center text-[11px]">
                     <button
                       id={`tax-btn-${index}`}
-                      disabled={!item.styleItemId}
-                      className="text-indigo-600 hover:text-indigo-800 disabled:text-gray-300 transition-colors outline-none focus:ring-2 focus:ring-indigo-500 rounded"
+                      disabled={isCustomerExport || !item.styleItemId}
+                      title={
+                        isCustomerExport
+                          ? "Tax details disabled for export customer"
+                          : "View/Edit Tax"
+                      }
+                      className="text-indigo-600 hover:text-indigo-800 disabled:text-gray-300 transition-colors outline-none focus:ring-2 focus:ring-indigo-500 rounded disabled:cursor-not-allowed cursor-pointer"
                       onClick={() => {
+                        if (isCustomerExport) return;
                         if (!taxTemplateId) {
                           return Swal.fire({
                             title: "Information",
@@ -503,6 +512,7 @@ const ProformaInvoiceItems = ({
                         if (e.key === "Enter") {
                           e.preventDefault();
                           e.stopPropagation();
+                          if (isCustomerExport) return;
                           if (!taxTemplateId) {
                             return Swal.fire({
                               title: "Information",
@@ -528,22 +538,22 @@ const ProformaInvoiceItems = ({
               );
             })}
           </tbody>
-          <tfoot>
-            <tr className="bg-gray-100 h-7 font-bold text-gray-800 text-[11px]">
+          <tfoot className="sticky bottom-0 z-10 bg-gray-100 shadow-[0_-1px_0_rgba(209,213,219,1)]">
+            <tr className="bg-gray-100 h-7 font-bold text-gray-800 text-[11px] sticky bottom-0">
               <td
-                className="text-right px-2 border border-gray-300"
+                className="text-right px-2 border border-gray-300 bg-gray-100"
                 colSpan={6}
               >
                 Total
               </td>
-              <td className="text-right px-1 border border-gray-300">
+              <td className="text-right px-1 border border-gray-300 bg-gray-100">
                 {items?.reduce((sum, i) => sum + (parseFloat(i.qty) || 0), 0)}
               </td>
-              <td className="text-right pr-1 border border-gray-300">
+              <td className="text-right pr-1 border border-gray-300 bg-gray-100">
                 {items?.reduce((sum, i) => sum + (parseFloat(i.price) || 0), 0)}
               </td>
-              <td className="border border-gray-300"></td>
-              <td className="text-right px-1 border border-gray-300">
+              <td className="border border-gray-300 bg-gray-100"></td>
+              <td className="text-right px-1 border border-gray-300 bg-gray-100">
                 {items
                   ?.reduce(
                     (sum, i) => sum + (parseFloat(i.qty * i.price) || 0),
@@ -551,9 +561,9 @@ const ProformaInvoiceItems = ({
                   )
                   .toFixed(2)}
               </td>
-              <td className="border border-gray-300"></td>
-              <td className="border border-gray-300"></td>
-              <td className="text-right px-1 border border-gray-300 text-[11px]">
+              <td className="border border-gray-300 bg-gray-100"></td>
+              <td className="border border-gray-300 bg-gray-100"></td>
+              <td className="text-right px-1 border border-gray-300 bg-gray-100 text-[11px]">
                 {enrichedItems?.net?.toFixed(2) || ""}
               </td>
             </tr>

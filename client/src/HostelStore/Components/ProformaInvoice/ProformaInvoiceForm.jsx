@@ -132,7 +132,7 @@ const ProformaInvoiceForm = ({
   const { data: supplierData } = useGetPartyByIdQuery(customerId, {
     skip: !customerId,
   });
-
+  console.log("supplierData", supplierData);
   const filteredOrderList = useMemo(() => {
     if (!customerId || !orderList?.data) return [];
     return orderList.data.filter(
@@ -172,13 +172,24 @@ const ProformaInvoiceForm = ({
       setCustomerId(data.customerId);
       setOrderEntryId(data.orderEntryId || "");
       setRemarks(data.remarks || "");
-      setTermsAndCondition(data.termsAndCondition || "");
-      setTermsId(data.termsId || "");
+      setTermsAndCondition(
+        data.termsAndCondition ||
+          data.Terms?.description ||
+          data.OrderEntry?.termsAndCondition ||
+          "",
+      );
+      setTermsId(data.termsId || data.OrderEntry?.termsId || "");
       setTaxTemplateId(data.taxTemplateId || "");
       setDeliveryType(data.deliveryType || "self");
       setDeliveryCustomer(data.deliveryCustomerId || "");
       setModeOfPayment(data.modeOfPayment || "By cash");
-      setDeliveryCharge(data.deliveryCharge || "");
+      setDeliveryCharge(
+        data.deliveryCharge !== null &&
+          data.deliveryCharge !== undefined &&
+          data.deliveryCharge !== ""
+          ? Number(data.deliveryCharge).toFixed(2)
+          : "",
+      );
       let loadedVersions = [];
       if (data.items?.length > 0) {
         loadedVersions = [
@@ -327,10 +338,20 @@ const ProformaInvoiceForm = ({
       return;
     }
 
-    if (!taxTemplateId) {
+    if (!isCustomerExport && !taxTemplateId) {
       Swal.fire({
         title: "Warning",
         text: "Please select a Tax Template.",
+        icon: "warning",
+        confirmButtonColor: "#3085d6",
+      });
+      return;
+    }
+
+    if (isCustomerExport && !bankId) {
+      Swal.fire({
+        title: "Warning",
+        text: "Please select an Advising Bank for export customer.",
         icon: "warning",
         confirmButtonColor: "#3085d6",
       });
@@ -377,12 +398,21 @@ const ProformaInvoiceForm = ({
       remarks,
       termsAndCondition,
       termsId,
-      taxTemplateId,
+      taxTemplateId: isCustomerExport
+        ? null
+        : taxTemplateId
+          ? parseInt(taxTemplateId)
+          : null,
       deliveryType,
       deliveryCustomerId: deliveryCustomer || null,
       modeOfPayment,
       deliveryCharge: Number(deliveryCharge) || 0,
-      items: JSON.stringify(filteredItems),
+      items: JSON.stringify(
+        filteredItems.map((item) => ({
+          ...item,
+          taxPercent: isCustomerExport ? 0 : item.taxPercent,
+        })),
+      ),
       discountType,
       discountValue,
       bankId: bankId ? parseInt(bankId) : null,
@@ -464,11 +494,15 @@ const ProformaInvoiceForm = ({
   };
 
   useEffect(() => {
-    if (termsId && termsData?.data) {
-      const term = termsData.data.find((t) => t.id === termsId);
-      if (term) setTermsAndCondition(term.termsAndCondition);
+    if (!id && termsId && termsData?.data && !termsAndCondition) {
+      const term = termsData.data.find(
+        (t) => parseInt(t.id) === parseInt(termsId),
+      );
+      if (term) {
+        setTermsAndCondition(term.description || term.termsAndCondition || "");
+      }
     }
-  }, [termsId, termsData]);
+  }, [termsId, termsData, id, termsAndCondition]);
 
   const totalAmount = items.reduce(
     (sum, item) => sum + (parseFloat(item.amount) || 0),
@@ -478,7 +512,27 @@ const ProformaInvoiceForm = ({
     (sum, item) => sum + (parseFloat(item.qty) || 0),
     0,
   );
-  const isCustomerExport = supplierData?.data?.isCustomerExport;
+  const isCustomerExport = useMemo(() => {
+    if (supplierData?.data?.isCustomerExport !== undefined) {
+      return Boolean(supplierData.data.isCustomerExport);
+    }
+    const cust =
+      singleData?.data?.customer || singleData?.data?.OrderEntry?.customer;
+    if (cust?.isCustomerExport !== undefined) {
+      return Boolean(cust.isCustomerExport);
+    }
+    const countryName = cust?.City?.state?.country?.name;
+    if (countryName) {
+      return countryName.trim().toUpperCase() !== "INDIA";
+    }
+    return false;
+  }, [supplierData, singleData]);
+
+  useEffect(() => {
+    if (isCustomerExport) {
+      setTaxTemplateId("");
+    }
+  }, [isCustomerExport]);
 
   const actionButtonClass =
     "px-3 py-2 rounded-md flex items-center justify-center text-sm text-white transition";
@@ -585,8 +639,9 @@ const ProformaInvoiceForm = ({
               )}
               value={taxTemplateId}
               setValue={setTaxTemplateId}
-              required={true}
-              readOnly={effectiveReadOnly || !!id}
+              required={!isCustomerExport}
+              readOnly={effectiveReadOnly || !!id || isCustomerExport}
+              disabled={effectiveReadOnly || !!id || isCustomerExport}
             />
           </div>
         </div>
@@ -620,6 +675,22 @@ const ProformaInvoiceForm = ({
               childComponent={BankMaster}
               addNewModalWidth="w-[45%] h-[64%]"
               disabled={readOnly}
+            />
+          </div>
+          <div className="w-28">
+            <TextInput
+              name="Delivery Charge"
+              type="number"
+              value={deliveryCharge}
+              setValue={setDeliveryCharge}
+              readOnly={effectiveReadOnly}
+              disabled={effectiveReadOnly}
+              onBlur={(e) => {
+                const val = e.target.value;
+                if (val !== "" && !isNaN(val)) {
+                  setDeliveryCharge(parseFloat(val).toFixed(2));
+                }
+              }}
             />
           </div>
         </div>
@@ -693,15 +764,34 @@ const ProformaInvoiceForm = ({
         roundOff: 0,
       };
 
-    // We need taxPercent for each item. If missing, we should ideally get it from HSN master.
-    // For now, we'll try to use what's in the item.
+    if (isCustomerExport) {
+      const calcItems = filteredItems.map((item) => ({
+        ...item,
+        taxPercent: 0,
+        _taxPct: 0,
+      }));
+
+      const res = calculateTaxWithHSNBreakupAndInsertIntoPoItems(
+        calcItems,
+        isSupplierOutside,
+        discountType,
+        discountValue,
+      );
+
+      return {
+        ...res,
+        slabBreakup: [],
+        hsnBreakup: {},
+      };
+    }
+
     return calculateTaxWithHSNBreakupAndInsertIntoPoItems(
       filteredItems,
       isSupplierOutside,
       discountType,
       discountValue,
     );
-  }, [items, isSupplierOutside, discountType, discountValue]);
+  }, [items, isSupplierOutside, discountType, discountValue, isCustomerExport]);
 
   const versionDropdown = (
     <div className="flex items-center gap-2 ml-2">
@@ -751,24 +841,16 @@ const ProformaInvoiceForm = ({
     </div>
   );
 
-  const taxBreakdownContent =
-    enrichedData.slabBreakup.length > 0 ? (
-      <div className="space-y-0.5 border-t border-slate-100 pt-1">
-        {enrichedData.slabBreakup
-          .filter((row) => (row.amount || 0) > 0)
-          .map((row) => (
-            <div
-              key={`${row.tax}-${row.amount}`}
-              className="flex items-center justify-between gap-2 text-[11px]"
-            >
-              <span className="text-slate-500">{row.tax}</span>
-              <span className="font-medium text-slate-700">
-                {`Rs.${parseFloat(row.amount || 0).toFixed(2)}`}
-              </span>
-            </div>
-          ))}
-      </div>
-    ) : null;
+  const taxBreakdownSummaryRaw = enrichedData?.slabBreakup || [];
+  const aggregatedTaxBreakdown = taxBreakdownSummaryRaw?.reduce((acc, row) => {
+    const taxType = row?.tax?.split(" ")[0];
+    if (!acc[taxType]) {
+      acc[taxType] = { tax: taxType, amount: 0 };
+    }
+    acc[taxType].amount += parseFloat(row?.amount || 0);
+    return acc;
+  }, {});
+  const taxBreakdownSummary = Object.values(aggregatedTaxBreakdown);
 
   const footerContent = (
     <>
@@ -781,65 +863,71 @@ const ProformaInvoiceForm = ({
         showTermSelect={true}
         termValue={termsId}
         onTermChange={(value) => setTermsId(value)}
+        twoColumnRightSummary={true}
+        rightSummaryTitle="Summary"
+        termsColSpan="md:col-span-3"
+        remarksColSpan="md:col-span-3"
+        summaryColSpan="md:col-span-6"
         termOptions={
-          termsData?.data?.map((item) => ({
-            value: item.id,
-            label: item.name,
-            templateText: item.termsAndCondition || "",
+          (id
+            ? termsData?.data
+            : termsData?.data?.filter((item) => item?.active)
+          )?.map((item) => ({
+            value: item?.id,
+            label: item?.name,
+            templateText: item?.termsAndCondition || item?.description || "",
           })) || []
         }
         totalsRows={[
           {
-            key: "totalQty",
-            label: "Total Qty",
-            value: totalQty,
+            key: "totalDiscount",
+            label: "Total Discount",
+            value: `Rs.${parseFloat((enrichedData?.itemDiscount || 0) + (enrichedData?.overallDiscount || 0)).toFixed(2)}`,
             summaryColumn: "right",
           },
           {
             key: "taxableAmount",
             label: "Taxable Amount",
-            value: `Rs.${enrichedData.taxable.toFixed(2)}`,
+            value: `Rs.${parseFloat(enrichedData?.taxable || 0).toFixed(2)}`,
             summaryColumn: "right",
           },
-          {
-            key: "deliveryCharge",
-            label: "Delivery Charge",
-            renderValue: () => (
-              <div className="flex items-center">
-                <span className="text-slate-600 mr-1">Rs.</span>
-                <input
-                  type="number"
-                  className="w-20 text-right border border-gray-300 rounded px-1 py-0.5 outline-none focus:border-indigo-500 text-[11px]"
-                  value={deliveryCharge}
-                  onChange={(e) => setDeliveryCharge(e.target.value)}
-                  readOnly={effectiveReadOnly}
-                  placeholder="0.00"
-                  onBlur={(e) => {
-                    const val = e.target.value;
-                    if (val === "") {
-                      setDeliveryCharge(val);
-                    } else {
-                      const num = parseFloat(val);
-                      setDeliveryCharge(
-                        isNaN(num) ? "" : Number(num).toFixed(2),
-                      );
-                    }
-                  }}
-                />
-              </div>
-            ),
+          ...taxBreakdownSummary.map((row, index) => ({
+            key: `${row.tax}-${row.amount}`,
+            label: row.tax,
+            value: `Rs.${parseFloat(row.amount || 0).toFixed(2)}`,
             summaryColumn: "right",
+            labelClassName: "!text-slate-500 font-normal",
+            valueClassName: "text-slate-700",
+            className: index === 0 ? "border-t border-slate-100 pt-1" : "",
+          })),
+          ...(Number(deliveryCharge) > 0
+            ? [
+                {
+                  key: "deliveryCharge",
+                  label: "Delivery Charge",
+                  value: `Rs.${parseFloat(deliveryCharge).toFixed(2)}`,
+                  summaryColumn: "right",
+                  labelClassName: "!text-slate-500 font-normal",
+                  valueClassName: "text-slate-700",
+                },
+              ]
+            : []),
+          {
+            key: "roundOff",
+            label: "Round Off",
+            value: `Rs.${parseFloat(enrichedData?.roundOff || 0).toFixed(2)}`,
+            summaryColumn: "right",
+            labelClassName: "!text-slate-500 font-normal",
+            valueClassName: "text-slate-700",
           },
           {
             key: "netAmount",
             label: "Net Amount",
-            value: `Rs.${(enrichedData.net + (Number(deliveryCharge) || 0)).toFixed(2)}`,
+            value: `Rs.${(parseFloat(enrichedData?.net || 0) + (Number(deliveryCharge) || 0)).toFixed(2)}`,
             summaryColumn: "right",
             emphasized: true,
           },
         ]}
-        extraTotalsContent={taxBreakdownContent}
-        extraTotalsContentColumn="right"
       />
       <div className="flex flex-col md:flex-row gap-2 justify-between mt-4 pb-4 px-2">
         {/* Left Buttons */}
@@ -877,9 +965,9 @@ const ProformaInvoiceForm = ({
             </button>
           )}
 
-          {/* <button
+          <button
             onClick={() => {
-              if (!taxTemplateId) {
+              if (!isCustomerExport && !taxTemplateId) {
                 Swal.fire({
                   title: "Information",
                   text: "Please Select Tax Template !",
@@ -894,7 +982,7 @@ const ProformaInvoiceForm = ({
           >
             <FiEye className="w-3.5 h-3.5 mr-2" />
             View Summary
-          </button> */}
+          </button>
 
           <button
             onClick={() => setPrintModalOpen(true)}
@@ -918,7 +1006,7 @@ const ProformaInvoiceForm = ({
         <PoSummary
           poItems={items}
           totals={enrichedData}
-          readOnly={effectiveReadOnly}
+          readOnly={effectiveReadOnly || isCustomerExport}
           discountType={discountType}
           setDiscountType={setDiscountType}
           discountValue={discountValue}
@@ -936,6 +1024,21 @@ const ProformaInvoiceForm = ({
           <ProformaInvoicePrintFormat
             data={{
               ...singleData?.data,
+              termsAndCondition:
+                termsAndCondition ||
+                singleData?.data?.termsAndCondition ||
+                singleData?.data?.Terms?.description ||
+                singleData?.data?.OrderEntry?.termsAndCondition,
+              remarks: remarks || singleData?.data?.remarks,
+              Bank:
+                bankList?.data?.find(
+                  (b) => parseInt(b.id) === parseInt(bankId),
+                ) || singleData?.data?.Bank,
+              isCustomerExport,
+              deliveryCharge:
+                deliveryCharge !== ""
+                  ? Number(deliveryCharge)
+                  : singleData?.data?.deliveryCharge || 0,
               items: items.filter((i) => i.styleItemId),
               calculations: enrichedData,
               isSupplierOutside,
@@ -962,6 +1065,7 @@ const ProformaInvoiceForm = ({
             taxTemplateId={taxTemplateId}
             id={id}
             isSupplierOutside={isSupplierOutside}
+            isCustomerExport={isCustomerExport}
           />
         }
         footer={footerContent}
