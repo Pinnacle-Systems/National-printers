@@ -45,6 +45,7 @@ import {
   PlateMasterApi,
   DieMasterApi,
   MachineMasterApi,
+  bankMasterApi,
 } from "./services";
 import paymentApi from "./services/PaymentService";
 import StyleMasterApi from "./services/StyleMasterService";
@@ -134,6 +135,7 @@ const commonReducers = {
   machine: MachineMasterApi.reducer,
   Packing: PackingApi.reducer,
   salesDelivery: SalesDeliveryApi.reducer,
+  bankMaster: bankMasterApi.reducer,
 };
 const commonMiddleware = [
   countryMasterApi.middleware,
@@ -199,6 +201,7 @@ const commonMiddleware = [
   MachineMasterApi.middleware,
   PackingApi.middleware,
   SalesDeliveryApi.middleware,
+  bankMasterApi.middleware,
 ];
 
 const store = configureStore({

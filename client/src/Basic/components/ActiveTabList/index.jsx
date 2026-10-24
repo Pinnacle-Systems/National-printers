@@ -20,6 +20,7 @@ import {
   ApprovalRuleOperator,
   ApprovalRuleField,
   ApprovalRuleModule,
+  BankMaster,
 } from "..";
 
 import { CLOSE_ICON, DOUBLE_NEXT_ICON } from "../../../icons";
@@ -169,6 +170,7 @@ const ActiveTabList = () => {
     "MACHINE MASTER": <MachineMaster />,
     PACKING: <Packing />,
     "SALES DELIVERY": <SalesDelivery />,
+    "BANK MASTER": <BankMaster />,
   };
   const innerWidth = window.innerWidth;
   const itemsToShow = innerWidth / 130;

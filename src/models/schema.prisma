@@ -72,6 +72,7 @@ model Company {
   machines            Machine[]
   salesDeliveries     SalesDelivery[]
   currencies          Currency[]
+  banks               Bank[]
 }
 
 model Subscription {
@@ -344,6 +345,7 @@ model City {
   doctorPermCity  Employee[]    @relation(name: "permCity")
   Party           Party[]
   PartyBranch     PartyBranch[]
+  banks           Bank[]
 }
 
 model Department {
@@ -2007,6 +2009,9 @@ model ProformaInvoice {
   deliveryCharge     Float?
   discountType       String?
   discountValue      Float?
+  Bank               Bank?                 @relation(fields: [bankId], references: [id])
+  bankId             Int?
+  validTo            DateTime?
   JobCards           JobCard[]
   salesDeliveries    SalesDelivery[]
   stocks             Stock[]
@@ -2593,4 +2598,19 @@ model Currency {
   active         Boolean  @default(true)
 
   Ledger Ledger[]
+}
+
+model Bank {
+  id               Int               @id @default(autoincrement())
+  companyId        Int?
+  Company          Company?          @relation(fields: [companyId], references: [id])
+  name             String?
+  accNo            String?
+  ifsc             String?
+  swiftCode        String?
+  branchId         Int?
+  Branch           City?             @relation(fields: [branchId], references: [id])
+  active           Boolean           @default(true)
+  bankHolderName   String?
+  proformaInvoices ProformaInvoice[]
 }
