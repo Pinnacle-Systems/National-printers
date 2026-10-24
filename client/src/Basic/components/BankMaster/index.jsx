@@ -362,7 +362,9 @@ export default function Form({
                 disabled={childRecord.current > 0}
               />
             </div>
-            <div className="mb-3 ">
+          </div>
+          <div className="flex gap-x-2">
+            <div className="mb-3 w-[50%]">
               <TextInputNew
                 name="Acc No"
                 type="acc_no"
@@ -373,8 +375,6 @@ export default function Form({
                 disabled={childRecord.current > 0}
               />
             </div>
-          </div>
-          <div className="flex gap-x-2">
             <div className="mb-3 w-[50%]">
               <TextInputNew
                 name="IFSC Code"
@@ -386,6 +386,8 @@ export default function Form({
                 disabled={childRecord.current > 0}
               />
             </div>
+          </div>
+          <div className="flex gap-x-2">
             <div className="mb-3 w-[50%]">
               <TextInputNew
                 name="Swift Code"
@@ -396,30 +398,29 @@ export default function Form({
                 disabled={childRecord.current > 0}
               />
             </div>
+            <div className="w-[50%] mb-3">
+              <DropdownWithModal
+                name="Branch/City Name"
+                options={dropDownListMergedObject(
+                  id
+                    ? cityList?.data
+                    : cityList?.data?.filter((item) => item?.active),
+                  "name",
+                  "id",
+                )}
+                masterName="CITY MASTER"
+                required={true}
+                value={branchId}
+                setValue={setBranchId}
+                readOnly={readOnly}
+                className={`focus:ring-2 focus:ring-blue-100`}
+                addNewLabel="+ Add New City"
+                childComponent={CityMaster}
+                addNewModalWidth="w-[50%] h-[55%]"
+                disabled={childRecord.current > 0}
+              />
+            </div>
           </div>
-          <div className="w-[50%] mb-3">
-            <DropdownWithModal
-              name="Branch/City Name"
-              options={dropDownListMergedObject(
-                id
-                  ? cityList?.data
-                  : cityList?.data?.filter((item) => item?.active),
-                "name",
-                "id",
-              )}
-              masterName="CITY MASTER"
-              required={true}
-              value={branchId}
-              setValue={setBranchId}
-              readOnly={readOnly}
-              className={`focus:ring-2 focus:ring-blue-100`}
-              addNewLabel="+ Add New City"
-              childComponent={CityMaster}
-              addNewModalWidth="w-[50%] h-[55%]"
-              disabled={childRecord.current > 0}
-            />
-          </div>
-
           <ToggleButton
             name="Status"
             options={statusDropdown}

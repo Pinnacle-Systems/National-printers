@@ -225,9 +225,12 @@ async function getOne(id) {
     include: {
       attachments: true,
       City: {
-        select: {
-          name: true,
-          state: true,
+        include: {
+          state: {
+            include: {
+              country: true,
+            },
+          },
         },
       },
       PurchaseBillSupplier: {
@@ -257,6 +260,11 @@ async function getOne(id) {
   });
 
   if (!data) return NoRecordFound("party");
+
+  const countryName = data?.City?.state?.country?.name;
+  const isCustomerExport = countryName
+    ? countryName.trim().toUpperCase() !== "INDIA"
+    : false;
 
   const totalOpeningBalance = data?.openingBalances?.reduce(
     (sum, val) => sum + (val?.amount ?? 0),
@@ -316,6 +324,7 @@ async function getOne(id) {
       totalPaymentSalesBill,
       totalPaymentPurchaseBill,
       totalDiscount,
+      isCustomerExport,
 
       childRecord: childRecordPo + childRecordInward,
       totaloutstanding,
