@@ -7,7 +7,7 @@ import {
   Font,
   StyleSheet,
 } from "@react-pdf/renderer";
-import Logo from "../../../../../src/assets/NationalPrintLogo.jpeg";
+import Logo from "../../../../../src/assets/NPLOGO.jpeg";
 import { numberToWords } from "number-to-words";
 import {
   findFromList,
@@ -530,9 +530,7 @@ const PurchaseOrderPrintFormat = ({
                 </View>
 
                 <View style={styles.companyCenter}>
-                  <Text style={styles.companyName}>
-                    {branchData?.branchName || ""}
-                  </Text>
+                  <Text style={styles.companyName}>NATIONAL ENTERPRISES</Text>
                   {branchData?.address ? (
                     <Text style={styles.companyAddr}>{branchData.address}</Text>
                   ) : null}
@@ -990,7 +988,6 @@ const PurchaseOrderPrintFormat = ({
                   </View>
                 </>
               )}
-
             </View>
 
             {/* ── FOOTER BAR ── */}

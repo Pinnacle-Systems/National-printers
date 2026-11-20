@@ -6,7 +6,7 @@ import {
   Image,
   StyleSheet,
 } from "@react-pdf/renderer";
-import Logo from "../../../assets/NationalPrintLogo.jpeg";
+import Logo from "../../../assets/NPLOGO.jpeg";
 import {
   findFromList,
   getDateFromDateTimeToDisplay,
@@ -826,9 +826,7 @@ const JobCardPrintFormat = ({
             <Image src={Logo} style={styles.logo} />
           </View>
           <View style={styles.companyCenter}>
-            <Text style={styles.companyName}>
-              {branchData?.branchName || "NATIONAL PRINTING PRESS"}
-            </Text>
+            <Text style={styles.companyName}>NATIONAL ENTERPRISES</Text>
             <Text style={styles.companyAddr}>
               {branchData?.address ||
                 "9(1)-MAARIYAMMAN LAYOUT 2ND STREET, KUMARANATHA PURAM, TIRUPUR : 641602"}

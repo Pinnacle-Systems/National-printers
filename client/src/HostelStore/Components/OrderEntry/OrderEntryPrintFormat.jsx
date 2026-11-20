@@ -6,7 +6,7 @@ import {
   Image,
   StyleSheet,
 } from "@react-pdf/renderer";
-import Logo from "../../../assets/NationalPrintLogo.jpeg";
+import Logo from "../../../assets/NPLOGO.jpeg";
 import moment from "moment";
 
 const styles = StyleSheet.create({
@@ -288,7 +288,7 @@ const OrderEntryPrintFormat = ({
             <Image src={Logo} style={styles.logo} />
           </View>
           <View style={styles.companyCenter}>
-            <Text style={styles.companyName}>NATIONAL PRINTING PRESS</Text>
+            <Text style={styles.companyName}>NATIONAL ENTERPRISES</Text>
             <Text style={styles.companyAddr}>
               {branchData?.address || (
                 <Text>
