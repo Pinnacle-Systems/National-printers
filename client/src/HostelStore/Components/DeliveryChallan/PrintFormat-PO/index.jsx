@@ -8,9 +8,13 @@ import {
   StyleSheet,
 } from "@react-pdf/renderer";
 import tw from "../../../../Utils/tailwind-react-pdf";
-import { findFromList, getCommonParams, getDateFromDateTimeToDisplay } from "../../../../Utils/helper";
+import {
+  findFromList,
+  getCommonParams,
+  getDateFromDateTimeToDisplay,
+} from "../../../../Utils/helper";
 import { Loader } from "../../../../Basic/components";
-import MsExports from "../../../../../src/assets/MSexports.png";
+import MsExports from "../../../../../src/assets/NPLOGO.jpeg";
 
 // Font registration
 Font.register({
@@ -23,7 +27,7 @@ Font.register({
     },
   ],
 });
-Font.registerHyphenationCallback(word => [word]);
+Font.registerHyphenationCallback((word) => [word]);
 
 const BORDER_GREY = "#9ca3af";
 const ZEBRA_BROWN = "#F4EEE9";
@@ -58,7 +62,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 1,
     height: 70,
     borderBottomColor: BORDER_GREY,
-    borderBottomWidth: 1
+    borderBottomWidth: 1,
   },
 
   logo: {
@@ -103,7 +107,7 @@ export const styles = StyleSheet.create({
     color: "white",
     height: 20,
     alignItems: "center",
-    display: "flex"
+    display: "flex",
   },
 
   valueContainer: {
@@ -137,7 +141,7 @@ export const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
     padding: 3,
-    color: "white"
+    color: "white",
   },
 
   td: {
@@ -173,15 +177,17 @@ const FixedPageBorder = () => (
   />
 );
 
-
 // PageWrapper component to handle borders and consistent layout
-const PageWrapper = ({ children, pageNumber, totalPages, isFirstPage = true }) => {
+const PageWrapper = ({
+  children,
+  pageNumber,
+  totalPages,
+  isFirstPage = true,
+}) => {
   return (
     <Page size="A4" style={{ padding: 8 }}>
       <FixedPageBorder />
-      <View style={styles.page}>
-        {children}
-      </View>
+      <View style={styles.page}>{children}</View>
       <View
         fixed
         style={{
@@ -221,8 +227,19 @@ const DeliveryChallanPrint = ({
   deliveryTo,
   tax,
   taxGroupWise,
-  colorList, uomList, yarnList, sizeList, term, termsData, useTaxDetailsHook, docId, totalQty,
-  transportMode, transporter, vehicleNo, deliveryItems
+  colorList,
+  uomList,
+  yarnList,
+  sizeList,
+  term,
+  termsData,
+  useTaxDetailsHook,
+  docId,
+  totalQty,
+  transportMode,
+  transporter,
+  vehicleNo,
+  deliveryItems,
 }) => {
   const filledPoItems = [
     ...deliveryItems,
@@ -255,10 +272,13 @@ const DeliveryChallanPrint = ({
     return pageItems.map((row, index) => {
       const globalIndex = startIndex + index;
       return (
-        <View key={globalIndex} style={{
-          flexDirection: "row",
-          backgroundColor: globalIndex % 2 === 0 ? "#FFFFFF" : "#F4EEE9",
-        }}>
+        <View
+          key={globalIndex}
+          style={{
+            flexDirection: "row",
+            backgroundColor: globalIndex % 2 === 0 ? "#FFFFFF" : "#F4EEE9",
+          }}
+        >
           <Text style={[styles.td, { flex: 1 }]}>{globalIndex + 1}</Text>
           <Text style={[styles.td, { flex: 5, textAlign: "left" }]}>
             {row?.Style?.name}
@@ -276,10 +296,10 @@ const DeliveryChallanPrint = ({
             {row?.Uom?.name}
           </Text>
           <Text style={[styles.td, { flex: 2, textAlign: "right" }]}>
-            {row?.noOfBox ? (Number(row?.noOfBox)).toFixed(3) : ""}
+            {row?.noOfBox ? Number(row?.noOfBox).toFixed(3) : ""}
           </Text>
           <Text style={[styles.td, { flex: 2, textAlign: "right" }]}>
-            {row?.qty ? (Number(row?.qty)).toFixed(3) : ""}
+            {row?.qty ? Number(row?.qty).toFixed(3) : ""}
           </Text>
         </View>
       );
@@ -294,62 +314,107 @@ const DeliveryChallanPrint = ({
       <View style={styles.header}>
         <Image source={MsExports} style={styles.logo} />
         <View style={{ flex: 1, alignItems: "flex-end" }}>
-          <Text style={{
-            fontSize: 8,
-            marginBottom: 1,
-            textAlign: "right",
-            marginRight: 1,
-            width: 200,
-            paddingRight: 5,
-            marginTop: 12,
-          }}>{branchData?.address}</Text>
-          <View style={{ flexDirection: 'row', paddingRight: 2 }}>
-            <View style={{ flexDirection: 'row' }}>
+          <Text
+            style={{
+              fontSize: 8,
+              marginBottom: 1,
+              textAlign: "right",
+              marginRight: 1,
+              width: 200,
+              paddingRight: 5,
+              marginTop: 12,
+            }}
+          >
+            {branchData?.address}
+          </Text>
+          <View style={{ flexDirection: "row", paddingRight: 2 }}>
+            <View style={{ flexDirection: "row" }}>
               <Text style={[styles.companyText]}>GST NO</Text>
               <Text style={styles.companyText}>: 33ALNPA8871B1Z9 /</Text>
             </View>
-            <View style={{ flexDirection: 'row' }}>
+            <View style={{ flexDirection: "row" }}>
               <Text style={[styles.companyText]}>CONTACT</Text>
-              <Text style={styles.companyText}>: {branchData?.contactMobile}</Text>
+              <Text style={styles.companyText}>
+                : {branchData?.contactMobile}
+              </Text>
             </View>
           </View>
 
-          <View style={{ flexDirection: 'row', paddingRight: 2 }}>
+          <View style={{ flexDirection: "row", paddingRight: 2 }}>
             <Text style={[styles.companyText]}>EMAIL</Text>
             <Text style={styles.companyText}>: {branchData?.contactEmail}</Text>
           </View>
         </View>
       </View>
 
-      <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 8 }}>
-        <View style={{ flex: 1, borderRightWidth: 1, borderColor: BORDER_GREY, paddingBottom: 6 }}>
+      <View
+        style={{ flexDirection: "row", justifyContent: "flex-end", gap: 8 }}
+      >
+        <View
+          style={{
+            flex: 1,
+            borderRightWidth: 1,
+            borderColor: BORDER_GREY,
+            paddingBottom: 6,
+          }}
+        >
           <Text style={styles.sectionTitle}>DELIVERY TO :</Text>
           <View style={styles.boxContent}>
             <View style={{ flexDirection: "row", marginTop: 5 }}>
-              <Text style={{ fontWeight: "bold", paddingHorizontal: 1, marginBottom: 2, fontSize: 10 }}>
+              <Text
+                style={{
+                  fontWeight: "bold",
+                  paddingHorizontal: 1,
+                  marginBottom: 2,
+                  fontSize: 10,
+                }}
+              >
                 {supplierDetails?.name}
               </Text>
             </View>
 
             <View style={{ paddingLeft: 2, width: 200, marginBottom: 1 }}>
-              <Text style={{ fontSize: 8, textTransform: 'uppercase', lineHeight: 1.2, textAlign: 'left' }}>
+              <Text
+                style={{
+                  fontSize: 8,
+                  textTransform: "uppercase",
+                  lineHeight: 1.2,
+                  textAlign: "left",
+                }}
+              >
                 {supplierDetails?.address}
               </Text>
             </View>
 
-            <View style={{ flexDirection: "row", marginTop: 1, paddingLeft: 2, marginBottom: 1 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                marginTop: 1,
+                paddingLeft: 2,
+                marginBottom: 1,
+              }}
+            >
               <Text style={[styles.companyText, { width: 40 }]}>CONTACT</Text>
-              <Text style={styles.companyText}>: {supplierDetails?.contactNumber ? supplierDetails?.contactNumber : ""}</Text>
+              <Text style={styles.companyText}>
+                :{" "}
+                {supplierDetails?.contactNumber
+                  ? supplierDetails?.contactNumber
+                  : ""}
+              </Text>
             </View>
 
-            <View style={{ flexDirection: "row", paddingLeft: 2, marginBottom: 1 }}>
+            <View
+              style={{ flexDirection: "row", paddingLeft: 2, marginBottom: 1 }}
+            >
               <Text style={[styles.companyText, { width: 40 }]}>GST NO</Text>
               <Text style={styles.companyText}>: {supplierDetails?.gstNo}</Text>
             </View>
 
             <View style={{ flexDirection: "row", paddingLeft: 2 }}>
               <Text style={[styles.companyText, { width: 40 }]}>EMAIL</Text>
-              <Text style={styles.companyText}>: {supplierDetails?.contactPersonEmail}</Text>
+              <Text style={styles.companyText}>
+                : {supplierDetails?.contactPersonEmail}
+              </Text>
             </View>
           </View>
         </View>
@@ -359,17 +424,34 @@ const DeliveryChallanPrint = ({
             <View style={{ alignItems: "flex-end", paddingVertical: 4 }}>
               <View style={{}}>
                 <View style={{ flexDirection: "row", marginBottom: 2 }}>
-                  <Text style={[styles.companyText, { textAlign: "left", width: 34 }]}>DC NO</Text>
+                  <Text
+                    style={[
+                      styles.companyText,
+                      { textAlign: "left", width: 34 },
+                    ]}
+                  >
+                    DC NO
+                  </Text>
                   <View style={styles.valueContainer}>
                     <Text style={styles.colon}>:</Text>
                     <Text style={styles.ValueText}>{docId}</Text>
                   </View>
                 </View>
-                <View style={{ flexDirection: "row", marginBottom: 2, marginRight: 5 }}>
-                  <Text style={[styles.companyText, { textAlign: "left" }]}>DC DATE</Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    marginBottom: 2,
+                    marginRight: 5,
+                  }}
+                >
+                  <Text style={[styles.companyText, { textAlign: "left" }]}>
+                    DC DATE
+                  </Text>
                   <View style={styles.valueContainer}>
                     <Text style={styles.colon}>:</Text>
-                    <Text style={styles.ValueText}>{getDateFromDateTimeToDisplay(poDate)}</Text>
+                    <Text style={styles.ValueText}>
+                      {getDateFromDateTimeToDisplay(poDate)}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -383,50 +465,75 @@ const DeliveryChallanPrint = ({
   // Function to render footer (only on last page)
   const renderFooter = () => (
     <>
-      <View style={{
-        flexDirection: "row",
-        borderBottomWidth: 1,
-        borderColor: BORDER_GREY,
-      }}>
-        <Text style={[styles.td, {
-          flex: 13.8,
-          fontWeight: "bold",
-          textAlign: "right",
-          paddingRight: 14,
-          borderBottomWidth: 0,
-        }]}>
+      <View
+        style={{
+          flexDirection: "row",
+          borderBottomWidth: 1,
+          borderColor: BORDER_GREY,
+        }}
+      >
+        <Text
+          style={[
+            styles.td,
+            {
+              flex: 13.8,
+              fontWeight: "bold",
+              textAlign: "right",
+              paddingRight: 14,
+              borderBottomWidth: 0,
+            },
+          ]}
+        >
           TOTAL
         </Text>
-        <Text style={[styles.td, {
-          flex: 1.7,
-          textAlign: "right",
-          fontWeight: "bold",
-          borderBottomWidth: 0,
-        }]}>
+        <Text
+          style={[
+            styles.td,
+            {
+              flex: 1.7,
+              textAlign: "right",
+              fontWeight: "bold",
+              borderBottomWidth: 0,
+            },
+          ]}
+        >
           {parseFloat(totalQty).toFixed(3)}
         </Text>
       </View>
 
-      <View style={{
-        flexDirection: "row",
-      }}>
-        <View style={{
-          flex: 3,
-          justifyContent: "center",
-          alignItems: "center",
-          borderRightWidth: 1,
-          borderRightColor: BORDER_GREY,
+      <View
+        style={{
+          flexDirection: "row",
+        }}
+      >
+        <View
+          style={{
+            flex: 3,
+            justifyContent: "center",
+            alignItems: "center",
+            borderRightWidth: 1,
+            borderRightColor: BORDER_GREY,
 
-          // padding: 5,
-        }}>
-          <Text style={{ fontSize: 9, fontWeight: "bold", textAlign: "center" }}>
+            // padding: 5,
+          }}
+        >
+          <Text
+            style={{ fontSize: 9, fontWeight: "bold", textAlign: "center" }}
+          >
             Thank You For Your Business
           </Text>
         </View>
 
         <View style={{ flex: 1, alignItems: "center", padding: 5 }}>
           <Image source={MsExports} style={styles.logo} />
-          <Text style={{ fontSize: 8, fontWeight: "bold", textAlign: "center", marginTop: 20 }}>
+          <Text
+            style={{
+              fontSize: 8,
+              fontWeight: "bold",
+              textAlign: "center",
+              marginTop: 20,
+            }}
+          >
             AUTHORISED SIGNATORY
           </Text>
         </View>
@@ -470,15 +577,11 @@ const DeliveryChallanPrint = ({
 
         {/* Footer - only on last page */}
         {isLastPage && renderFooter()}
-      </PageWrapper>
+      </PageWrapper>,
     );
   }
 
-  return (
-    <Document>
-      {pages}
-    </Document>
-  );
+  return <Document>{pages}</Document>;
 };
 
 export default DeliveryChallanPrint;
