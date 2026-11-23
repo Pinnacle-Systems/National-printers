@@ -800,7 +800,7 @@ const ProformaInvoicePrintFormat = ({ data }) => {
           style={styles.footer}
           fixed
           render={({ pageNumber, totalPages }) =>
-            `Page ${pageNumber} of ${totalPages} | Generated on ${moment().format("DD-MM-YYYY HH:mm")} | National Printing Press`
+            `Page ${pageNumber} of ${totalPages} | Generated on ${moment().format("DD-MM-YYYY HH:mm")} | NATIONAL ENTERPRISES`
           }
         />
       </Page>

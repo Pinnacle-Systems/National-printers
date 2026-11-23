@@ -338,7 +338,7 @@ const SaleOrderPrintFormat = ({ data }) => {
             <Image src={Logo} style={styles.logo} />
           </View>
           <View style={styles.companyCenter}>
-            <Text style={styles.companyName}>NATIONAL PRINTING PRESS</Text>
+            <Text style={styles.companyName}>NATIONAL ENTERPRISES</Text>
             <Text style={styles.companyAddr}>
               9(1)-MAARIYAMMAN LAYOUT 2ND STREET,{"\n"}
               KUMARANATHA PURAM,TIRUPUR : 641602
@@ -646,7 +646,7 @@ const SaleOrderPrintFormat = ({ data }) => {
           style={styles.footer}
           fixed
           render={({ pageNumber, totalPages }) =>
-            `Page ${pageNumber} of ${totalPages} | Generated on ${moment().format("DD-MM-YYYY HH:mm")} | National Printing Press`
+            `Page ${pageNumber} of ${totalPages} | Generated on ${moment().format("DD-MM-YYYY HH:mm")} | NATIONAL ENTERPRISES Press`
           }
         />
       </Page>
