@@ -624,7 +624,6 @@ model Uom {
   purchaseReturnItems    PurchaseReturnItems[]
   purchaseCancelItems    PurchaseCancelItems[]
   purchaseBillEntryItems PurchaseBillEntryItems[]
-  styles                 Style[]
   styleItems             StyleItem[]
   orderItems             OrderItems[]
   proformaInvoiceItems   ProformaInvoiceItem[]
@@ -959,20 +958,11 @@ model Payment {
 }
 
 model Style {
-  id        Int     @id @default(autoincrement())
-  name      String?
-  aliasName String?
-  code      String?
-
+  id                   Int                    @id @default(autoincrement())
+  name                 String?
+  styleItemId          Int?
+  StyleItem            StyleItem?             @relation(fields: [styleItemId], references: [id])
   active               Boolean?               @default(false)
-  SizeTemplate         SizeTemplate?          @relation(fields: [sizeTemplateId], references: [id])
-  sizeTemplateId       Int?
-  ItemGroup            ItemGroup?             @relation(fields: [itemGroupId], references: [id])
-  itemGroupId          Int?
-  Uom                  Uom?                   @relation(fields: [uomId], references: [id])
-  uomId                Int?
-  Gsm                  Gsm?                   @relation(fields: [gsmId], references: [id])
-  gsmId                Int?
   DeliveryChallanItems DeliveryChallanItems[]
   DeliveryInvoiceItems DeliveryInvoiceItems[]
   stocks               Stock[]
@@ -1011,6 +1001,7 @@ model StyleItem {
   JobCardsLabel          JobCard[]                @relation("label")
   packingOrderItems      PackingOrderItems[]
   salesDeliveryItems     SalesDeliveryItems[]
+  styles                 Style[]
 }
 
 model DeliveryChallan {
@@ -1698,7 +1689,6 @@ model Gsm {
   active                 Boolean                  @default(true)
   Company                Company?                 @relation(fields: [companyId], references: [id])
   companyId              Int?
-  styles                 Style[]
   styleItems             StyleItem[]
   poItems                PoItems[]
   inwardItems            InwardItems[]
@@ -1721,7 +1711,6 @@ model ItemGroup {
   active                 Boolean                  @default(true)
   Company                Company?                 @relation(fields: [companyId], references: [id])
   companyId              Int?
-  styles                 Style[]
   styleItems             StyleItem[]
   poItems                PoItems[]
   purchaseCancelItems    PurchaseCancelItems[]
@@ -1742,7 +1731,6 @@ model SizeTemplate {
   companyId            Int?
   active               Boolean?              @default(true)
   SizeTemplateList     SizeTemplateList[]
-  styles               Style[]
   styleItems           StyleItem[]
   orderItems           OrderItems[]
   proformaInvoiceItems ProformaInvoiceItem[]
