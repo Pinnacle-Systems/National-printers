@@ -25,22 +25,36 @@ import { StyleItemMaster } from "..";
 import { dropDownListObject } from "../../../Utils/contructObject";
 const MODEL = "Style Master";
 
-const StyleMaster = () => {
-  const [form, setForm] = useState(false);
+const StyleMaster = ({
+  onSuccess,
+  onClose,
+  defaultName = "",
+  embeddedMode = false,
+  defaultStyleItemId = "",
+} = {}) => {
+  const [form, setForm] = useState(embeddedMode || !!onSuccess);
 
   const [readOnly, setReadOnly] = useState(false);
   const [id, setId] = useState("");
-  const [name, setName] = useState("");
-  const [styleItemId, setStyleItemId] = useState("");
+  const [name, setName] = useState(defaultName || "");
+  const [styleItemId, setStyleItemId] = useState(defaultStyleItemId || "");
   const [active, setActive] = useState(true);
 
   const countryNameRef = useRef(null);
 
   useEffect(() => {
-    if (form && countryNameRef.current) {
+    if ((form || onSuccess) && countryNameRef.current) {
       countryNameRef.current.focus();
     }
-  }, [form]);
+  }, [form, onSuccess]);
+
+  useEffect(() => {
+    if (defaultName) setName(defaultName);
+  }, [defaultName]);
+
+  useEffect(() => {
+    if (defaultStyleItemId) setStyleItemId(defaultStyleItemId);
+  }, [defaultStyleItemId]);
 
   const [searchValue, setSearchValue] = useState("");
 
@@ -72,13 +86,15 @@ const StyleMaster = () => {
 
   const syncFormWithDb = useCallback(
     (data) => {
-      setName(data?.name ? data.name : "");
-      setStyleItemId(data?.styleItemId ? data?.styleItemId : "");
+      setName(data?.name ? data.name : defaultName || "");
+      setStyleItemId(
+        data?.styleItemId ? data?.styleItemId : defaultStyleItemId || "",
+      );
       setActive(id ? (data?.active ? data.active : false) : true);
       childRecord.current = data?.childRecord ? data?.childRecord : 0;
       countryNameRef?.current?.focus();
     },
-    [id],
+    [id, defaultName, defaultStyleItemId],
   );
 
   useEffect(() => {
@@ -113,19 +129,28 @@ const StyleMaster = () => {
       } else {
         returnData = await callback(data).unwrap();
       }
-      setId(returnData.data.id);
+      if (returnData?.data?.id) {
+        setId(returnData.data.id);
+      }
       // toast.success(text + "Successfully");
       Swal.fire({
         title: text + "  " + "Successfully",
         icon: "success",
+        timer: 1500,
       });
+      if (onSuccess && returnData?.data?.id) {
+        onSuccess(returnData.data.id);
+        if (onClose) onClose();
+        return;
+      }
       if (nextProcess == "new") {
         syncFormWithDb(undefined);
         onNew();
       } else {
         setForm(false);
+        if (onClose) onClose();
       }
-      countryNameRef.current.focus();
+      countryNameRef.current?.focus();
     } catch (error) {
       console.log("handle");
     }
@@ -274,6 +299,102 @@ const StyleMaster = () => {
   // const openPartyModal = useSelector((state) => state?.party);
 
   // console.log(openPartyModal, "openPartyModal")
+
+  if (onSuccess || embeddedMode) {
+    return (
+      <div
+        onKeyDown={handleKeyDown}
+        className="h-full flex flex-col bg-gray-200"
+      >
+        <div className="border-b py-2 px-4 mx-3 flex mt-4 justify-between items-center sticky top-0 z-10 bg-white">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg px-2 py-0.5 font-semibold text-gray-800">
+              {id
+                ? !readOnly
+                  ? "Edit Style Master"
+                  : "Style Master"
+                : "Add New Style"}
+            </h2>
+          </div>
+          <div className="flex gap-2">
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-3 py-1 text-red-600 hover:bg-red-600 hover:text-white border border-red-600 text-xs rounded"
+              >
+                Cancel
+              </button>
+            )}
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={() => {
+                  saveData("close");
+                }}
+                className="px-3 py-1 hover:bg-blue-600 hover:text-white rounded text-blue-600 border border-blue-600 flex items-center gap-1 text-xs"
+              >
+                <Check size={14} />
+                {id ? "Update" : "Save & close"}
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-auto p-3">
+          <div className="grid grid-cols-1 gap-3 h-full">
+            <div className="lg:col-span-2 space-y-3">
+              <div className="bg-white p-3 rounded-md border border-gray-200 h-full">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <DropdownWithModal
+                      name="Item Name"
+                      options={dropDownListObject(
+                        styleItemList?.data?.filter((item) => item?.active),
+                        "name",
+                        "id",
+                      )}
+                      value={styleItemId}
+                      setValue={setStyleItemId}
+                      required={true}
+                      readOnly={readOnly || !!defaultStyleItemId}
+                      className="w-full"
+                      disabled={childRecord.current > 0 || !!defaultStyleItemId}
+                      addNewLabel="+ Add New Item Group"
+                      childComponent={StyleItemMaster}
+                      addNewModalWidth="w-[65%] h-[58%]"
+                      ref={countryNameRef}
+                    />
+                  </div>
+                  <div>
+                    <TextInputNew1
+                      name="Style Name"
+                      type="text"
+                      value={name}
+                      setValue={setName}
+                      required={true}
+                      readOnly={readOnly}
+                      disabled={childRecord.current > 0}
+                    />
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <ToggleButton
+                    name="Status"
+                    options={statusDropdown}
+                    value={active}
+                    setActive={setActive}
+                    required={true}
+                    readOnly={readOnly}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div onKeyDown={handleKeyDown} className="p-1">
