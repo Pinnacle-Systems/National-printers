@@ -36,6 +36,7 @@ import OrderEntryPrintFormat from "./OrderEntryPrintFormat.jsx";
 import { FiFileText } from "react-icons/fi";
 import OrderItems from "./OrderItems.jsx";
 import { useGetStyleItemMasterQuery } from "../../../redux/services/StyleItemMasterService.js";
+import { useGetStyleMasterQuery } from "../../../redux/services/StyleMasterService.js";
 import { useGetSizeMasterQuery } from "../../../redux/services/SizemasterService.js";
 import { useGetUnitOfMeasurementMasterQuery } from "../../../redux/uniformService/UnitOfMeasurementServices.js";
 import ReusableFormFooter from "../../../Basic/components/Reuseable/ReuseableFormFooter.jsx";
@@ -56,11 +57,6 @@ const createEmptyOrderItems = (count = 14) =>
   Array.from({ length: count }, () => ({
     itemGroupId: "",
     styleItemId: "",
-    trackingType: "Size",
-    sizeId: "",
-    sizeTemplateId: "",
-    barcodeFrom: "",
-    barcodeTo: "",
     uomId: "",
     gsmId: "",
     hsnId: "",
@@ -68,7 +64,7 @@ const createEmptyOrderItems = (count = 14) =>
     price: "",
     remarks: "",
     description: "",
-    sizeBreakup: [],
+    orderStyleItems: [],
   }));
 
 const OrderEntryForm = ({
@@ -165,6 +161,9 @@ const OrderEntryForm = ({
   const { data: styleItemList } = useGetStyleItemMasterQuery({
     params: { ...params },
   });
+  const { data: styleMasterList } = useGetStyleMasterQuery({
+    params: { ...params },
+  });
   const { data: uomList } = useGetUnitOfMeasurementMasterQuery({ params });
   const { data: sizeList } = useGetSizeMasterQuery({ params });
   const { data: gsmList } = useGetGsmMasterQuery({ params: { companyId } });
@@ -207,13 +206,39 @@ const OrderEntryForm = ({
       setTermsId(data?.termsId || "");
       // ── Smart childRecord tracking (File 2) ─────────────────────────────
       childRecord.current = data?.childRecord ? data?.childRecord : 0;
-      const initialItems = (data?.orderItems || []).map((item) => ({
-        ...item,
-        itemGroupId: item.itemGroupId || "",
-        trackingType: item.trackingType || "Size",
-        sizeBreakup: item.sizeBreakup || [],
-        price: item?.price?.toFixed(2) || "",
-      }));
+      const initialItems = (data?.orderItems || []).map((item) => {
+        let styles = item.orderStyleItems || [];
+        if (
+          styles.length === 0 &&
+          (item.sizeBreakup?.length > 0 || item.styleId)
+        ) {
+          styles = [
+            {
+              styleId: item.styleId || "",
+              trackingType: item.trackingType || "Size",
+
+              description: item.description || "",
+              sizeBreakup: item.sizeBreakup || [],
+            },
+          ];
+        }
+        return {
+          id: item.id,
+          itemGroupId: item.itemGroupId || "",
+          styleItemId: item.styleItemId || "",
+          uomId: item.uomId || "",
+
+          hsnId: item.hsnId || "",
+          orderQty: item.orderQty || "",
+          price:
+            item?.price !== undefined && item?.price !== null
+              ? Number(item.price).toFixed(2)
+              : "",
+          remarks: item.remarks || "",
+          description: item.description || "",
+          orderStyleItems: styles,
+        };
+      });
 
       const emptyRowsCount = Math.max(0, 14 - initialItems.length);
       const emptyRows = createEmptyOrderItems(emptyRowsCount);
@@ -252,15 +277,35 @@ const OrderEntryForm = ({
       ?.map((item, idx) => ({
         ...item,
         uiIndex: idx + 1,
-        rawSizeBreakup: item.sizeBreakup || [],
       }))
       ?.filter((i) => i.styleItemId)
-      .map((item, idx) => ({
-        ...item,
-        itemOrder: idx,
-        sizeBreakup:
-          item.sizeBreakup?.filter((size) => Number(size.qty) > 0) || [],
-      })),
+      .map((item, idx) => {
+        const {
+          StyleItem,
+          sizeBreakup,
+          rawSizeBreakup,
+          uiIndex,
+          barcodeFrom,
+          barcodeTo,
+          sizeId,
+          sizeTemplateId,
+          trackingType,
+          ...rest
+        } = item;
+        return {
+          ...rest,
+          itemOrder: idx,
+          orderStyleItems: (item.orderStyleItems || item.styleItems || []).map(
+            (st) => ({
+              ...st,
+              sizeBreakup: (st.sizeBreakup || []).filter(
+                (size) =>
+                  Number(size.qty) > 0 || size.barcodeFrom || size.barcodeTo,
+              ),
+            }),
+          ),
+        };
+      }),
   };
   const handleSubmitCustom = async (callback, data, text, nextProcess) => {
     try {
@@ -346,8 +391,8 @@ const OrderEntryForm = ({
     const duplicates = [];
 
     items.forEach((item, index) => {
-      // Key consists of styleItem (styleItemId) and type (trackingType)
-      const key = `${item.styleItemId}-${item.trackingType}`;
+      // Key is Description of Goods (styleItemId)
+      const key = `${item.styleItemId}`;
       if (seen.has(key)) {
         duplicates.push({
           firstIndex: seen.get(key).uiIndex,
@@ -380,120 +425,190 @@ const OrderEntryForm = ({
         errors.push(`Row ${rowIndex}: UOM is required`);
       }
 
-      // Check unique sizes for tracking types with size selection
-      if (
-        item.trackingType === "Size" ||
-        item.trackingType === "Size + Barcode"
-      ) {
-        const selectedSizes = rawBreakup
-          ?.map((s) => s.sizeId)
-          ?.filter(
-            (sizeId) =>
-              sizeId !== undefined && sizeId !== null && sizeId !== "",
-          );
+      // If orderStyleItems are present, validate styles
+      const styleItemsList = item.orderStyleItems || item.styleItems || [];
+      if (styleItemsList && styleItemsList.length > 0) {
+        const seenStyleCombos = new Set();
+        styleItemsList.forEach((st, sIdx) => {
+          if (st.styleId) {
+            const comboKey = `${st.styleId}-${st.trackingType || "Size"}`;
+            if (seenStyleCombos.has(comboKey)) {
+              errors.push(
+                `Row ${rowIndex}: Duplicate Style and Type (Style #${sIdx + 1} with tracking type '${st.trackingType || "Size"}'). Same style cannot have the same tracking type more than once.`,
+              );
+            }
+            seenStyleCombos.add(comboKey);
+          }
 
-        if (selectedSizes && selectedSizes.length > 0) {
-          const uniqueSizes = new Set(selectedSizes);
-          if (selectedSizes.length !== uniqueSizes.size) {
+          if (!st.styleId && Number(st.orderQty) > 0) {
             errors.push(
-              `Row ${rowIndex}: You have selected the same size multiple times. Each row must have a unique size.`,
+              `Row ${rowIndex}, Style ${sIdx + 1}: Style selection is required.`,
             );
           }
+          const sBreakup = st.sizeBreakup || [];
+          if (st.trackingType === "Size") {
+            const selectedSizes = sBreakup
+              ?.map((s) => s.sizeId)
+              ?.filter(
+                (sizeId) =>
+                  sizeId !== undefined && sizeId !== null && sizeId !== "",
+              );
+            if (selectedSizes && selectedSizes.length > 0) {
+              const uniqueSizes = new Set(selectedSizes);
+              if (selectedSizes.length !== uniqueSizes.size) {
+                errors.push(
+                  `Row ${rowIndex}, Style ${sIdx + 1}: Duplicate sizes selected.`,
+                );
+              }
+            }
+            const filled = sBreakup.filter(
+              (b) => b.sizeId && Number(b.qty) > 0,
+            );
+            if (st.styleId && filled.length === 0) {
+              errors.push(
+                `Row ${rowIndex}, Style ${sIdx + 1}: At least one size with Qty > 0 is required.`,
+              );
+            }
+          } else if (st.trackingType === "Barcode") {
+            const filled = sBreakup.filter(
+              (b) => b.barcodeFrom && b.barcodeTo && Number(b.qty) > 0,
+            );
+            if (st.styleId && filled.length === 0) {
+              errors.push(
+                `Row ${rowIndex}, Style ${sIdx + 1}: At least one valid Barcode range with Qty > 0 is required.`,
+              );
+            }
+          } else if (st.trackingType === "Size + Barcode") {
+            const filled = sBreakup.filter(
+              (b) =>
+                b.sizeId && b.barcodeFrom && b.barcodeTo && Number(b.qty) > 0,
+            );
+            if (st.styleId && filled.length === 0) {
+              errors.push(
+                `Row ${rowIndex}, Style ${sIdx + 1}: At least one row with Size, Barcode From, Barcode To, and Qty > 0 is required.`,
+              );
+            }
+          }
+        });
+      } else {
+        // Check unique sizes for tracking types with size selection
+        if (
+          item.trackingType === "Size" ||
+          item.trackingType === "Size + Barcode"
+        ) {
+          const selectedSizes = rawBreakup
+            ?.map((s) => s.sizeId)
+            ?.filter(
+              (sizeId) =>
+                sizeId !== undefined && sizeId !== null && sizeId !== "",
+            );
+
+          if (selectedSizes && selectedSizes.length > 0) {
+            const uniqueSizes = new Set(selectedSizes);
+            if (selectedSizes.length !== uniqueSizes.size) {
+              errors.push(
+                `Row ${rowIndex}: You have selected the same size multiple times. Each row must have a unique size.`,
+              );
+            }
+          }
         }
-      }
 
-      // Tracking Type: Size
-      if (item.trackingType === "Size") {
-        const rowsWithSize = rawBreakup.filter(
-          (s) => s.sizeId !== undefined && s.sizeId !== null && s.sizeId !== "",
-        );
+        // Tracking Type: Size
+        if (item.trackingType === "Size") {
+          const rowsWithSize = rawBreakup.filter(
+            (s) =>
+              s.sizeId !== undefined && s.sizeId !== null && s.sizeId !== "",
+          );
 
-        if (rowsWithSize.length === 0) {
-          errors.push(`Row ${rowIndex}: At least one size must be selected.`);
-        } else {
+          if (rowsWithSize.length === 0) {
+            errors.push(`Row ${rowIndex}: At least one size must be selected.`);
+          } else {
+            for (let i = 0; i < rawBreakup.length; i++) {
+              const s = rawBreakup[i];
+              const hasSize =
+                s.sizeId !== undefined && s.sizeId !== null && s.sizeId !== "";
+              const hasQty =
+                s.qty !== undefined &&
+                s.qty !== null &&
+                String(s.qty).trim() !== "" &&
+                Number(s.qty) > 0;
+
+              if (hasSize && !hasQty) {
+                errors.push(
+                  `Row ${rowIndex}: Qty is mandatory and must be greater than 0 for selected size at row ${i + 1}.`,
+                );
+              }
+
+              if (!hasSize && hasQty) {
+                errors.push(
+                  `Row ${rowIndex}: Size is required for row ${i + 1} where Qty is entered.`,
+                );
+              }
+            }
+          }
+        }
+
+        // Tracking Type: Size + Barcode
+        if (item.trackingType === "Size + Barcode") {
+          let hasAnyFilled = false;
           for (let i = 0; i < rawBreakup.length; i++) {
             const s = rawBreakup[i];
             const hasSize =
               s.sizeId !== undefined && s.sizeId !== null && s.sizeId !== "";
+            const hasFrom =
+              s.barcodeFrom && String(s.barcodeFrom).trim() !== "";
+            const hasTo = s.barcodeTo && String(s.barcodeTo).trim() !== "";
             const hasQty =
               s.qty !== undefined &&
               s.qty !== null &&
               String(s.qty).trim() !== "" &&
               Number(s.qty) > 0;
 
-            if (hasSize && !hasQty) {
-              errors.push(
-                `Row ${rowIndex}: Qty is mandatory and must be greater than 0 for selected size at row ${i + 1}.`,
-              );
-            }
-
-            if (!hasSize && hasQty) {
-              errors.push(
-                `Row ${rowIndex}: Size is required for row ${i + 1} where Qty is entered.`,
-              );
+            if (hasSize || hasFrom || hasTo || hasQty) {
+              hasAnyFilled = true;
+              if (!(hasSize && hasFrom && hasTo && hasQty)) {
+                errors.push(
+                  `Row ${rowIndex}: Size, Barcode From, Barcode To, and Qty are all mandatory for row ${i + 1}.`,
+                );
+              }
             }
           }
-        }
-      }
 
-      // Tracking Type: Size + Barcode
-      if (item.trackingType === "Size + Barcode") {
-        let hasAnyFilled = false;
-        for (let i = 0; i < rawBreakup.length; i++) {
-          const s = rawBreakup[i];
-          const hasSize =
-            s.sizeId !== undefined && s.sizeId !== null && s.sizeId !== "";
-          const hasFrom = s.barcodeFrom && String(s.barcodeFrom).trim() !== "";
-          const hasTo = s.barcodeTo && String(s.barcodeTo).trim() !== "";
-          const hasQty =
-            s.qty !== undefined &&
-            s.qty !== null &&
-            String(s.qty).trim() !== "" &&
-            Number(s.qty) > 0;
-
-          if (hasSize || hasFrom || hasTo || hasQty) {
-            hasAnyFilled = true;
-            if (!(hasSize && hasFrom && hasTo && hasQty)) {
-              errors.push(
-                `Row ${rowIndex}: Size, Barcode From, Barcode To, and Qty are all mandatory for row ${i + 1}.`,
-              );
-            }
+          if (!hasAnyFilled) {
+            errors.push(
+              `Row ${rowIndex}: At least one row with Size, Barcode From, Barcode To, and Qty is required.`,
+            );
           }
         }
 
-        if (!hasAnyFilled) {
-          errors.push(
-            `Row ${rowIndex}: At least one row with Size, Barcode From, Barcode To, and Qty is required.`,
-          );
-        }
-      }
+        // Tracking Type: Barcode
+        if (item.trackingType === "Barcode") {
+          let hasAnyFilled = false;
+          for (let i = 0; i < rawBreakup.length; i++) {
+            const s = rawBreakup[i];
+            const hasFrom =
+              s.barcodeFrom && String(s.barcodeFrom).trim() !== "";
+            const hasTo = s.barcodeTo && String(s.barcodeTo).trim() !== "";
+            const hasQty =
+              s.qty !== undefined &&
+              s.qty !== null &&
+              String(s.qty).trim() !== "" &&
+              Number(s.qty) !== 0;
 
-      // Tracking Type: Barcode
-      if (item.trackingType === "Barcode") {
-        let hasAnyFilled = false;
-        for (let i = 0; i < rawBreakup.length; i++) {
-          const s = rawBreakup[i];
-          const hasFrom = s.barcodeFrom && String(s.barcodeFrom).trim() !== "";
-          const hasTo = s.barcodeTo && String(s.barcodeTo).trim() !== "";
-          const hasQty =
-            s.qty !== undefined &&
-            s.qty !== null &&
-            String(s.qty).trim() !== "" &&
-            Number(s.qty) !== 0;
-
-          if (hasFrom || hasTo || hasQty) {
-            hasAnyFilled = true;
-            if (!(hasFrom && hasTo && hasQty)) {
-              errors.push(
-                `Row ${rowIndex}: Barcode From, Barcode To and Qty are mandatory for row ${i + 1}.`,
-              );
+            if (hasFrom || hasTo || hasQty) {
+              hasAnyFilled = true;
+              if (!(hasFrom && hasTo && hasQty)) {
+                errors.push(
+                  `Row ${rowIndex}: Barcode From, Barcode To and Qty are mandatory for row ${i + 1}.`,
+                );
+              }
             }
           }
-        }
-        if (!hasAnyFilled) {
-          errors.push(
-            `Row ${rowIndex}: At least one row with Barcode From, Barcode To and Qty is required.`,
-          );
+          if (!hasAnyFilled) {
+            errors.push(
+              `Row ${rowIndex}: At least one row with Barcode From, Barcode To and Qty is required.`,
+            );
+          }
         }
       }
     });
@@ -906,7 +1021,7 @@ const OrderEntryForm = ({
             className={`bg-indigo-500 text-white px-2 py-1 rounded hover:bg-indigo-600 flex items-center text-xs font-medium ${isReadOnly || isDisabled || childRecord?.current > 0 ? "cursor-not-allowed opacity-50" : ""}`}
           >
             <HiX className="w-3.5 h-3.5 mr-2" />
-            Save & Close
+            {id ? "Update & Close " : "Save & Close"}
           </button>
 
           <button
@@ -915,7 +1030,7 @@ const OrderEntryForm = ({
             className={`bg-indigo-500 text-white px-2 py-1 rounded hover:bg-indigo-600 flex items-center text-xs font-medium ${isReadOnly || isDisabled || childRecord?.current > 0 ? "cursor-not-allowed opacity-50" : ""}`}
           >
             <HiOutlineRefresh className="w-3.5 h-3.5 mr-2" />
-            Save & New
+            {id ? "Update & New " : "Save & New"}
           </button>
 
           {status === "REJECTED" && (
@@ -1379,6 +1494,7 @@ const OrderEntryForm = ({
               )}
               branchData={branchList?.data?.find((b) => b.id === branchId)}
               styleItemList={styleItemList?.data}
+              styleMasterList={styleMasterList?.data}
               sizeList={sizeList?.data}
               uomList={uomList?.data}
               gsmList={gsmList?.data}

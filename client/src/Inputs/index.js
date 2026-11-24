@@ -3659,6 +3659,7 @@ export function FxSelectWithAdd({
   inputId,
   addNew = false,
   childComponent = null,
+  childProps = {},
   addNewModalWidth = "w-[40%] h-[48%]",
   nextRef,
   advanceOnEnter = false,
@@ -3859,6 +3860,7 @@ export function FxSelectWithAdd({
                 }}
                 defaultName={searchValue.toUpperCase()}
                 embeddedMode={true}
+                {...childProps}
               />
             );
           })()}

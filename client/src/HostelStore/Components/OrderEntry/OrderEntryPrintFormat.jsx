@@ -11,8 +11,9 @@ import moment from "moment";
 
 const styles = StyleSheet.create({
   page: {
-    padding: 30,
-    paddingBottom: 50,
+    paddingHorizontal: 25,
+    paddingTop: 12,
+    paddingBottom: 40,
     fontSize: 8,
     color: "#333",
     fontFamily: "Helvetica",
@@ -23,14 +24,14 @@ const styles = StyleSheet.create({
   contentArea: {
     flexGrow: 1,
   },
-  topBar: { height: 4, backgroundColor: "#1a1a2e", marginBottom: 10 },
+  topBar: { height: 3, backgroundColor: "#1a1a2e", marginBottom: 6 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingBottom: 15,
+    paddingBottom: 8,
     borderBottom: "1.5 solid #1a1a2e",
-    marginBottom: 15,
+    marginBottom: 8,
   },
   logoContainer: { width: 130, alignItems: "flex-start" },
   logo: { height: 60, width: 130 },
@@ -61,17 +62,17 @@ const styles = StyleSheet.create({
     backgroundColor: "#1a1a2e",
     color: "#fff",
     textAlign: "center",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "bold",
     letterSpacing: 2,
-    paddingVertical: 5,
-    marginBottom: 15,
+    paddingVertical: 4,
+    marginBottom: 8,
   },
 
   docInfoSection: {
     flexDirection: "row",
-    marginBottom: 15,
-    gap: 20,
+    marginBottom: 8,
+    gap: 15,
   },
   infoGrid: {
     flexDirection: "row",
@@ -265,6 +266,7 @@ const OrderEntryPrintFormat = ({
   customerDetails,
   branchData,
   styleItemList,
+  styleMasterList,
   sizeList,
   uomList,
   gsmList,
@@ -405,39 +407,140 @@ const OrderEntryPrintFormat = ({
                       style={{
                         fontWeight: "bold",
                         color: "black",
-                        fontSize: 9,
+                        fontSize: 8.5,
                       }}
                     >
-                      {getName(item.styleItemId, styleItemList)}
+                      {item.StyleItem?.name ||
+                        getName(item.styleItemId, styleItemList)}
                     </Text>
-                    {item.sizeBreakup?.filter((sb) => (Number(sb.qty) || 0) > 0)
-                      .length > 0 && (
-                      <View style={{ marginTop: 2 }}>
-                        <Text style={{ fontSize: 9 }}>
-                          {item.sizeBreakup
-                            .filter((sb) => (Number(sb.qty) || 0) > 0)
-                            .map((sb) => {
-                              const size = getName(sb.sizeId, sizeList);
-                              const qty = Number(sb.qty);
-                              const range = sb.barcodeFrom
-                                ? `${sb.barcodeFrom}-${sb.barcodeTo}`
-                                : "";
 
-                              if (item.trackingType === "Barcode")
-                                return `${range}/${qty}`;
-                              if (item.trackingType === "Size Template")
-                                return `${size}/${qty}`;
-                              if (
-                                item.trackingType === "Size Template + Barcode"
-                              )
-                                return `${size}/${range}/${qty}`;
-                              return null;
-                            })
-                            .filter(Boolean)
-                            .join("  |  ")}
-                        </Text>
-                      </View>
-                    )}
+                    {/* New Structure: Styles & Size/Barcode Breakup */}
+                    {(() => {
+                      const styleItemsList = (
+                        item.orderStyleItems || []
+                      ).filter(
+                        (st) =>
+                          st.styleId ||
+                          st.Style ||
+                          (st.sizeBreakup || []).some(
+                            (sb) => (Number(sb.qty) || 0) > 0,
+                          ),
+                      );
+
+                      if (styleItemsList.length > 0) {
+                        return (
+                          <View style={{ marginTop: 2 }}>
+                            {styleItemsList.map((st, sIdx) => {
+                              const styleName =
+                                st.Style?.name ||
+                                getName(st.styleId, styleMasterList) ||
+                                `Style #${sIdx + 1}`;
+                              const trackingType = st.trackingType || "Size";
+                              const breakups = (st.sizeBreakup || []).filter(
+                                (sb) => (Number(sb.qty) || 0) > 0,
+                              );
+                              const breakupText = breakups
+                                .map((sb) => {
+                                  const size =
+                                    sb.Size?.name ||
+                                    getName(sb.sizeId, sizeList);
+                                  const qty = Number(sb.qty);
+                                  const range = sb.barcodeFrom
+                                    ? sb.barcodeFrom === sb.barcodeTo
+                                      ? `${sb.barcodeFrom}`
+                                      : `${sb.barcodeFrom}-${sb.barcodeTo}`
+                                    : "";
+
+                                  if (trackingType === "Barcode") {
+                                    return `${range}/${qty}`;
+                                  }
+                                  if (trackingType === "Size") {
+                                    return `${size}/${qty}`;
+                                  }
+                                  if (trackingType === "Size + Barcode") {
+                                    return `${size}${range ? ` (${range})` : ""}/${qty}`;
+                                  }
+                                  return `${size}/${qty}`;
+                                })
+                                .filter(Boolean)
+                                .join("  |  ");
+
+                              return (
+                                <View
+                                  key={sIdx}
+                                  style={{ marginTop: sIdx > 0 ? 2 : 1 }}
+                                >
+                                  <Text
+                                    style={{
+                                      fontSize: 7.5,
+                                      fontWeight: "bold",
+                                      color: "#1a1a2e",
+                                    }}
+                                  >
+                                    • {styleName} ({trackingType}):
+                                  </Text>
+                                  {breakupText ? (
+                                    <Text
+                                      style={{
+                                        fontSize: 7.5,
+                                        color: "#555",
+                                        paddingLeft: 6,
+                                      }}
+                                    >
+                                      {breakupText}
+                                    </Text>
+                                  ) : null}
+                                </View>
+                              );
+                            })}
+                          </View>
+                        );
+                      }
+
+                      // Fallback for legacy orders with direct sizeBreakup on item
+                      const legacyBreakup = (item.sizeBreakup || []).filter(
+                        (sb) => (Number(sb.qty) || 0) > 0,
+                      );
+                      if (legacyBreakup.length > 0) {
+                        return (
+                          <View style={{ marginTop: 2 }}>
+                            <Text style={{ fontSize: 7.5, color: "#555" }}>
+                              {legacyBreakup
+                                .map((sb) => {
+                                  const size =
+                                    sb.Size?.name ||
+                                    getName(sb.sizeId, sizeList);
+                                  const qty = Number(sb.qty);
+                                  const range = sb.barcodeFrom
+                                    ? sb.barcodeFrom === sb.barcodeTo
+                                      ? `${sb.barcodeFrom}`
+                                      : `${sb.barcodeFrom}-${sb.barcodeTo}`
+                                    : "";
+
+                                  if (item.trackingType === "Barcode")
+                                    return `${range}/${qty}`;
+                                  if (
+                                    item.trackingType === "Size Template" ||
+                                    item.trackingType === "Size"
+                                  )
+                                    return `${size}/${qty}`;
+                                  if (
+                                    item.trackingType ===
+                                      "Size Template + Barcode" ||
+                                    item.trackingType === "Size + Barcode"
+                                  )
+                                    return `${size}${range ? ` (${range})` : ""}/${qty}`;
+                                  return `${size}/${qty}`;
+                                })
+                                .filter(Boolean)
+                                .join("  |  ")}
+                            </Text>
+                          </View>
+                        );
+                      }
+
+                      return null;
+                    })()}
                   </View>
                   <View style={styles.colItemGroup}>
                     <Text>{getName(item.itemGroupId, itemGroupList)}</Text>
@@ -531,7 +634,7 @@ const OrderEntryPrintFormat = ({
           style={styles.footer}
           fixed
           render={({ pageNumber, totalPages }) =>
-            `Page ${pageNumber} of ${totalPages} | Generated on ${moment().format("DD-MM-YYYY HH:mm")} | National Printing Press`
+            `Page ${pageNumber} of ${totalPages} | Generated on ${moment().format("DD-MM-YYYY HH:mm")} | National Enterprises`
           }
         />
       </Page>

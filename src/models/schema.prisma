@@ -624,7 +624,6 @@ model Uom {
   purchaseReturnItems    PurchaseReturnItems[]
   purchaseCancelItems    PurchaseCancelItems[]
   purchaseBillEntryItems PurchaseBillEntryItems[]
-  styles                 Style[]
   styleItems             StyleItem[]
   orderItems             OrderItems[]
   proformaInvoiceItems   ProformaInvoiceItem[]
@@ -959,23 +958,15 @@ model Payment {
 }
 
 model Style {
-  id        Int     @id @default(autoincrement())
-  name      String?
-  aliasName String?
-  code      String?
-
+  id                   Int                    @id @default(autoincrement())
+  name                 String?
+  styleItemId          Int?
+  StyleItem            StyleItem?             @relation(fields: [styleItemId], references: [id])
   active               Boolean?               @default(false)
-  SizeTemplate         SizeTemplate?          @relation(fields: [sizeTemplateId], references: [id])
-  sizeTemplateId       Int?
-  ItemGroup            ItemGroup?             @relation(fields: [itemGroupId], references: [id])
-  itemGroupId          Int?
-  Uom                  Uom?                   @relation(fields: [uomId], references: [id])
-  uomId                Int?
-  Gsm                  Gsm?                   @relation(fields: [gsmId], references: [id])
-  gsmId                Int?
   DeliveryChallanItems DeliveryChallanItems[]
   DeliveryInvoiceItems DeliveryInvoiceItems[]
   stocks               Stock[]
+  orderStyleItems      OrderStyleItems[]
 }
 
 model StyleItem {
@@ -1011,6 +1002,7 @@ model StyleItem {
   JobCardsLabel          JobCard[]                @relation("label")
   packingOrderItems      PackingOrderItems[]
   salesDeliveryItems     SalesDeliveryItems[]
+  styles                 Style[]
 }
 
 model DeliveryChallan {
@@ -1698,7 +1690,6 @@ model Gsm {
   active                 Boolean                  @default(true)
   Company                Company?                 @relation(fields: [companyId], references: [id])
   companyId              Int?
-  styles                 Style[]
   styleItems             StyleItem[]
   poItems                PoItems[]
   inwardItems            InwardItems[]
@@ -1706,13 +1697,11 @@ model Gsm {
   purchaseCancelItems    PurchaseCancelItems[]
   purchaseBillEntryItems PurchaseBillEntryItems[]
   stocks                 Stock[]
-  orderItems             OrderItems[]
-
-  jobCards             JobCard[]
-  proformaInvoiceItems ProformaInvoiceItem[]
-  boardQualities       BoardQuality[]
-  packingOrderItems    PackingOrderItems[]
-  salesDeliveryItems   SalesDeliveryItems[]
+  jobCards               JobCard[]
+  proformaInvoiceItems   ProformaInvoiceItem[]
+  boardQualities         BoardQuality[]
+  packingOrderItems      PackingOrderItems[]
+  salesDeliveryItems     SalesDeliveryItems[]
 }
 
 model ItemGroup {
@@ -1721,7 +1710,6 @@ model ItemGroup {
   active                 Boolean                  @default(true)
   Company                Company?                 @relation(fields: [companyId], references: [id])
   companyId              Int?
-  styles                 Style[]
   styleItems             StyleItem[]
   poItems                PoItems[]
   purchaseCancelItems    PurchaseCancelItems[]
@@ -1742,9 +1730,7 @@ model SizeTemplate {
   companyId            Int?
   active               Boolean?              @default(true)
   SizeTemplateList     SizeTemplateList[]
-  styles               Style[]
   styleItems           StyleItem[]
-  orderItems           OrderItems[]
   proformaInvoiceItems ProformaInvoiceItem[]
   salesDeliveryItems   SalesDeliveryItems[]
 }
@@ -1930,36 +1916,42 @@ model OrderEntry {
 }
 
 model OrderItems {
-  id             Int                @id @default(autoincrement())
-  orderEntryId   Int?
-  OrderEntry     OrderEntry?        @relation(fields: [orderEntryId], references: [id], onDelete: Cascade)
-  styleItemId    Int?
-  StyleItem      StyleItem?         @relation(fields: [styleItemId], references: [id])
-  itemGroupId    Int?
-  ItemGroup      ItemGroup?         @relation(fields: [itemGroupId], references: [id])
-  trackingType   String?
-  itemOrder      Int                @default(0)
-  remarks        String?
-  description    String?
-  orderQty       Int?
-  sizeTemplateId Int?
-  SizeTemplate   SizeTemplate?      @relation(fields: [sizeTemplateId], references: [id])
-  uomId          Int?
-  Uom            Uom?               @relation(fields: [uomId], references: [id])
-  gsmId          Int?
-  Gsm            Gsm?               @relation(fields: [gsmId], references: [id])
-  hsnId          Int?
-  Hsn            Hsn?               @relation(fields: [hsnId], references: [id])
-  price          Float?
-  styleImage     String?
-  sizeBreakup    OrderSizeBreakup[]
-  JobCard        JobCard[]
+  id              Int               @id @default(autoincrement())
+  orderEntryId    Int?
+  OrderEntry      OrderEntry?       @relation(fields: [orderEntryId], references: [id], onDelete: Cascade)
+  styleItemId     Int?
+  StyleItem       StyleItem?        @relation(fields: [styleItemId], references: [id])
+  itemGroupId     Int?
+  ItemGroup       ItemGroup?        @relation(fields: [itemGroupId], references: [id])
+  hsnId           Int?
+  Hsn             Hsn?              @relation(fields: [hsnId], references: [id])
+  uomId           Int?
+  Uom             Uom?              @relation(fields: [uomId], references: [id])
+  orderQty        Int?
+  price           Float?
+  styleImage      String?
+  itemOrder       Int               @default(0)
+  remarks         String?
+  description     String?
+  JobCard         JobCard[]
+  orderStyleItems OrderStyleItems[]
+}
+
+model OrderStyleItems {
+  id           Int                @id @default(autoincrement())
+  orderItemId  Int
+  OrderItem    OrderItems         @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  styleId      Int?
+  Style        Style?             @relation(fields: [styleId], references: [id])
+  trackingType String?
+  description  String?
+  sizeBreakup  OrderSizeBreakup[]
 }
 
 model OrderSizeBreakup {
   id                  Int                  @id @default(autoincrement())
-  orderItemId         Int
-  OrderItem           OrderItems           @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  orderStyleItemsId   Int
+  OrderStyleItems     OrderStyleItems      @relation(fields: [orderStyleItemsId], references: [id], onDelete: Cascade)
   sizeId              Int?
   Size                Size?                @relation(fields: [sizeId], references: [id])
   qty                 Int?

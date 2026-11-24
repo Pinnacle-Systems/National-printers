@@ -40,7 +40,6 @@ import { useGetGsmMasterQuery } from "../../../redux/services/GsmMasterService";
 import { renameFile } from "../../../Utils/helper";
 import { getImageUrlPath } from "../../../Constants";
 
-const MODEL = "Item Master";
 export default function Form({ onSuccess, defaultName = "" }) {
   const [form, setForm] = useState(false);
 
@@ -581,18 +580,18 @@ transition-all duration-150 shadow-2xs ${readOnly ? "bg-slate-100" : ""}
                           styleImage instanceof File
                             ? styleImage.name
                             : typeof styleImage === "string" &&
-                              styleImage.startsWith("data:")
-                            ? "Attached Image"
-                            : styleImage
+                                styleImage.startsWith("data:")
+                              ? "Attached Image"
+                              : styleImage
                         }
                       >
                         ✅{" "}
                         {styleImage instanceof File
                           ? styleImage.name
                           : typeof styleImage === "string" &&
-                            styleImage.startsWith("data:")
-                          ? "Attached Image"
-                          : styleImage}
+                              styleImage.startsWith("data:")
+                            ? "Attached Image"
+                            : styleImage}
                       </span>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button
@@ -681,8 +680,8 @@ transition-all duration-150 shadow-2xs ${readOnly ? "bg-slate-100" : ""}
                       {childRecord.current > 0
                         ? "Disabled: Child record exists"
                         : !readOnly
-                        ? "Click to browse (PNG, JPG, WebP)"
-                        : "No image attached"}
+                          ? "Click to browse (PNG, JPG, WebP)"
+                          : "No image attached"}
                     </span>
                     {!readOnly && (
                       <span

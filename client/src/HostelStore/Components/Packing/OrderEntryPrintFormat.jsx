@@ -6,7 +6,7 @@ import {
   Image,
   StyleSheet,
 } from "@react-pdf/renderer";
-import Logo from "../../../assets/mplogo.png";
+import Logo from "../../../assets/NPLOGO.jpeg";
 import moment from "moment";
 import { findFromList, formatCurrencyAmount } from "../../../Utils/helper";
 import { numberToWords } from "number-to-words";

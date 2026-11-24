@@ -530,15 +530,20 @@ async function getOne(id) {
         include: {
           StyleItem: true,
           Uom: true,
-          Gsm: true,
           Hsn: true,
           ItemGroup: true,
-          SizeTemplate: true,
-          sizeBreakup: {
+          orderStyleItems: {
             include: {
-              Size: true,
-              packingSizeBreakups: true,
+              Style: true,
+              sizeBreakup: {
+                include: {
+                  Size: true,
+                  packingSizeBreakups: true,
+                },
+                orderBy: { id: "asc" },
+              },
             },
+            orderBy: { id: "asc" },
           },
         },
         orderBy: { itemOrder: "asc" },
@@ -592,7 +597,6 @@ async function create(body) {
     remarks,
     requirements,
     finYearId,
-    orderQty,
     attachments,
     draftSave,
     termsAndCondition,
@@ -626,55 +630,65 @@ async function create(body) {
     typeof orderItems === "string" ? JSON.parse(orderItems) : orderItems;
   const safeOrderItems =
     parsedOrderItems?.length > 0
-      ? parsedOrderItems.map((item, index) => ({
-          StyleItem: item?.styleItemId
-            ? { connect: { id: parseInt(item.styleItemId) } }
-            : undefined,
-          ItemGroup: item?.itemGroupId
-            ? { connect: { id: parseInt(item.itemGroupId) } }
-            : undefined,
-          trackingType: item?.trackingType,
-          itemOrder: index,
-          remarks: item?.remarks,
-          description: item.description,
-          orderQty:
-            item?.orderQty && !isNaN(Number(item.orderQty))
-              ? parseInt(item.orderQty)
-              : null,
-          price:
-            item?.price && !isNaN(Number(item.price))
-              ? parseFloat(item.price)
-              : null,
-          SizeTemplate: item?.sizeTemplateId
-            ? { connect: { id: parseInt(item.sizeTemplateId) } }
-            : undefined,
-          Uom: item?.uomId
-            ? { connect: { id: parseInt(item.uomId) } }
-            : undefined,
-          Gsm: item?.gsmId
-            ? { connect: { id: parseInt(item.gsmId) } }
-            : undefined,
-          Hsn: item?.hsnId
-            ? { connect: { id: parseInt(item.hsnId) } }
-            : undefined,
-          sizeBreakup:
-            item?.sizeBreakup?.length > 0
-              ? {
-                  create: item.sizeBreakup.map((s) => ({
-                    sizeId:
-                      item.trackingType === "Barcode"
-                        ? null
-                        : s.sizeId
-                          ? parseInt(s.sizeId)
-                          : null,
-                    qty: s.qty ? parseInt(s.qty) : 0,
-                    barcodeFrom: s.barcodeFrom,
-                    barcodeTo: s.barcodeTo,
-                    description: s.description || "",
-                  })),
-                }
+      ? parsedOrderItems.map((item, index) => {
+          const styleItemsList = item?.orderStyleItems || [];
+          return {
+            StyleItem: item?.styleItemId
+              ? { connect: { id: parseInt(item.styleItemId) } }
               : undefined,
-        }))
+            ItemGroup: item?.itemGroupId
+              ? { connect: { id: parseInt(item.itemGroupId) } }
+              : undefined,
+            itemOrder: index,
+            remarks: item?.remarks,
+            description: item.description,
+            orderQty:
+              item?.orderQty && !isNaN(Number(item.orderQty))
+                ? parseInt(item.orderQty)
+                : null,
+            price:
+              item?.price && !isNaN(Number(item.price))
+                ? parseFloat(item.price)
+                : null,
+
+            Uom: item?.uomId
+              ? { connect: { id: parseInt(item.uomId) } }
+              : undefined,
+
+            Hsn: item?.hsnId
+              ? { connect: { id: parseInt(item.hsnId) } }
+              : undefined,
+            orderStyleItems:
+              styleItemsList.length > 0
+                ? {
+                    create: [...styleItemsList].reverse().map((style) => ({
+                      Style: style?.styleId
+                        ? { connect: { id: parseInt(style.styleId) } }
+                        : undefined,
+                      trackingType: style?.trackingType,
+                      description: style?.description || "",
+                      sizeBreakup:
+                        style?.sizeBreakup?.length > 0
+                          ? {
+                              create: style.sizeBreakup.map((s) => ({
+                                sizeId:
+                                  style.trackingType === "Barcode"
+                                    ? null
+                                    : s.sizeId
+                                      ? parseInt(s.sizeId)
+                                      : null,
+                                qty: s.qty ? parseInt(s.qty) : 0,
+                                barcodeFrom: s.barcodeFrom,
+                                barcodeTo: s.barcodeTo,
+                                description: s.description || "",
+                              })),
+                            }
+                          : undefined,
+                    })),
+                  }
+                : undefined,
+          };
+        })
       : [];
   await prisma.$transaction(async (tx) => {
     data = await tx.orderEntry.create({
@@ -855,16 +869,75 @@ async function update(id, body, files) {
             : {}, // delete all if no items sent
           update: parsedItems
             .filter((item) => item.id)
-            .map((item) => ({
-              where: { id: parseInt(item.id) },
-              data: {
+            .map((item) => {
+              const styleItemsList = item?.orderStyleItems || [];
+              return {
+                where: { id: parseInt(item.id) },
+                data: {
+                  StyleItem: item.styleItemId
+                    ? { connect: { id: parseInt(item.styleItemId) } }
+                    : undefined,
+                  ItemGroup: item.itemGroupId
+                    ? { connect: { id: parseInt(item.itemGroupId) } }
+                    : undefined,
+                  itemOrder: item.itemOrder,
+                  remarks: item.remarks,
+                  description: item.description,
+                  orderQty: item.orderQty ? parseInt(item.orderQty) : null,
+                  price:
+                    item?.price && !isNaN(Number(item.price))
+                      ? parseFloat(item.price)
+                      : null,
+
+                  Uom: item.uomId
+                    ? { connect: { id: parseInt(item.uomId) } }
+                    : undefined,
+
+                  Hsn: item.hsnId
+                    ? { connect: { id: parseInt(item.hsnId) } }
+                    : undefined,
+                  orderStyleItems: {
+                    deleteMany: {},
+                    create: [...styleItemsList].reverse().map((style) => ({
+                      Style: style?.styleId
+                        ? { connect: { id: parseInt(style.styleId) } }
+                        : undefined,
+                      trackingType: style?.trackingType,
+                      description: style?.description || "",
+                      sizeBreakup:
+                        style?.sizeBreakup?.length > 0
+                          ? {
+                              create: style.sizeBreakup.map((s) => ({
+                                sizeId:
+                                  style.trackingType === "Barcode"
+                                    ? null
+                                    : s.sizeId
+                                      ? parseInt(s.sizeId)
+                                      : null,
+                                qty: s.qty ? parseInt(s.qty) : 0,
+                                barcodeFrom: s.barcodeFrom,
+                                barcodeTo: s.barcodeTo,
+                                description: s.description || "",
+                              })),
+                            }
+                          : undefined,
+                    })),
+                  },
+                },
+              };
+            }),
+
+          create: parsedItems
+            .filter((item) => !item.id)
+            .map((item) => {
+              const styleItemsList = item?.orderStyleItems || [];
+              return {
                 StyleItem: item.styleItemId
                   ? { connect: { id: parseInt(item.styleItemId) } }
                   : undefined,
                 ItemGroup: item.itemGroupId
                   ? { connect: { id: parseInt(item.itemGroupId) } }
                   : undefined,
-                trackingType: item.trackingType,
                 itemOrder: item.itemOrder,
                 remarks: item.remarks,
                 description: item.description,
@@ -873,87 +946,45 @@ async function update(id, body, files) {
                   item?.price && !isNaN(Number(item.price))
                     ? parseFloat(item.price)
                     : null,
-                SizeTemplate: item.sizeTemplateId
-                  ? { connect: { id: parseInt(item.sizeTemplateId) } }
-                  : undefined,
+
                 Uom: item.uomId
                   ? { connect: { id: parseInt(item.uomId) } }
                   : undefined,
-                Gsm: item.gsmId
-                  ? { connect: { id: parseInt(item.gsmId) } }
-                  : undefined,
+
                 Hsn: item.hsnId
                   ? { connect: { id: parseInt(item.hsnId) } }
                   : undefined,
-                sizeBreakup: {
-                  deleteMany: {},
-                  create:
-                    item.sizeBreakup?.length > 0
-                      ? item.sizeBreakup.map((s) => ({
-                          sizeId:
-                            item.trackingType === "Barcode"
-                              ? null
-                              : s.sizeId
-                                ? parseInt(s.sizeId)
-                                : null,
-                          qty: s.qty ? parseInt(s.qty) : 0,
-                          barcodeFrom: s.barcodeFrom,
-                          barcodeTo: s.barcodeTo,
-                          description: s.description || "",
-                        }))
-                      : [],
-                },
-              },
-            })),
-
-          create: parsedItems
-            .filter((item) => !item.id)
-            .map((item) => ({
-              StyleItem: item.styleItemId
-                ? { connect: { id: parseInt(item.styleItemId) } }
-                : undefined,
-              ItemGroup: item.itemGroupId
-                ? { connect: { id: parseInt(item.itemGroupId) } }
-                : undefined,
-              trackingType: item.trackingType,
-              itemOrder: item.itemOrder,
-              remarks: item.remarks,
-              description: item.description,
-              orderQty: item.orderQty ? parseInt(item.orderQty) : null,
-              price:
-                item?.price && !isNaN(Number(item.price))
-                  ? parseFloat(item.price)
-                  : null,
-              SizeTemplate: item.sizeTemplateId
-                ? { connect: { id: parseInt(item.sizeTemplateId) } }
-                : undefined,
-              Uom: item.uomId
-                ? { connect: { id: parseInt(item.uomId) } }
-                : undefined,
-              Gsm: item.gsmId
-                ? { connect: { id: parseInt(item.gsmId) } }
-                : undefined,
-              Hsn: item.hsnId
-                ? { connect: { id: parseInt(item.hsnId) } }
-                : undefined,
-              sizeBreakup:
-                item.sizeBreakup?.length > 0
-                  ? {
-                      create: item.sizeBreakup.map((s) => ({
-                        sizeId:
-                          item.trackingType === "Barcode"
-                            ? null
-                            : s.sizeId
-                              ? parseInt(s.sizeId)
-                              : null,
-                        qty: s.qty ? parseInt(s.qty) : 0,
-                        barcodeFrom: s.barcodeFrom,
-                        barcodeTo: s.barcodeTo,
-                        description: s.description || "",
-                      })),
-                    }
-                  : undefined,
-            })),
+                orderStyleItems:
+                  styleItemsList.length > 0
+                    ? {
+                        create: [...styleItemsList].reverse().map((style) => ({
+                          Style: style?.styleId
+                            ? { connect: { id: parseInt(style.styleId) } }
+                            : undefined,
+                          trackingType: style?.trackingType,
+                          description: style?.description || "",
+                          sizeBreakup:
+                            style?.sizeBreakup?.length > 0
+                              ? {
+                                  create: style.sizeBreakup.map((s) => ({
+                                    sizeId:
+                                      style.trackingType === "Barcode"
+                                        ? null
+                                        : s.sizeId
+                                          ? parseInt(s.sizeId)
+                                          : null,
+                                    qty: s.qty ? parseInt(s.qty) : 0,
+                                    barcodeFrom: s.barcodeFrom,
+                                    barcodeTo: s.barcodeTo,
+                                    description: s.description || "",
+                                  })),
+                                }
+                              : undefined,
+                        })),
+                      }
+                    : undefined,
+              };
+            }),
         },
         attachments: {
           deleteMany: {
