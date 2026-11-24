@@ -43,7 +43,6 @@ const OrderItems = ({
     itemGroupId: "",
     styleItemId: "",
     uomId: "",
-    gsmId: "",
     hsnId: "",
     orderQty: "",
     price: "",
@@ -127,7 +126,7 @@ const OrderItems = ({
           ...updatedRow,
           itemGroupId: selectedItem.itemGroupId || "",
           uomId: selectedItem.uomId || "",
-          gsmId: selectedItem.gsmId || "",
+
           hsnId: selectedItem.hsnId || "",
           price: selectedItem.price?.toFixed(2) || "",
           orderStyleItems: [],
@@ -167,37 +166,37 @@ const OrderItems = ({
   return (
     <>
       <div className="w-full h-full overflow-y-auto mb-2 bg-white border border-slate-200 rounded-md">
-        <table className="w-[98vw] border-collapse table-fixed">
-          <thead className="bg-gray-200 text-gray-800 sticky top-0 z-10 text-[12px]">
+        <table className="w-[98vw] border-separate border-spacing-0 table-fixed border-t border-l border-gray-300">
+          <thead className="text-gray-800 text-[12px]">
             <tr>
-              <th className="w-6 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-6 px-1 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
                 S.No
               </th>
-              <th className="w-[400px] px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-[400px] px-2 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
                 Description of Goods
               </th>
-              <th className="w-44 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-44 px-2 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
                 Item Group
               </th>
-              <th className="w-24 px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-24 px-2 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
                 HSN
               </th>
-              <th className="w-20 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-20 px-1 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
                 Style
               </th>
-              <th className="w-24 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-24 px-1 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
                 UOM
               </th>
-              <th className="w-24 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-24 px-1 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
                 Qty
               </th>
-              <th className="w-24 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-24 px-1 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
                 Price
               </th>
-              <th className="w-16 px-1 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-16 px-1 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
                 Image
               </th>
-              <th className="w-full px-2 py-1 text-center font-medium border border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-full px-2 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
                 Remarks
               </th>
             </tr>
@@ -206,14 +205,14 @@ const OrderItems = ({
             {orderItems?.map((row, index) => (
               <tr
                 key={index}
-                className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50"} h-7 border border-gray-200 cursor-pointer hover:bg-indigo-50`}
+                className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50"} h-7 cursor-pointer hover:bg-indigo-50`}
                 onContextMenu={(e) => !readOnly && handleRightClick(e, index)}
               >
-                <td className="text-[11px] text-center border border-gray-300">
+                <td className="text-[11px] text-center border-b border-r border-gray-300">
                   {index + 1}
                 </td>
 
-                <td className="border border-gray-300 grid-editable-cell">
+                <td className="border-b border-r border-gray-300 grid-editable-cell">
                   <FxSelectWithAdd
                     inputId={`styleItemId-input-${index}`}
                     value={row.styleItemId}
@@ -259,7 +258,7 @@ const OrderItems = ({
                   />
                 </td>
 
-                <td className="border border-gray-300">
+                <td className="border-b border-r border-gray-300">
                   <span className="w-full text-[11px] text-left pl-1 outline-none bg-transparent">
                     {findFromList(
                       row.itemGroupId,
@@ -268,14 +267,14 @@ const OrderItems = ({
                     ) || ""}
                   </span>
                 </td>
-                <td className="border border-gray-300">
+                <td className="border-b border-r border-gray-300">
                   <span className="w-full block text-[11px] text-right pr-1 outline-none bg-transparent">
                     {findFromList(row.hsnId, hsnList?.data, "name") || ""}
                   </span>
                 </td>
 
                 {/* Style Eye Icon Column */}
-                <td className="border border-gray-300 text-center items-center">
+                <td className="border-b border-r border-gray-300 text-center items-center">
                   <button
                     id={`style-btn-${index}`}
                     type="button"
@@ -294,14 +293,14 @@ const OrderItems = ({
                   </button>
                 </td>
 
-                <td className="border border-gray-300">
+                <td className="border-b border-r border-gray-300">
                   <span className="w-full text-[11px] text-left pl-1 outline-none bg-transparent">
                     {findFromList(row.uomId, uomList?.data, "name") || ""}
                   </span>
                 </td>
 
                 {/* Qty Column */}
-                <td className="border border-gray-300 grid-editable-cell">
+                <td className="border-b border-r border-gray-300 grid-editable-cell">
                   <input
                     id={`orderQty-input-${index}`}
                     type="number"
@@ -369,7 +368,7 @@ const OrderItems = ({
                 </td>
 
                 {/* Price Column */}
-                <td className="border border-gray-300 grid-editable-cell">
+                <td className="border-b border-r border-gray-300 grid-editable-cell">
                   <input
                     value={row?.price || ""}
                     className="w-full text-[11px] text-right pr-1 outline-none bg-transparent"
@@ -418,7 +417,7 @@ const OrderItems = ({
                 </td>
 
                 {/* Image Column */}
-                <td className="border border-gray-300 text-center px-1 py-0.5 w-16">
+                <td className="border-b border-r border-gray-300 text-center px-1 py-0.5 w-16">
                   {(() => {
                     const currentStyleItem = styleItemList?.data?.find(
                       (item) => item.id === row?.styleItemId,
@@ -465,7 +464,7 @@ const OrderItems = ({
                 </td>
 
                 {/* Remarks Column */}
-                <td className="border border-gray-300 grid-editable-cell">
+                <td className="border-b border-r border-gray-300 grid-editable-cell">
                   <input
                     id={`remarks-input-${index}`}
                     type="text"
@@ -504,27 +503,27 @@ const OrderItems = ({
               </tr>
             ))}
           </tbody>
-          <tfoot className="sticky bottom-0 z-10">
+          <tfoot className="sticky bottom-0 z-20 bg-gray-100">
             <tr className="bg-gray-100 h-7 font-bold text-gray-800 text-[12px]">
               <td
-                className="text-right px-2 border border-gray-300"
+                className="text-right px-2 border-b border-r border-gray-300"
                 colSpan={6}
               >
                 Total
               </td>
-              <td className="text-right px-1 border border-gray-300 text-black">
+              <td className="text-right px-1 border-b border-r border-gray-300 text-black">
                 {orderItems?.reduce(
                   (sum, row) => sum + (Number(row.orderQty) || 0),
                   0,
                 )}
               </td>
-              <td className="text-right px-1 border border-gray-300 text-black">
+              <td className="text-right px-1 border-b border-r border-gray-300 text-black">
                 {orderItems
                   ?.reduce((sum, row) => sum + (Number(row.price) || 0), 0)
                   .toFixed(2)}
               </td>
-              <td className="border border-gray-300"></td>
-              <td className="border border-gray-300"></td>
+              <td className="border-b border-r border-gray-300"></td>
+              <td className="border-b border-r border-gray-300"></td>
             </tr>
           </tfoot>
         </table>

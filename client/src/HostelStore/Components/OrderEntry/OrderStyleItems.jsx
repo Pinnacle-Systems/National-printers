@@ -22,8 +22,6 @@ const createEmptyBreakupRow = () => ({
 const createEmptyStyleItem = () => ({
   styleId: "",
   trackingType: "Size",
-  sizeTemplateId: "",
-  orderQty: 0,
   description: "",
   sizeBreakup: Array.from({ length: 5 }, createEmptyBreakupRow),
 });
@@ -58,8 +56,7 @@ const OrderStyleItems = ({
   // Initialize or hydrate styles whenever modal opens
   useEffect(() => {
     if (isOpen && parentItem) {
-      let existing =
-        parentItem.orderStyleItems || parentItem.styleItems || [];
+      let existing = parentItem.orderStyleItems || parentItem.styleItems || [];
       if (
         existing.length === 0 &&
         (parentItem.sizeBreakup?.length > 0 || parentItem.trackingType)
@@ -69,7 +66,6 @@ const OrderStyleItems = ({
           {
             styleId: parentItem.styleId || "",
             trackingType: parentItem.trackingType || "Size",
-            sizeTemplateId: parentItem.sizeTemplateId || "",
             orderQty: parentItem.orderQty || 0,
             description: parentItem.description || "",
             sizeBreakup:
@@ -96,7 +92,10 @@ const OrderStyleItems = ({
               trackingType: item.trackingType || "Size",
               sizeTemplateId: item.sizeTemplateId || "",
               description: item.description || "",
-              orderQty: item.orderQty !== undefined ? Number(item.orderQty) : 0,
+              orderQty:
+                item.orderQty !== undefined && item.orderQty !== null
+                  ? Number(item.orderQty)
+                  : breakup.reduce((sum, b) => sum + (Number(b.qty) || 0), 0),
               sizeBreakup: breakup,
             };
           }),
@@ -150,7 +149,12 @@ const OrderStyleItems = ({
     const newStyle = createEmptyStyleItem();
     setStyleRows((prev) => {
       const updated = [...prev, newStyle];
-      setActiveStyleIndex(updated.length - 1);
+      const newIndex = updated.length - 1;
+      setActiveStyleIndex(newIndex);
+      setTimeout(() => {
+        const nextEl = document.getElementById(`styleId-input-${newIndex}`);
+        if (nextEl) nextEl.focus();
+      }, 100);
       return updated;
     });
   };
@@ -158,7 +162,7 @@ const OrderStyleItems = ({
   // Delete a style row on the left side
   const handleDeleteStyleRow = (index, e) => {
     e?.stopPropagation();
-    if (styleRows.length === 1) {
+    if (styleRows.length <= 1) {
       setStyleRows([createEmptyStyleItem()]);
       setActiveStyleIndex(0);
       return;
@@ -170,27 +174,60 @@ const OrderStyleItems = ({
     }
   };
 
+  // Delete all styles
+  const handleDeleteAllStyles = () => {
+    setStyleRows([createEmptyStyleItem()]);
+    setActiveStyleIndex(0);
+  };
+
   // Handle changes to Style dropdown or Type dropdown on the left side
   const handleStyleFieldChange = (index, field, value) => {
     const updated = [...styleRows];
     let row = { ...updated[index], [field]: value };
 
+    // Validation: Same style cannot have the same tracking type
     if (field === "styleId" && value) {
+      const trackingType = row.trackingType || "Size";
       const isDuplicate = updated.some(
-        (r, idx) => idx !== index && r.styleId === value,
+        (r, idx) =>
+          idx !== index &&
+          String(r.styleId) === String(value) &&
+          (r.trackingType || "Size") === trackingType,
       );
       if (isDuplicate) {
+        const styleName =
+          findFromList(value, styleMasterList?.data, "name") || "This style";
         Swal.fire({
           icon: "warning",
-          title: "Duplicate Style",
-          text: "This style is already added. Each style must be unique.",
-          timer: 2000,
+          title: "Duplicate Style and Type",
+          text: `${styleName} with tracking type '${trackingType}' is already added. A style cannot have the same tracking type more than once.`,
+          timer: 3000,
         });
         return;
       }
     }
 
-    if (field === "trackingType") {
+    if (field === "trackingType" && value) {
+      if (row.styleId) {
+        const isDuplicate = updated.some(
+          (r, idx) =>
+            idx !== index &&
+            String(r.styleId) === String(row.styleId) &&
+            (r.trackingType || "Size") === value,
+        );
+        if (isDuplicate) {
+          const styleName =
+            findFromList(row.styleId, styleMasterList?.data, "name") ||
+            "This style";
+          Swal.fire({
+            icon: "warning",
+            title: "Duplicate Style and Type",
+            text: `${styleName} with tracking type '${value}' already exists. A style cannot have the same tracking type more than once.`,
+            timer: 3000,
+          });
+          return;
+        }
+      }
       row.sizeBreakup = Array.from({ length: 5 }, createEmptyBreakupRow);
       row.orderQty = 0;
     }
@@ -204,6 +241,29 @@ const OrderStyleItems = ({
     const updated = [...styleRows];
     const currentRow = { ...updated[activeStyleIndex] };
     const breakup = [...(currentRow.sizeBreakup || [])];
+
+    // Validation: in Size Wise Breakup, the same size cannot be chosen twice
+    if (
+      field === "sizeId" &&
+      value &&
+      (currentRow.trackingType || "Size") === "Size"
+    ) {
+      const isDuplicateSize = breakup.some(
+        (item, i) => i !== sizeIndex && String(item.sizeId) === String(value),
+      );
+      if (isDuplicateSize) {
+        const sizeName =
+          findFromList(value, sizeList?.data, "name") || "This size";
+        Swal.fire({
+          icon: "warning",
+          title: "Duplicate Size",
+          text: `Size '${sizeName}' is already selected for this style. Each size must be unique.`,
+          timer: 2500,
+        });
+        return;
+      }
+    }
+
     breakup[sizeIndex] = { ...breakup[sizeIndex], [field]: value };
 
     currentRow.sizeBreakup = breakup;
@@ -313,12 +373,13 @@ const OrderStyleItems = ({
   };
 
   // Right-click context menu handler
-  const handleRightClick = (event, rowIndex) => {
+  const handleRightClick = (event, rowIndex, type = "BREAKUP") => {
     event.preventDefault();
     setContextMenu({
       mouseX: event.clientX,
       mouseY: event.clientY,
       rowId: rowIndex,
+      type,
     });
   };
 
@@ -327,6 +388,55 @@ const OrderStyleItems = ({
     const validStyles = styleRows.filter(
       (r) => r.styleId || Number(r.orderQty) > 0,
     );
+
+    // Validate: Same style cannot have the same tracking type
+    const seenCombos = new Set();
+    for (let i = 0; i < validStyles.length; i++) {
+      const st = validStyles[i];
+      if (st.styleId) {
+        const comboKey = `${st.styleId}-${st.trackingType || "Size"}`;
+        if (seenCombos.has(comboKey)) {
+          const styleName =
+            findFromList(st.styleId, styleMasterList?.data, "name") ||
+            `Style #${i + 1}`;
+          Swal.fire({
+            icon: "warning",
+            title: "Duplicate Style and Type",
+            text: `${styleName} with tracking type '${st.trackingType || "Size"}' is added more than once.`,
+          });
+          return;
+        }
+        seenCombos.add(comboKey);
+      }
+    }
+
+    // Validate: in Size Wise Breakup, no duplicate sizes allowed
+    for (let i = 0; i < validStyles.length; i++) {
+      const st = validStyles[i];
+      if ((st.trackingType || "Size") === "Size") {
+        const selectedSizes = (st.sizeBreakup || [])
+          .map((b) => b.sizeId)
+          .filter(
+            (sizeId) =>
+              sizeId !== undefined && sizeId !== null && sizeId !== "",
+          );
+        if (selectedSizes.length > 0) {
+          const uniqueSizes = new Set(selectedSizes);
+          if (selectedSizes.length !== uniqueSizes.size) {
+            const styleName =
+              findFromList(st.styleId, styleMasterList?.data, "name") ||
+              `Style #${i + 1}`;
+            Swal.fire({
+              icon: "warning",
+              title: "Duplicate Size",
+              text: `Duplicate sizes selected under ${styleName}. Each size must be unique.`,
+            });
+            return;
+          }
+        }
+      }
+    }
+
     const totalQty = validStyles.reduce(
       (sum, r) => sum + (Number(r.orderQty) || 0),
       0,
@@ -352,7 +462,7 @@ const OrderStyleItems = ({
     <Modal
       isOpen={isOpen}
       onClose={handleDone}
-      widthClass="w-[1100px] max-w-[95vw] h-[85vh]"
+      widthClass="w-[1300px] max-w-[95vw] h-[85vh]"
     >
       <div className="bg-slate-100 p-3 rounded-lg flex flex-col h-full">
         {/* Modal Top Header */}
@@ -409,22 +519,21 @@ const OrderStyleItems = ({
             </div>
 
             <div className="flex-1 overflow-y-auto border border-slate-200 rounded">
-              <table className="w-full border-collapse table-fixed text-[11px]">
-                <thead className="bg-gray-100 text-gray-700 sticky top-0 z-10 border-b border-slate-200">
+              <table className="w-full border-separate border-spacing-0 table-fixed text-[11px]">
+                <thead className="text-gray-700 text-[11px]">
                   <tr>
-                    <th className="w-8 py-1.5 text-center font-bold border-r border-slate-200">
+                    <th className="sticky top-0 z-20 bg-gray-100 w-8 py-1.5 text-center font-bold border-b border-r border-slate-200">
                       S.No
                     </th>
-                    <th className="w-44 px-1 py-1.5 text-center font-bold border-r border-slate-200">
+                    <th className="sticky top-0 z-20 bg-gray-100 w-48 px-1 py-1.5 text-center font-bold border-b border-r border-slate-200">
                       Style
                     </th>
-                    <th className="w-24 px-1 py-1.5 text-center font-bold border-r border-slate-200">
+                    <th className="sticky top-0 z-20 bg-gray-100 w-28 px-1 py-1.5 text-center font-bold border-b border-r border-slate-200">
                       Type
                     </th>
-                    <th className="w-14 px-1 py-1.5 text-center font-bold border-r border-slate-200">
+                    <th className="sticky top-0 z-20 bg-gray-100 w-16 px-1 py-1.5 text-center font-bold border-b border-slate-200">
                       Qty
                     </th>
-                    <th className="w-8 py-1.5 text-center font-bold">✕</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -434,6 +543,9 @@ const OrderStyleItems = ({
                       <tr
                         key={idx}
                         onClick={() => setActiveStyleIndex(idx)}
+                        onContextMenu={(e) =>
+                          !readOnly && handleRightClick(e, idx, "STYLE")
+                        }
                         className={`cursor-pointer transition-colors border-b border-slate-200 h-8 ${
                           isSelected
                             ? "bg-indigo-50 font-medium"
@@ -489,6 +601,7 @@ const OrderStyleItems = ({
                           onClick={(e) => e.stopPropagation()}
                         >
                           <select
+                            id={`trackingType-input-${idx}`}
                             value={row.trackingType || "Size"}
                             onChange={(e) =>
                               handleStyleFieldChange(
@@ -498,6 +611,15 @@ const OrderStyleItems = ({
                               )
                             }
                             onFocus={() => setActiveStyleIndex(idx)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                const qtyInput = document.getElementById(
+                                  `style-orderQty-${idx}`,
+                                );
+                                if (qtyInput) qtyInput.focus();
+                              }
+                            }}
                             disabled={readOnly}
                             className="w-full h-6 text-[11px] bg-transparent outline-none cursor-pointer"
                           >
@@ -510,21 +632,41 @@ const OrderStyleItems = ({
                         </td>
 
                         {/* Style Total Qty */}
-                        <td className="border-r border-slate-200 text-right pr-2 text-indigo-700 font-bold">
-                          {row.orderQty || 0}
-                        </td>
-
-                        {/* Delete Row */}
-                        <td className="text-center">
-                          <button
-                            type="button"
-                            onClick={(e) => handleDeleteStyleRow(idx, e)}
-                            disabled={readOnly}
-                            className="text-red-500 hover:text-red-700 text-xs disabled:opacity-30"
-                            title="Delete Style"
-                          >
-                            ✕
-                          </button>
+                        <td
+                          className="text-right px-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveStyleIndex(idx);
+                          }}
+                        >
+                          <input
+                            id={`style-orderQty-${idx}`}
+                            type="text"
+                            readOnly
+                            value={row.orderQty || 0}
+                            onFocus={() => setActiveStyleIndex(idx)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                if (idx === styleRows.length - 1) {
+                                  handleAddStyleRow();
+                                } else {
+                                  setActiveStyleIndex(idx + 1);
+                                  setTimeout(() => {
+                                    const nextEl =
+                                      document.getElementById(
+                                        `styleId-input-${idx + 1}`,
+                                      ) ||
+                                      document.getElementById(
+                                        `style-orderQty-${idx + 1}`,
+                                      );
+                                    if (nextEl) nextEl.focus();
+                                  }, 50);
+                                }
+                              }
+                            }}
+                            className="w-full text-right bg-transparent outline-none cursor-pointer font-bold text-indigo-700 pr-1 select-none"
+                          />
                         </td>
                       </tr>
                     );
@@ -543,10 +685,11 @@ const OrderStyleItems = ({
 
           {/* ================= RIGHT SIDE: EXACT BREAKUP STRUCTURE (L812-L1295) ================= */}
           <div className="col-span-7 bg-white p-3 rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
-            {/* Header section like original lines 820-838 */}
-            <div className="bg-slate-50 p-2.5 rounded-lg flex justify-between items-center mb-2.5 border border-slate-200">
-              <div>
-                <h3 className="text-sm font-bold text-slate-800">
+            {/* Header section matching StyleList design */}
+            <div className="flex justify-between items-center mb-2 pb-1 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  2.{" "}
                   {currentTrackingType === "Barcode"
                     ? "Barcode Wise Breakup"
                     : currentTrackingType === "Size + Barcode"
@@ -554,22 +697,28 @@ const OrderStyleItems = ({
                       : "Size Wise Breakup"}
                 </h3>
                 <span className="text-[11px] text-indigo-600 font-medium">
-                  Active Style:{" "}
-                  <strong>
-                    {findFromList(
-                      activeStyle.styleId,
-                      styleMasterList?.data,
-                      "name",
-                    ) || `Style #${activeStyleIndex + 1}`}
-                  </strong>
+                  (
+                  {findFromList(
+                    activeStyle.styleId,
+                    styleMasterList?.data,
+                    "name",
+                  ) || `Style #${activeStyleIndex + 1}`}
+                  )
                 </span>
               </div>
 
-              <div className="text-right">
-                <span className="text-[11px] text-gray-500">Style Qty: </span>
-                <span className="text-sm font-bold text-indigo-700">
-                  {activeStyle.orderQty || 0}
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] font-bold text-indigo-700">
+                  Qty: {activeStyle.orderQty || 0}
                 </span>
+                <button
+                  type="button"
+                  onClick={addModalRow}
+                  disabled={readOnly}
+                  className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-300 px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 transition"
+                >
+                  <Plus size={13} /> Add Row
+                </button>
               </div>
             </div>
 
@@ -577,21 +726,21 @@ const OrderStyleItems = ({
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Table scroll container (original L854) */}
               <div className="flex-1 overflow-y-auto border border-slate-200 rounded">
-                {/* --- BARCODE TYPE TABLE (original L856-943) --- */}
+                {/* --- BARCODE TYPE TABLE --- */}
                 {currentTrackingType === "Barcode" && (
-                  <table className="w-full border-separate border-spacing-0 border-t border-l border-slate-200">
-                    <thead>
+                  <table className="w-full border-separate border-spacing-0 table-fixed text-[11px]">
+                    <thead className="text-gray-700 text-[11px]">
                       <tr>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-11">
+                        <th className="sticky top-0 z-20 bg-gray-100 w-10 py-1.5 text-center font-bold border-b border-r border-slate-200">
                           S.No
                         </th>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase">
+                        <th className="sticky top-0 z-20 bg-gray-100 px-1 py-1.5 text-center font-bold border-b border-r border-slate-200">
                           Barcode From
                         </th>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase">
+                        <th className="sticky top-0 z-20 bg-gray-100 px-1 py-1.5 text-center font-bold border-b border-r border-slate-200">
                           Barcode To
                         </th>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-24">
+                        <th className="sticky top-0 z-20 bg-gray-100 w-20 px-1 py-1.5 text-center font-bold border-b border-slate-200">
                           Qty
                         </th>
                       </tr>
@@ -600,19 +749,23 @@ const OrderStyleItems = ({
                       {activeStyle.sizeBreakup?.map((item, idx) => (
                         <tr
                           key={idx}
-                          className="hover:bg-slate-50 transition-colors"
+                          className={`h-8 border-b border-slate-200 transition-colors ${
+                            idx % 2 === 0
+                              ? "bg-white hover:bg-slate-50"
+                              : "bg-gray-50 hover:bg-slate-50"
+                          }`}
                           onContextMenu={(e) =>
-                            !readOnly && handleRightClick(e, idx)
+                            !readOnly && handleRightClick(e, idx, "BREAKUP")
                           }
                         >
-                          <td className="border-b border-r border-slate-200 px-1 py-0.5 text-center text-[11px] text-slate-500 font-medium">
+                          <td className="text-center border-r border-slate-200 text-slate-500 font-medium">
                             {idx + 1}
                           </td>
-                          <td className="border-b border-r border-slate-200 px-1">
+                          <td className="border-r border-slate-200 px-1">
                             <input
                               id={`barcodeFrom-${idx}`}
                               type="text"
-                              className="w-full border-none bg-transparent px-2 text-[11px] outline-none focus:bg-white"
+                              className="w-full h-7 border-none bg-transparent px-1 text-[11px] outline-none"
                               value={item.barcodeFrom || ""}
                               onChange={(e) =>
                                 handleSizeBreakupChange(
@@ -624,10 +777,10 @@ const OrderStyleItems = ({
                               disabled={readOnly}
                             />
                           </td>
-                          <td className="border-b border-r border-slate-200 px-1">
+                          <td className="border-r border-slate-200 px-1">
                             <input
                               type="text"
-                              className="w-full border-none bg-transparent px-2 text-[11px] outline-none focus:bg-white"
+                              className="w-full h-7 border-none bg-transparent px-1 text-[11px] outline-none"
                               value={item.barcodeTo || ""}
                               onChange={(e) =>
                                 handleSizeBreakupChange(
@@ -639,10 +792,10 @@ const OrderStyleItems = ({
                               disabled={readOnly}
                             />
                           </td>
-                          <td className="border-b border-r border-slate-200 px-1">
+                          <td className="px-1 text-right">
                             <input
                               type="number"
-                              className="w-full border-none text-right pr-2 bg-transparent text-[11px] text-black outline-none focus:bg-white"
+                              className="w-full h-7 border-none text-right pr-2 bg-transparent text-[11px] font-bold text-indigo-700 outline-none"
                               value={
                                 item.qty !== undefined &&
                                 item.qty !== null &&
@@ -678,18 +831,18 @@ const OrderStyleItems = ({
                   </table>
                 )}
 
-                {/* --- SIZE TYPE TABLE (original L945-1080) --- */}
+                {/* --- SIZE TYPE TABLE --- */}
                 {currentTrackingType === "Size" && (
-                  <table className="w-full border-separate border-spacing-0 border-t border-l border-slate-200">
-                    <thead>
+                  <table className="w-full border-separate border-spacing-0 table-fixed text-[11px]">
+                    <thead className="text-gray-700 text-[11px]">
                       <tr>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-10">
+                        <th className="sticky top-0 z-20 bg-gray-100 w-10 py-1.5 text-center font-bold border-b border-r border-slate-200">
                           S.No
                         </th>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase">
+                        <th className="sticky top-0 z-20 bg-gray-100 px-1 py-1.5 text-center font-bold border-b border-r border-slate-200">
                           Size
                         </th>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 w-24 px-1 py-1 text-center text-[11px] font-bold text-black uppercase">
+                        <th className="sticky top-0 z-20 bg-gray-100 w-24 px-1 py-1.5 text-center font-bold border-b border-slate-200">
                           Qty
                         </th>
                       </tr>
@@ -698,19 +851,23 @@ const OrderStyleItems = ({
                       {activeStyle.sizeBreakup?.map((item, idx) => (
                         <tr
                           key={idx}
-                          className="h-8 hover:bg-slate-50 transition-colors"
+                          className={`h-8 border-b border-slate-200 transition-colors ${
+                            idx % 2 === 0
+                              ? "bg-white hover:bg-slate-50"
+                              : "bg-gray-50 hover:bg-slate-50"
+                          }`}
                           onContextMenu={(e) =>
-                            !readOnly && handleRightClick(e, idx)
+                            !readOnly && handleRightClick(e, idx, "BREAKUP")
                           }
                         >
-                          <td className="border-b border-r border-slate-200 px-1 py-0 text-center text-[11px] text-black">
+                          <td className="text-center border-r border-slate-200 text-slate-500 font-medium">
                             {idx + 1}
                           </td>
                           <td
                             data-grid-row={idx}
                             data-grid-col={1}
                             data-grid-editable="true"
-                            className="grid-editable-cell border border-gray-300 text-[11px]"
+                            className="border-r border-slate-200 grid-editable-cell text-[11px]"
                           >
                             <FxSelectWithAdd
                               value={item.sizeId || ""}
@@ -739,11 +896,11 @@ const OrderStyleItems = ({
                               menuPortalTarget={document.body}
                             />
                           </td>
-                          <td className="border-b border-r border-slate-200 px-1 py-0">
+                          <td className="px-1 text-right">
                             <input
                               id={`sizeQty-${idx}`}
                               type="number"
-                              className="w-full h-7 border-none text-right pr-2 bg-transparent text-[11px] text-black outline-none focus:bg-white"
+                              className="w-full h-7 border-none text-right pr-2 bg-transparent text-[11px] font-bold text-indigo-700 outline-none"
                               value={
                                 item.qty !== undefined &&
                                 item.qty !== null &&
@@ -779,24 +936,24 @@ const OrderStyleItems = ({
                   </table>
                 )}
 
-                {/* --- SIZE + BARCODE TYPE TABLE (original L1082-1260) --- */}
+                {/* --- SIZE + BARCODE TYPE TABLE --- */}
                 {currentTrackingType === "Size + Barcode" && (
-                  <table className="w-full border-separate border-spacing-0 border-t border-l border-slate-200">
-                    <thead>
+                  <table className="w-full border-separate border-spacing-0 table-fixed text-[11px]">
+                    <thead className="text-gray-700 text-[11px]">
                       <tr>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-10">
+                        <th className="sticky top-0 z-20 bg-gray-100 w-10 py-1.5 text-center font-bold border-b border-r border-slate-200">
                           S.No
                         </th>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-28">
+                        <th className="sticky top-0 z-20 bg-gray-100 w-36 px-1 py-1.5 text-center font-bold border-b border-r border-slate-200">
                           Size
                         </th>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase">
-                          From
+                        <th className="sticky top-0 z-20 bg-gray-100 px-1 py-1.5 text-center font-bold border-b border-r border-slate-200">
+                          Barcode From
                         </th>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase">
-                          To
+                        <th className="sticky top-0 z-20 bg-gray-100 px-1 py-1.5 text-center font-bold border-b border-r border-slate-200">
+                          Barcode To
                         </th>
-                        <th className="sticky top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-1 py-1 text-center text-[11px] font-bold text-black uppercase w-20">
+                        <th className="sticky top-0 z-20 bg-gray-100 w-20 px-1 py-1.5 text-center font-bold border-b border-slate-200">
                           Qty
                         </th>
                       </tr>
@@ -805,19 +962,23 @@ const OrderStyleItems = ({
                       {activeStyle.sizeBreakup?.map((item, idx) => (
                         <tr
                           key={idx}
-                          className="h-8 hover:bg-slate-50 transition-colors"
+                          className={`h-8 border-b border-slate-200 transition-colors ${
+                            idx % 2 === 0
+                              ? "bg-white hover:bg-slate-50"
+                              : "bg-gray-50 hover:bg-slate-50"
+                          }`}
                           onContextMenu={(e) =>
-                            !readOnly && handleRightClick(e, idx)
+                            !readOnly && handleRightClick(e, idx, "BREAKUP")
                           }
                         >
-                          <td className="border-b border-r border-slate-200 px-1 py-0 text-center text-[11px] text-black">
+                          <td className="text-center border-r border-slate-200 text-slate-500 font-medium">
                             {idx + 1}
                           </td>
                           <td
                             data-grid-row={idx}
                             data-grid-col={1}
                             data-grid-editable="true"
-                            className="grid-editable-cell border border-gray-300 text-[11px]"
+                            className="border-r border-slate-200 grid-editable-cell text-[11px]"
                           >
                             <FxSelectWithAdd
                               value={item.sizeId || ""}
@@ -846,11 +1007,11 @@ const OrderStyleItems = ({
                               menuPortalTarget={document.body}
                             />
                           </td>
-                          <td className="border-b border-r border-slate-200 px-1 py-0">
+                          <td className="border-r border-slate-200 px-1">
                             <input
                               id={`sizeBarcodeFrom-${idx}`}
                               type="text"
-                              className="w-full h-7 border-none bg-transparent px-1 text-[11px] outline-none focus:bg-white"
+                              className="w-full h-7 border-none bg-transparent px-1 text-[11px] outline-none"
                               value={item.barcodeFrom || ""}
                               onChange={(e) =>
                                 handleSizeBreakupChange(
@@ -863,10 +1024,10 @@ const OrderStyleItems = ({
                               placeholder="From"
                             />
                           </td>
-                          <td className="border-b border-r border-slate-200 px-1 py-0">
+                          <td className="border-r border-slate-200 px-1">
                             <input
                               type="text"
-                              className="w-full h-7 border-none bg-transparent px-1 text-[11px] outline-none focus:bg-white"
+                              className="w-full h-7 border-none bg-transparent px-1 text-[11px] outline-none"
                               value={item.barcodeTo || ""}
                               onChange={(e) =>
                                 handleSizeBreakupChange(
@@ -879,10 +1040,10 @@ const OrderStyleItems = ({
                               placeholder="To"
                             />
                           </td>
-                          <td className="border-b border-r border-slate-200 px-1 py-0">
+                          <td className="px-1 text-right">
                             <input
                               type="number"
-                              className="w-full h-7 border-none text-right pr-2 bg-transparent text-[11px] text-black outline-none focus:bg-white"
+                              className="w-full h-7 border-none text-right pr-2 bg-transparent text-[11px] font-bold text-indigo-700 outline-none"
                               value={
                                 item.qty !== undefined &&
                                 item.qty !== null &&
@@ -964,7 +1125,11 @@ const OrderStyleItems = ({
             <button
               className="text-[12px] text-left px-3 py-1.5 hover:bg-red-50 text-red-600 font-medium rounded transition-colors"
               onClick={() => {
-                deleteModalRow(contextMenu.rowId);
+                if (contextMenu.type === "STYLE") {
+                  handleDeleteStyleRow(contextMenu.rowId);
+                } else {
+                  deleteModalRow(contextMenu.rowId);
+                }
                 setContextMenu(null);
               }}
             >
@@ -973,7 +1138,11 @@ const OrderStyleItems = ({
             <button
               className="text-[12px] text-left px-3 py-1.5 hover:bg-gray-100 text-gray-700 font-medium rounded transition-colors"
               onClick={() => {
-                deleteModalAllRows();
+                if (contextMenu.type === "STYLE") {
+                  handleDeleteAllStyles();
+                } else {
+                  deleteModalAllRows();
+                }
                 setContextMenu(null);
               }}
             >

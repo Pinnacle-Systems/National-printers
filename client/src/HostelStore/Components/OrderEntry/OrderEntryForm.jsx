@@ -36,6 +36,7 @@ import OrderEntryPrintFormat from "./OrderEntryPrintFormat.jsx";
 import { FiFileText } from "react-icons/fi";
 import OrderItems from "./OrderItems.jsx";
 import { useGetStyleItemMasterQuery } from "../../../redux/services/StyleItemMasterService.js";
+import { useGetStyleMasterQuery } from "../../../redux/services/StyleMasterService.js";
 import { useGetSizeMasterQuery } from "../../../redux/services/SizemasterService.js";
 import { useGetUnitOfMeasurementMasterQuery } from "../../../redux/uniformService/UnitOfMeasurementServices.js";
 import ReusableFormFooter from "../../../Basic/components/Reuseable/ReuseableFormFooter.jsx";
@@ -160,6 +161,9 @@ const OrderEntryForm = ({
   const { data: styleItemList } = useGetStyleItemMasterQuery({
     params: { ...params },
   });
+  const { data: styleMasterList } = useGetStyleMasterQuery({
+    params: { ...params },
+  });
   const { data: uomList } = useGetUnitOfMeasurementMasterQuery({ params });
   const { data: sizeList } = useGetSizeMasterQuery({ params });
   const { data: gsmList } = useGetGsmMasterQuery({ params: { companyId } });
@@ -203,7 +207,7 @@ const OrderEntryForm = ({
       // ── Smart childRecord tracking (File 2) ─────────────────────────────
       childRecord.current = data?.childRecord ? data?.childRecord : 0;
       const initialItems = (data?.orderItems || []).map((item) => {
-        let styles = item.orderStyleItems || item.styleItems || [];
+        let styles = item.orderStyleItems || [];
         if (
           styles.length === 0 &&
           (item.sizeBreakup?.length > 0 || item.styleId)
@@ -212,8 +216,7 @@ const OrderEntryForm = ({
             {
               styleId: item.styleId || "",
               trackingType: item.trackingType || "Size",
-              sizeTemplateId: item.sizeTemplateId || "",
-              orderQty: item.orderQty || 0,
+
               description: item.description || "",
               sizeBreakup: item.sizeBreakup || [],
             },
@@ -224,7 +227,7 @@ const OrderEntryForm = ({
           itemGroupId: item.itemGroupId || "",
           styleItemId: item.styleItemId || "",
           uomId: item.uomId || "",
-          gsmId: item.gsmId || "",
+
           hsnId: item.hsnId || "",
           orderQty: item.orderQty || "",
           price:
@@ -425,7 +428,18 @@ const OrderEntryForm = ({
       // If orderStyleItems are present, validate styles
       const styleItemsList = item.orderStyleItems || item.styleItems || [];
       if (styleItemsList && styleItemsList.length > 0) {
+        const seenStyleCombos = new Set();
         styleItemsList.forEach((st, sIdx) => {
+          if (st.styleId) {
+            const comboKey = `${st.styleId}-${st.trackingType || "Size"}`;
+            if (seenStyleCombos.has(comboKey)) {
+              errors.push(
+                `Row ${rowIndex}: Duplicate Style and Type (Style #${sIdx + 1} with tracking type '${st.trackingType || "Size"}'). Same style cannot have the same tracking type more than once.`,
+              );
+            }
+            seenStyleCombos.add(comboKey);
+          }
+
           if (!st.styleId && Number(st.orderQty) > 0) {
             errors.push(
               `Row ${rowIndex}, Style ${sIdx + 1}: Style selection is required.`,
@@ -447,7 +461,9 @@ const OrderEntryForm = ({
                 );
               }
             }
-            const filled = sBreakup.filter((b) => b.sizeId && Number(b.qty) > 0);
+            const filled = sBreakup.filter(
+              (b) => b.sizeId && Number(b.qty) > 0,
+            );
             if (st.styleId && filled.length === 0) {
               errors.push(
                 `Row ${rowIndex}, Style ${sIdx + 1}: At least one size with Qty > 0 is required.`,
@@ -465,10 +481,7 @@ const OrderEntryForm = ({
           } else if (st.trackingType === "Size + Barcode") {
             const filled = sBreakup.filter(
               (b) =>
-                b.sizeId &&
-                b.barcodeFrom &&
-                b.barcodeTo &&
-                Number(b.qty) > 0,
+                b.sizeId && b.barcodeFrom && b.barcodeTo && Number(b.qty) > 0,
             );
             if (st.styleId && filled.length === 0) {
               errors.push(
@@ -1008,7 +1021,7 @@ const OrderEntryForm = ({
             className={`bg-indigo-500 text-white px-2 py-1 rounded hover:bg-indigo-600 flex items-center text-xs font-medium ${isReadOnly || isDisabled || childRecord?.current > 0 ? "cursor-not-allowed opacity-50" : ""}`}
           >
             <HiX className="w-3.5 h-3.5 mr-2" />
-            Save & Close
+            {id ? "Update & Close " : "Save & Close"}
           </button>
 
           <button
@@ -1017,7 +1030,7 @@ const OrderEntryForm = ({
             className={`bg-indigo-500 text-white px-2 py-1 rounded hover:bg-indigo-600 flex items-center text-xs font-medium ${isReadOnly || isDisabled || childRecord?.current > 0 ? "cursor-not-allowed opacity-50" : ""}`}
           >
             <HiOutlineRefresh className="w-3.5 h-3.5 mr-2" />
-            Save & New
+            {id ? "Update & New " : "Save & New"}
           </button>
 
           {status === "REJECTED" && (
@@ -1481,6 +1494,7 @@ const OrderEntryForm = ({
               )}
               branchData={branchList?.data?.find((b) => b.id === branchId)}
               styleItemList={styleItemList?.data}
+              styleMasterList={styleMasterList?.data}
               sizeList={sizeList?.data}
               uomList={uomList?.data}
               gsmList={gsmList?.data}
