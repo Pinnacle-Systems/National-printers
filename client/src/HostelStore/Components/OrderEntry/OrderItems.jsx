@@ -166,37 +166,37 @@ const OrderItems = ({
   return (
     <>
       <div className="w-full h-full overflow-y-auto mb-2 bg-white border border-slate-200 rounded-md">
-        <table className="w-[98vw] border-separate border-spacing-0 table-fixed border-t border-l border-gray-300">
-          <thead className="text-gray-800 text-[12px]">
-            <tr>
-              <th className="sticky top-0 z-20 bg-gray-200 w-6 px-1 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
+        <table className="w-[98vw] border-separate border-spacing-0 table-fixed border-l border-gray-300">
+          <thead className="sticky top-0 z-20 bg-gray-200 text-gray-800 text-[12px] shadow-[0_-2px_0_0_#e5e7eb]">
+            <tr className="sticky top-0 z-20 bg-gray-200">
+              <th className="sticky top-0 z-20 bg-gray-200 w-6 px-1 py-1 text-center font-medium border-t border-b border-r border-gray-300 text-[11px]">
                 S.No
               </th>
-              <th className="sticky top-0 z-20 bg-gray-200 w-[400px] px-2 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-[400px] px-2 py-1 text-center font-medium border-t border-b border-r border-gray-300 text-[11px]">
                 Description of Goods
               </th>
-              <th className="sticky top-0 z-20 bg-gray-200 w-44 px-2 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-44 px-2 py-1 text-center font-medium border-t border-b border-r border-gray-300 text-[11px]">
                 Item Group
               </th>
-              <th className="sticky top-0 z-20 bg-gray-200 w-24 px-2 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-24 px-2 py-1 text-center font-medium border-t border-b border-r border-gray-300 text-[11px]">
                 HSN
               </th>
-              <th className="sticky top-0 z-20 bg-gray-200 w-20 px-1 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-20 px-1 py-1 text-center font-medium border-t border-b border-r border-gray-300 text-[11px]">
                 Style
               </th>
-              <th className="sticky top-0 z-20 bg-gray-200 w-24 px-1 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-24 px-1 py-1 text-center font-medium border-t border-b border-r border-gray-300 text-[11px]">
                 UOM
               </th>
-              <th className="sticky top-0 z-20 bg-gray-200 w-24 px-1 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-24 px-1 py-1 text-center font-medium border-t border-b border-r border-gray-300 text-[11px]">
                 Qty
               </th>
-              <th className="sticky top-0 z-20 bg-gray-200 w-24 px-1 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-24 px-1 py-1 text-center font-medium border-t border-b border-r border-gray-300 text-[11px]">
                 Price
               </th>
-              <th className="sticky top-0 z-20 bg-gray-200 w-16 px-1 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-16 px-1 py-1 text-center font-medium border-t border-b border-r border-gray-300 text-[11px]">
                 Image
               </th>
-              <th className="sticky top-0 z-20 bg-gray-200 w-full px-2 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-full px-2 py-1 text-center font-medium border-t border-b border-r border-gray-300 text-[11px]">
                 Remarks
               </th>
             </tr>

@@ -520,18 +520,18 @@ const OrderStyleItems = ({
 
             <div className="flex-1 overflow-y-auto border border-slate-200 rounded">
               <table className="w-full border-separate border-spacing-0 table-fixed text-[11px]">
-                <thead className="text-gray-700 text-[11px]">
-                  <tr>
-                    <th className="sticky top-0 z-20 bg-gray-100 w-8 py-1.5 text-center font-bold border-b border-r border-slate-200">
+                <thead className="sticky top-0 z-20 bg-gray-100 text-gray-700 text-[11px] shadow-[0_-2px_0_0_#f3f4f6]">
+                  <tr className="sticky top-0 z-20 bg-gray-100">
+                    <th className="sticky top-0 z-20 bg-gray-100 w-8 py-1.5 text-center font-bold border-t border-b border-r border-slate-200">
                       S.No
                     </th>
-                    <th className="sticky top-0 z-20 bg-gray-100 w-48 px-1 py-1.5 text-center font-bold border-b border-r border-slate-200">
+                    <th className="sticky top-0 z-20 bg-gray-100 w-48 px-1 py-1.5 text-center font-bold border-t border-b border-r border-slate-200">
                       Style
                     </th>
-                    <th className="sticky top-0 z-20 bg-gray-100 w-28 px-1 py-1.5 text-center font-bold border-b border-r border-slate-200">
+                    <th className="sticky top-0 z-20 bg-gray-100 w-28 px-1 py-1.5 text-center font-bold border-t border-b border-r border-slate-200">
                       Type
                     </th>
-                    <th className="sticky top-0 z-20 bg-gray-100 w-16 px-1 py-1.5 text-center font-bold border-b border-slate-200">
+                    <th className="sticky top-0 z-20 bg-gray-100 w-16 px-1 py-1.5 text-center font-bold border-t border-b border-r border-slate-200">
                       Qty
                     </th>
                   </tr>
@@ -555,7 +555,7 @@ const OrderStyleItems = ({
                         }`}
                       >
                         <td
-                          className={`text-center border-r border-slate-200 ${
+                          className={`text-center border-r border-b border-slate-200 ${
                             isSelected
                               ? "border-l-4 border-l-indigo-600 text-indigo-700 font-bold"
                               : ""
@@ -566,7 +566,7 @@ const OrderStyleItems = ({
 
                         {/* Style Selection with FxSelectWithAdd */}
                         <td
-                          className="border-r border-slate-200 grid-editable-cell"
+                          className="border-r border-b border-slate-200 grid-editable-cell"
                           onClick={(e) => {
                             e.stopPropagation();
                             setActiveStyleIndex(idx);
@@ -597,7 +597,7 @@ const OrderStyleItems = ({
 
                         {/* Tracking Type Dropdown */}
                         <td
-                          className="border-r border-slate-200 px-1"
+                          className="border-r border-b border-slate-200 px-1"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <select
@@ -633,7 +633,7 @@ const OrderStyleItems = ({
 
                         {/* Style Total Qty */}
                         <td
-                          className="text-right px-1"
+                          className="text-right px-1 border-b border-slate-200"
                           onClick={(e) => {
                             e.stopPropagation();
                             setActiveStyleIndex(idx);
@@ -729,18 +729,18 @@ const OrderStyleItems = ({
                 {/* --- BARCODE TYPE TABLE --- */}
                 {currentTrackingType === "Barcode" && (
                   <table className="w-full border-separate border-spacing-0 table-fixed text-[11px]">
-                    <thead className="text-gray-700 text-[11px]">
-                      <tr>
-                        <th className="sticky top-0 z-20 bg-gray-100 w-10 py-1.5 text-center font-bold border-b border-r border-slate-200">
+                    <thead className="sticky top-0 z-20 bg-gray-100 text-gray-700 text-[11px] shadow-[0_-2px_0_0_#f3f4f6]">
+                      <tr className="sticky top-0 z-20 bg-gray-100">
+                        <th className="sticky top-0 z-20 bg-gray-100 w-10 py-1.5 text-center font-bold border-t border-b border-r border-slate-200">
                           S.No
                         </th>
-                        <th className="sticky top-0 z-20 bg-gray-100 px-1 py-1.5 text-center font-bold border-b border-r border-slate-200">
+                        <th className="sticky top-0 z-20 bg-gray-100 px-1 py-1.5 text-center font-bold border-t border-b border-r border-slate-200">
                           Barcode From
                         </th>
-                        <th className="sticky top-0 z-20 bg-gray-100 px-1 py-1.5 text-center font-bold border-b border-r border-slate-200">
+                        <th className="sticky top-0 z-20 bg-gray-100 px-1 py-1.5 text-center font-bold border-t border-b border-r border-slate-200">
                           Barcode To
                         </th>
-                        <th className="sticky top-0 z-20 bg-gray-100 w-20 px-1 py-1.5 text-center font-bold border-b border-slate-200">
+                        <th className="sticky top-0 z-20 bg-gray-100 w-20 px-1 py-1.5 text-center font-bold border-t border-b border-r border-slate-200">
                           Qty
                         </th>
                       </tr>
@@ -758,10 +758,10 @@ const OrderStyleItems = ({
                             !readOnly && handleRightClick(e, idx, "BREAKUP")
                           }
                         >
-                          <td className="text-center border-r border-slate-200 text-slate-500 font-medium">
+                          <td className="text-center border-r border-b border-slate-200 text-slate-500 font-medium">
                             {idx + 1}
                           </td>
-                          <td className="border-r border-slate-200 px-1">
+                          <td className="border-r border-b border-slate-200 px-1">
                             <input
                               id={`barcodeFrom-${idx}`}
                               type="text"
@@ -777,7 +777,7 @@ const OrderStyleItems = ({
                               disabled={readOnly}
                             />
                           </td>
-                          <td className="border-r border-slate-200 px-1">
+                          <td className="border-r border-b border-slate-200 px-1">
                             <input
                               type="text"
                               className="w-full h-7 border-none bg-transparent px-1 text-[11px] outline-none"
@@ -792,7 +792,7 @@ const OrderStyleItems = ({
                               disabled={readOnly}
                             />
                           </td>
-                          <td className="px-1 text-right">
+                          <td className="px-1 text-right border-b border-slate-200">
                             <input
                               type="number"
                               className="w-full h-7 border-none text-right pr-2 bg-transparent text-[11px] font-bold text-indigo-700 outline-none"
@@ -834,15 +834,15 @@ const OrderStyleItems = ({
                 {/* --- SIZE TYPE TABLE --- */}
                 {currentTrackingType === "Size" && (
                   <table className="w-full border-separate border-spacing-0 table-fixed text-[11px]">
-                    <thead className="text-gray-700 text-[11px]">
-                      <tr>
-                        <th className="sticky top-0 z-20 bg-gray-100 w-10 py-1.5 text-center font-bold border-b border-r border-slate-200">
+                    <thead className="sticky top-0 z-20 bg-gray-100 text-gray-700 text-[11px] shadow-[0_-2px_0_0_#f3f4f6]">
+                      <tr className="sticky top-0 z-20 bg-gray-100">
+                        <th className="sticky top-0 z-20 bg-gray-100 w-10 py-1.5 text-center font-bold border-t border-b border-r border-slate-200">
                           S.No
                         </th>
-                        <th className="sticky top-0 z-20 bg-gray-100 px-1 py-1.5 text-center font-bold border-b border-r border-slate-200">
+                        <th className="sticky top-0 z-20 bg-gray-100 px-1 py-1.5 text-center font-bold border-t border-b border-r border-slate-200">
                           Size
                         </th>
-                        <th className="sticky top-0 z-20 bg-gray-100 w-24 px-1 py-1.5 text-center font-bold border-b border-slate-200">
+                        <th className="sticky top-0 z-20 bg-gray-100 w-24 px-1 py-1.5 text-center font-bold border-t border-b border-slate-200">
                           Qty
                         </th>
                       </tr>
@@ -860,14 +860,14 @@ const OrderStyleItems = ({
                             !readOnly && handleRightClick(e, idx, "BREAKUP")
                           }
                         >
-                          <td className="text-center border-r border-slate-200 text-slate-500 font-medium">
+                          <td className="text-center border-r border-b border-slate-200 text-slate-500 font-medium">
                             {idx + 1}
                           </td>
                           <td
                             data-grid-row={idx}
                             data-grid-col={1}
                             data-grid-editable="true"
-                            className="border-r border-slate-200 grid-editable-cell text-[11px]"
+                            className="border-r border-b border-slate-200 grid-editable-cell text-[11px]"
                           >
                             <FxSelectWithAdd
                               value={item.sizeId || ""}
@@ -896,7 +896,7 @@ const OrderStyleItems = ({
                               menuPortalTarget={document.body}
                             />
                           </td>
-                          <td className="px-1 text-right">
+                          <td className="px-1 text-right border-b border-slate-200">
                             <input
                               id={`sizeQty-${idx}`}
                               type="number"
@@ -939,21 +939,21 @@ const OrderStyleItems = ({
                 {/* --- SIZE + BARCODE TYPE TABLE --- */}
                 {currentTrackingType === "Size + Barcode" && (
                   <table className="w-full border-separate border-spacing-0 table-fixed text-[11px]">
-                    <thead className="text-gray-700 text-[11px]">
-                      <tr>
-                        <th className="sticky top-0 z-20 bg-gray-100 w-10 py-1.5 text-center font-bold border-b border-r border-slate-200">
+                    <thead className="sticky top-0 z-20 bg-gray-100 text-gray-700 text-[11px] shadow-[0_-2px_0_0_#f3f4f6]">
+                      <tr className="sticky top-0 z-20 bg-gray-100">
+                        <th className="sticky top-0 z-20 bg-gray-100 w-10 py-1.5 text-center font-bold border-t border-b border-r border-slate-200">
                           S.No
                         </th>
-                        <th className="sticky top-0 z-20 bg-gray-100 w-36 px-1 py-1.5 text-center font-bold border-b border-r border-slate-200">
+                        <th className="sticky top-0 z-20 bg-gray-100 w-36 px-1 py-1.5 text-center font-bold border-t border-b border-r border-slate-200">
                           Size
                         </th>
-                        <th className="sticky top-0 z-20 bg-gray-100 px-1 py-1.5 text-center font-bold border-b border-r border-slate-200">
+                        <th className="sticky top-0 z-20 bg-gray-100 px-1 py-1.5 text-center font-bold border-t border-b border-r border-slate-200">
                           Barcode From
                         </th>
-                        <th className="sticky top-0 z-20 bg-gray-100 px-1 py-1.5 text-center font-bold border-b border-r border-slate-200">
+                        <th className="sticky top-0 z-20 bg-gray-100 px-1 py-1.5 text-center font-bold border-t border-b border-r border-slate-200">
                           Barcode To
                         </th>
-                        <th className="sticky top-0 z-20 bg-gray-100 w-20 px-1 py-1.5 text-center font-bold border-b border-slate-200">
+                        <th className="sticky top-0 z-20 bg-gray-100 w-20 px-1 py-1.5 text-center font-bold border-t border-b border-r border-slate-200">
                           Qty
                         </th>
                       </tr>
@@ -971,14 +971,14 @@ const OrderStyleItems = ({
                             !readOnly && handleRightClick(e, idx, "BREAKUP")
                           }
                         >
-                          <td className="text-center border-r border-slate-200 text-slate-500 font-medium">
+                          <td className="text-center border-r border-b border-slate-200 text-slate-500 font-medium">
                             {idx + 1}
                           </td>
                           <td
                             data-grid-row={idx}
                             data-grid-col={1}
                             data-grid-editable="true"
-                            className="border-r border-slate-200 grid-editable-cell text-[11px]"
+                            className="border-r border-b border-slate-200 grid-editable-cell text-[11px]"
                           >
                             <FxSelectWithAdd
                               value={item.sizeId || ""}
@@ -1007,7 +1007,7 @@ const OrderStyleItems = ({
                               menuPortalTarget={document.body}
                             />
                           </td>
-                          <td className="border-r border-slate-200 px-1">
+                          <td className="border-r border-b border-slate-200 px-1">
                             <input
                               id={`sizeBarcodeFrom-${idx}`}
                               type="text"
@@ -1024,7 +1024,7 @@ const OrderStyleItems = ({
                               placeholder="From"
                             />
                           </td>
-                          <td className="border-r border-slate-200 px-1">
+                          <td className="border-r border-b border-slate-200 px-1">
                             <input
                               type="text"
                               className="w-full h-7 border-none bg-transparent px-1 text-[11px] outline-none"
@@ -1040,7 +1040,7 @@ const OrderStyleItems = ({
                               placeholder="To"
                             />
                           </td>
-                          <td className="px-1 text-right">
+                          <td className="px-1 text-right border-b border-slate-200">
                             <input
                               type="number"
                               className="w-full h-7 border-none text-right pr-2 bg-transparent text-[11px] font-bold text-indigo-700 outline-none"
