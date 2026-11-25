@@ -107,30 +107,61 @@ const OrderStyleItems = ({
     }
   }, [isOpen, parentItem]);
 
-  // Focus management when tracking type or active style changes
+  // Initially when modal opens, place cursor in the first Style dropdown with dropdown open
   useEffect(() => {
-    if (isOpen && activeStyleIndex !== null && styleRows[activeStyleIndex]) {
-      setTimeout(() => {
-        const trackingType = styleRows[activeStyleIndex]?.trackingType;
-        let elementId = "";
-        if (trackingType === "Barcode") {
-          elementId = "barcodeFrom-0";
-        } else if (trackingType === "Size") {
-          elementId = "sizeQty-0";
-        } else if (trackingType === "Size + Barcode") {
-          elementId = "sizeBarcodeFrom-0";
-        }
-
-        if (elementId) {
-          const element = document.getElementById(elementId);
-          if (element) {
-            element.focus();
-            element.select?.();
-          }
+    if (isOpen) {
+      const timer = setTimeout(() => {
+        const firstStyleEl = document.getElementById("styleId-input-0");
+        if (firstStyleEl) {
+          firstStyleEl.focus();
         }
       }, 150);
+      return () => clearTimeout(timer);
     }
-  }, [isOpen, activeStyleIndex]);
+  }, [isOpen]);
+
+  // Focus child breakup table's first field for a given style row
+  const focusChildBreakupFirstField = (styleIndex = activeStyleIndex) => {
+    const trackingType = styleRows[styleIndex]?.trackingType || "Size";
+    let targetId = "";
+    if (trackingType === "Size") {
+      targetId = "sizeId-input-0";
+    } else if (trackingType === "Barcode") {
+      targetId = "barcodeFrom-0";
+    } else if (trackingType === "Size + Barcode") {
+      targetId = "sizeBarcodeId-input-0";
+    }
+    if (targetId) {
+      setTimeout(() => {
+        const el = document.getElementById(targetId);
+        if (el) {
+          el.focus();
+          el.select?.();
+        }
+      }, 50);
+    }
+  };
+
+  // Focus child breakup row's first field after adding a row
+  const focusBreakupRowFirstField = (rowIndex, trackingType = currentTrackingType) => {
+    let targetId = "";
+    if (trackingType === "Size") {
+      targetId = `sizeId-input-${rowIndex}`;
+    } else if (trackingType === "Barcode") {
+      targetId = `barcodeFrom-${rowIndex}`;
+    } else if (trackingType === "Size + Barcode") {
+      targetId = `sizeBarcodeId-input-${rowIndex}`;
+    }
+    if (targetId) {
+      setTimeout(() => {
+        const el = document.getElementById(targetId);
+        if (el) {
+          el.focus();
+          el.select?.();
+        }
+      }, 50);
+    }
+  };
 
   // Filter styles matching the selected Description of Goods (styleItemId)
   const filteredStyles = (styleMasterList?.data || []).filter((item) => {
@@ -327,11 +358,18 @@ const OrderStyleItems = ({
     setStyleRows((prev) => {
       const updated = [...prev];
       const currentRow = { ...updated[activeStyleIndex] };
+      const currentBreakup = currentRow.sizeBreakup || [];
+      const newIndex = currentBreakup.length;
       currentRow.sizeBreakup = [
-        ...(currentRow.sizeBreakup || []),
+        ...currentBreakup,
         createEmptyBreakupRow(),
       ];
       updated[activeStyleIndex] = currentRow;
+
+      setTimeout(() => {
+        focusBreakupRowFirstField(newIndex, currentRow.trackingType || "Size");
+      }, 50);
+
       return updated;
     });
   };
@@ -491,9 +529,16 @@ const OrderStyleItems = ({
               </span>
             </div>
             <button
+              id="style-done-btn"
               type="button"
               onClick={handleDone}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-1.5 rounded text-xs font-semibold shadow-sm transition-colors"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleDone();
+                }
+              }}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-1.5 rounded text-xs font-semibold shadow-sm transition-colors focus:ring-2 focus:ring-indigo-400 focus:outline-none"
             >
               Done
             </button>
@@ -574,9 +619,32 @@ const OrderStyleItems = ({
                         >
                           <FxSelectWithAdd
                             inputId={`styleId-input-${idx}`}
+                            openMenuOnFocus={true}
+                            advanceOnSelect={true}
+                            advanceOnEnter={true}
+                            nextId={`trackingType-input-${idx}`}
+                            onSelectAdvance={() => {
+                              setTimeout(() => {
+                                const typeEl = document.getElementById(`trackingType-input-${idx}`);
+                                if (typeEl) {
+                                  typeEl.focus();
+                                }
+                              }, 50);
+                            }}
                             value={row.styleId}
                             onChange={(val) => {
                               handleStyleFieldChange(idx, "styleId", val);
+                              setTimeout(() => {
+                                const typeEl = document.getElementById(`trackingType-input-${idx}`);
+                                if (typeEl) typeEl.focus();
+                              }, 60);
+                            }}
+                            onKeyDown={(e) => {
+                              if ((e.key === "Enter" || e.key === "Tab") && row.styleId) {
+                                e.preventDefault();
+                                const typeEl = document.getElementById(`trackingType-input-${idx}`);
+                                if (typeEl) typeEl.focus();
+                              }
                             }}
                             options={availableStyles
                               .filter((item) => (id ? true : item.active))
@@ -597,31 +665,41 @@ const OrderStyleItems = ({
 
                         {/* Tracking Type Dropdown */}
                         <td
-                          className="border-r border-b border-slate-200 px-1"
+                          className="border-r border-b border-slate-200 grid-editable-cell"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <select
                             id={`trackingType-input-${idx}`}
                             value={row.trackingType || "Size"}
-                            onChange={(e) =>
+                            onChange={(e) => {
                               handleStyleFieldChange(
                                 idx,
                                 "trackingType",
                                 e.target.value,
-                              )
-                            }
+                              );
+                              setTimeout(() => {
+                                const qtyInput = document.getElementById(`style-orderQty-${idx}`);
+                                if (qtyInput) {
+                                  qtyInput.focus();
+                                  qtyInput.select?.();
+                                }
+                              }, 50);
+                            }}
                             onFocus={() => setActiveStyleIndex(idx)}
                             onKeyDown={(e) => {
-                              if (e.key === "Enter") {
+                              if (e.key === "Enter" || e.key === "Tab") {
                                 e.preventDefault();
                                 const qtyInput = document.getElementById(
                                   `style-orderQty-${idx}`,
                                 );
-                                if (qtyInput) qtyInput.focus();
+                                if (qtyInput) {
+                                  qtyInput.focus();
+                                  qtyInput.select?.();
+                                }
                               }
                             }}
                             disabled={readOnly}
-                            className="w-full h-6 text-[11px] bg-transparent outline-none cursor-pointer"
+                            className="w-full h-8 text-[11px] bg-transparent outline-none border-none cursor-pointer px-1"
                           >
                             <option value="Size">Size</option>
                             <option value="Barcode">Barcode</option>
@@ -633,7 +711,7 @@ const OrderStyleItems = ({
 
                         {/* Style Total Qty */}
                         <td
-                          className="text-right px-1 border-b border-slate-200"
+                          className="text-right border-b border-slate-200 grid-editable-cell"
                           onClick={(e) => {
                             e.stopPropagation();
                             setActiveStyleIndex(idx);
@@ -653,19 +731,18 @@ const OrderStyleItems = ({
                                 } else {
                                   setActiveStyleIndex(idx + 1);
                                   setTimeout(() => {
-                                    const nextEl =
-                                      document.getElementById(
-                                        `styleId-input-${idx + 1}`,
-                                      ) ||
-                                      document.getElementById(
-                                        `style-orderQty-${idx + 1}`,
-                                      );
+                                    const nextEl = document.getElementById(
+                                      `styleId-input-${idx + 1}`,
+                                    );
                                     if (nextEl) nextEl.focus();
                                   }, 50);
                                 }
+                              } else if (e.key === "Tab" && !e.shiftKey) {
+                                e.preventDefault();
+                                focusChildBreakupFirstField(idx);
                               }
                             }}
-                            className="w-full text-right bg-transparent outline-none cursor-pointer font-bold text-indigo-700 pr-1 select-none"
+                            className="w-full h-8 text-right bg-transparent outline-none border-none cursor-pointer font-bold text-indigo-700 pr-2 select-none"
                           />
                         </td>
                       </tr>
@@ -761,11 +838,11 @@ const OrderStyleItems = ({
                           <td className="text-center border-r border-b border-slate-200 text-slate-500 font-medium">
                             {idx + 1}
                           </td>
-                          <td className="border-r border-b border-slate-200 px-1">
+                          <td className="border-r border-b border-slate-200 grid-editable-cell">
                             <input
                               id={`barcodeFrom-${idx}`}
                               type="text"
-                              className="w-full h-7 border-none bg-transparent px-1 text-[11px] outline-none"
+                              className="w-full h-8 border-none bg-transparent px-1 text-[11px] outline-none"
                               value={item.barcodeFrom || ""}
                               onChange={(e) =>
                                 handleSizeBreakupChange(
@@ -774,13 +851,24 @@ const OrderStyleItems = ({
                                   e.target.value,
                                 )
                               }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === "Tab") {
+                                  e.preventDefault();
+                                  const next = document.getElementById(`barcodeTo-${idx}`);
+                                  if (next) {
+                                    next.focus();
+                                    next.select?.();
+                                  }
+                                }
+                              }}
                               disabled={readOnly}
                             />
                           </td>
-                          <td className="border-r border-b border-slate-200 px-1">
+                          <td className="border-r border-b border-slate-200 grid-editable-cell">
                             <input
+                              id={`barcodeTo-${idx}`}
                               type="text"
-                              className="w-full h-7 border-none bg-transparent px-1 text-[11px] outline-none"
+                              className="w-full h-8 border-none bg-transparent px-1 text-[11px] outline-none"
                               value={item.barcodeTo || ""}
                               onChange={(e) =>
                                 handleSizeBreakupChange(
@@ -789,13 +877,24 @@ const OrderStyleItems = ({
                                   e.target.value,
                                 )
                               }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === "Tab") {
+                                  e.preventDefault();
+                                  const next = document.getElementById(`barcodeQty-${idx}`);
+                                  if (next) {
+                                    next.focus();
+                                    next.select?.();
+                                  }
+                                }
+                              }}
                               disabled={readOnly}
                             />
                           </td>
-                          <td className="px-1 text-right border-b border-slate-200">
+                          <td className="text-right border-b border-slate-200 grid-editable-cell">
                             <input
+                              id={`barcodeQty-${idx}`}
                               type="number"
-                              className="w-full h-7 border-none text-right pr-2 bg-transparent text-[11px] font-bold text-indigo-700 outline-none"
+                              className="w-full h-8 border-none text-right pr-2 bg-transparent text-[11px] font-bold text-indigo-700 outline-none"
                               value={
                                 item.qty !== undefined &&
                                 item.qty !== null &&
@@ -811,14 +910,31 @@ const OrderStyleItems = ({
                                 )
                               }
                               onKeyDown={(e) => {
-                                if (
-                                  e.key === "Enter" &&
-                                  !readOnly &&
-                                  idx ===
-                                    (activeStyle.sizeBreakup?.length || 0) - 1
-                                ) {
+                                const breakupLength = activeStyle.sizeBreakup?.length || 0;
+                                if (e.key === "Enter" && !readOnly) {
                                   e.preventDefault();
-                                  addModalRow();
+                                  if (idx === breakupLength - 1) {
+                                    addModalRow();
+                                  } else {
+                                    const next = document.getElementById(`barcodeFrom-${idx + 1}`);
+                                    if (next) {
+                                      next.focus();
+                                      next.select?.();
+                                    }
+                                  }
+                                } else if (e.key === "Tab" && !e.shiftKey) {
+                                  if (idx < breakupLength - 1) {
+                                    e.preventDefault();
+                                    const next = document.getElementById(`barcodeFrom-${idx + 1}`);
+                                    if (next) {
+                                      next.focus();
+                                      next.select?.();
+                                    }
+                                  } else {
+                                    e.preventDefault();
+                                    const desc = document.getElementById("style-description-input");
+                                    if (desc) desc.focus();
+                                  }
                                 }
                               }}
                               disabled={readOnly}
@@ -870,10 +986,20 @@ const OrderStyleItems = ({
                             className="border-r border-b border-slate-200 grid-editable-cell text-[11px]"
                           >
                             <FxSelectWithAdd
+                              inputId={`sizeId-input-${idx}`}
+                              openMenuOnFocus={true}
+                              nextId={`sizeQty-${idx}`}
                               value={item.sizeId || ""}
-                              onChange={(val) =>
-                                handleSizeBreakupChange(idx, "sizeId", val)
-                              }
+                              onChange={(val) => {
+                                handleSizeBreakupChange(idx, "sizeId", val);
+                                setTimeout(() => {
+                                  const qtyInput = document.getElementById(`sizeQty-${idx}`);
+                                  if (qtyInput) {
+                                    qtyInput.focus();
+                                    qtyInput.select?.();
+                                  }
+                                }, 50);
+                              }}
                               disabled={readOnly}
                               options={(sizeList?.data || [])
                                 .filter((item) => (id ? true : item.active))
@@ -886,6 +1012,13 @@ const OrderStyleItems = ({
                               onKeyDown={(event) => {
                                 if (event.key === "Delete") {
                                   handleSizeBreakupChange(idx, "sizeId", "");
+                                } else if ((event.key === "Enter" || event.key === "Tab") && item.sizeId) {
+                                  event.preventDefault();
+                                  const qtyInput = document.getElementById(`sizeQty-${idx}`);
+                                  if (qtyInput) {
+                                    qtyInput.focus();
+                                    qtyInput.select?.();
+                                  }
                                 }
                               }}
                               addNew={true}
@@ -896,11 +1029,11 @@ const OrderStyleItems = ({
                               menuPortalTarget={document.body}
                             />
                           </td>
-                          <td className="px-1 text-right border-b border-slate-200">
+                          <td className="text-right border-b border-slate-200 grid-editable-cell">
                             <input
                               id={`sizeQty-${idx}`}
                               type="number"
-                              className="w-full h-7 border-none text-right pr-2 bg-transparent text-[11px] font-bold text-indigo-700 outline-none"
+                              className="w-full h-8 border-none text-right pr-2 bg-transparent text-[11px] font-bold text-indigo-700 outline-none"
                               value={
                                 item.qty !== undefined &&
                                 item.qty !== null &&
@@ -916,14 +1049,29 @@ const OrderStyleItems = ({
                                 )
                               }
                               onKeyDown={(e) => {
-                                if (
-                                  e.key === "Enter" &&
-                                  !readOnly &&
-                                  idx ===
-                                    (activeStyle.sizeBreakup?.length || 0) - 1
-                                ) {
+                                const breakupLength = activeStyle.sizeBreakup?.length || 0;
+                                if (e.key === "Enter" && !readOnly) {
                                   e.preventDefault();
-                                  addModalRow();
+                                  if (idx === breakupLength - 1) {
+                                    addModalRow();
+                                  } else {
+                                    const next = document.getElementById(`sizeId-input-${idx + 1}`);
+                                    if (next) {
+                                      next.focus();
+                                    }
+                                  }
+                                } else if (e.key === "Tab" && !e.shiftKey) {
+                                  if (idx < breakupLength - 1) {
+                                    e.preventDefault();
+                                    const next = document.getElementById(`sizeId-input-${idx + 1}`);
+                                    if (next) {
+                                      next.focus();
+                                    }
+                                  } else {
+                                    e.preventDefault();
+                                    const desc = document.getElementById("style-description-input");
+                                    if (desc) desc.focus();
+                                  }
                                 }
                               }}
                               disabled={readOnly}
@@ -981,10 +1129,20 @@ const OrderStyleItems = ({
                             className="border-r border-b border-slate-200 grid-editable-cell text-[11px]"
                           >
                             <FxSelectWithAdd
+                              inputId={`sizeBarcodeId-input-${idx}`}
+                              openMenuOnFocus={true}
+                              nextId={`sizeBarcodeFrom-${idx}`}
                               value={item.sizeId || ""}
-                              onChange={(val) =>
-                                handleSizeBreakupChange(idx, "sizeId", val)
-                              }
+                              onChange={(val) => {
+                                handleSizeBreakupChange(idx, "sizeId", val);
+                                setTimeout(() => {
+                                  const fromInput = document.getElementById(`sizeBarcodeFrom-${idx}`);
+                                  if (fromInput) {
+                                    fromInput.focus();
+                                    fromInput.select?.();
+                                  }
+                                }, 50);
+                              }}
                               disabled={readOnly}
                               options={(sizeList?.data || [])
                                 .filter((item) => (id ? true : item.active))
@@ -997,6 +1155,13 @@ const OrderStyleItems = ({
                               onKeyDown={(event) => {
                                 if (event.key === "Delete") {
                                   handleSizeBreakupChange(idx, "sizeId", "");
+                                } else if ((event.key === "Enter" || event.key === "Tab") && item.sizeId) {
+                                  event.preventDefault();
+                                  const fromInput = document.getElementById(`sizeBarcodeFrom-${idx}`);
+                                  if (fromInput) {
+                                    fromInput.focus();
+                                    fromInput.select?.();
+                                  }
                                 }
                               }}
                               addNew={true}
@@ -1007,11 +1172,11 @@ const OrderStyleItems = ({
                               menuPortalTarget={document.body}
                             />
                           </td>
-                          <td className="border-r border-b border-slate-200 px-1">
+                          <td className="border-r border-b border-slate-200 grid-editable-cell">
                             <input
                               id={`sizeBarcodeFrom-${idx}`}
                               type="text"
-                              className="w-full h-7 border-none bg-transparent px-1 text-[11px] outline-none"
+                              className="w-full h-8 border-none bg-transparent px-1 text-[11px] outline-none"
                               value={item.barcodeFrom || ""}
                               onChange={(e) =>
                                 handleSizeBreakupChange(
@@ -1020,14 +1185,25 @@ const OrderStyleItems = ({
                                   e.target.value,
                                 )
                               }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === "Tab") {
+                                  e.preventDefault();
+                                  const toInput = document.getElementById(`sizeBarcodeTo-${idx}`);
+                                  if (toInput) {
+                                    toInput.focus();
+                                    toInput.select?.();
+                                  }
+                                }
+                              }}
                               disabled={readOnly}
                               placeholder="From"
                             />
                           </td>
-                          <td className="border-r border-b border-slate-200 px-1">
+                          <td className="border-r border-b border-slate-200 grid-editable-cell">
                             <input
+                              id={`sizeBarcodeTo-${idx}`}
                               type="text"
-                              className="w-full h-7 border-none bg-transparent px-1 text-[11px] outline-none"
+                              className="w-full h-8 border-none bg-transparent px-1 text-[11px] outline-none"
                               value={item.barcodeTo || ""}
                               onChange={(e) =>
                                 handleSizeBreakupChange(
@@ -1036,14 +1212,25 @@ const OrderStyleItems = ({
                                   e.target.value,
                                 )
                               }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === "Tab") {
+                                  e.preventDefault();
+                                  const qtyInput = document.getElementById(`sizeBarcodeQty-${idx}`);
+                                  if (qtyInput) {
+                                    qtyInput.focus();
+                                    qtyInput.select?.();
+                                  }
+                                }
+                              }}
                               disabled={readOnly}
                               placeholder="To"
                             />
                           </td>
-                          <td className="px-1 text-right border-b border-slate-200">
+                          <td className="text-right border-b border-slate-200 grid-editable-cell">
                             <input
+                              id={`sizeBarcodeQty-${idx}`}
                               type="number"
-                              className="w-full h-7 border-none text-right pr-2 bg-transparent text-[11px] font-bold text-indigo-700 outline-none"
+                              className="w-full h-8 border-none text-right pr-2 bg-transparent text-[11px] font-bold text-indigo-700 outline-none"
                               value={
                                 item.qty !== undefined &&
                                 item.qty !== null &&
@@ -1059,14 +1246,29 @@ const OrderStyleItems = ({
                                 )
                               }
                               onKeyDown={(e) => {
-                                if (
-                                  e.key === "Enter" &&
-                                  !readOnly &&
-                                  idx ===
-                                    (activeStyle.sizeBreakup?.length || 0) - 1
-                                ) {
+                                const breakupLength = activeStyle.sizeBreakup?.length || 0;
+                                if (e.key === "Enter" && !readOnly) {
                                   e.preventDefault();
-                                  addModalRow();
+                                  if (idx === breakupLength - 1) {
+                                    addModalRow();
+                                  } else {
+                                    const next = document.getElementById(`sizeBarcodeId-input-${idx + 1}`);
+                                    if (next) {
+                                      next.focus();
+                                    }
+                                  }
+                                } else if (e.key === "Tab" && !e.shiftKey) {
+                                  if (idx < breakupLength - 1) {
+                                    e.preventDefault();
+                                    const next = document.getElementById(`sizeBarcodeId-input-${idx + 1}`);
+                                    if (next) {
+                                      next.focus();
+                                    }
+                                  } else {
+                                    e.preventDefault();
+                                    const desc = document.getElementById("style-description-input");
+                                    if (desc) desc.focus();
+                                  }
                                 }
                               }}
                               disabled={readOnly}
@@ -1086,7 +1288,8 @@ const OrderStyleItems = ({
                   Description
                 </label>
                 <textarea
-                  className="w-full border border-slate-200 rounded p-1.5 text-[11px] outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 resize-none"
+                  id="style-description-input"
+                  className="w-full border border-slate-200 rounded p-1.5 text-[11px] outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb] resize-none"
                   rows="2"
                   value={activeStyle.description || ""}
                   onChange={(e) => {
@@ -1096,6 +1299,13 @@ const OrderStyleItems = ({
                       description: e.target.value,
                     };
                     setStyleRows(updated);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Tab" && !e.shiftKey) {
+                      e.preventDefault();
+                      const doneBtn = document.getElementById("style-done-btn");
+                      if (doneBtn) doneBtn.focus();
+                    }
                   }}
                   disabled={readOnly}
                   placeholder="Enter style description here..."

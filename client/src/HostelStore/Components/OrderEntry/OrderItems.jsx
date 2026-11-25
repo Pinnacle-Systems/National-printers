@@ -59,11 +59,14 @@ const OrderItems = ({
 
   useEffect(() => {
     if (!styleModalOpen && pendingFocus !== null) {
-      const element = document.getElementById(`remarks-input-${pendingFocus}`);
-      if (element) {
-        element.focus();
-        element.select?.();
-      }
+      const targetIndex = pendingFocus;
+      setTimeout(() => {
+        const element = document.getElementById(`price-input-${targetIndex}`);
+        if (element) {
+          element.focus();
+          element.select?.();
+        }
+      }, 100);
       setPendingFocus(null);
     }
   }, [styleModalOpen, pendingFocus]);
@@ -80,6 +83,7 @@ const OrderItems = ({
 
   const handleSaveStyles = (validStyles, totalQty) => {
     if (activeRowIndex === null) return;
+    setPendingFocus(activeRowIndex);
     setOrderItems((prev) => {
       const newRows = [...prev];
       const currentRow = { ...newRows[activeRowIndex] };
@@ -91,11 +95,31 @@ const OrderItems = ({
   };
 
   const addRow = () => {
-    setOrderItems([...orderItems, EMPTY_ROW]);
+    const newIndex = orderItems?.length || 0;
+    setOrderItems([...(orderItems || []), EMPTY_ROW]);
+    setTimeout(() => {
+      const nextEl = document.getElementById(`styleItemId-input-${newIndex}`);
+      if (nextEl) nextEl.focus();
+    }, 50);
   };
 
   const deleteRow = (index) => {
-    setOrderItems(orderItems.filter((_, i) => i !== index));
+    setOrderItems((prev) => {
+      if (!prev || prev.length <= 8) {
+        return (prev || []).map((item, i) =>
+          i === index ? { ...EMPTY_ROW } : item,
+        );
+      }
+      const filtered = prev.filter((_, i) => i !== index);
+      if (filtered.length < 8) {
+        const padding = Array.from(
+          { length: 8 - filtered.length },
+          () => ({ ...EMPTY_ROW }),
+        );
+        return [...filtered, ...padding];
+      }
+      return filtered;
+    });
   };
 
   const handleInputChange = (value, index, field) => {
@@ -160,7 +184,7 @@ const OrderItems = ({
   };
 
   const handleDeleteAllRows = () => {
-    setOrderItems(Array.from({ length: 14 }, () => ({ ...EMPTY_ROW })));
+    setOrderItems(Array.from({ length: 8 }, () => ({ ...EMPTY_ROW })));
   };
 
   return (
@@ -231,9 +255,9 @@ const OrderItems = ({
                       if (e.key === "Enter" || e.key === "Tab") {
                         if (!row.styleItemId) {
                           e.preventDefault();
-                          const reqEl = document.getElementById(
-                            "customerRequirements",
-                          );
+                          const reqEl =
+                            document.getElementById("remarks") ||
+                            document.getElementById("customerRequirements");
                           if (reqEl) {
                             reqEl.focus();
                             reqEl.select?.();
@@ -328,9 +352,9 @@ const OrderItems = ({
                       if (e.key === "Enter" || e.key === "Tab") {
                         if (!row.styleItemId) {
                           e.preventDefault();
-                          const reqEl = document.getElementById(
-                            "customerRequirements",
-                          );
+                          const reqEl =
+                            document.getElementById("remarks") ||
+                            document.getElementById("customerRequirements");
                           if (reqEl) {
                             reqEl.focus();
                             reqEl.select?.();
@@ -370,6 +394,7 @@ const OrderItems = ({
                 {/* Price Column */}
                 <td className="border-b border-r border-gray-300 grid-editable-cell">
                   <input
+                    id={`price-input-${index}`}
                     value={row?.price || ""}
                     className="w-full text-[11px] text-right pr-1 outline-none bg-transparent"
                     onChange={(e) =>
@@ -379,9 +404,9 @@ const OrderItems = ({
                       if (e.key === "Enter" || e.key === "Tab") {
                         if (!row.styleItemId) {
                           e.preventDefault();
-                          const reqEl = document.getElementById(
-                            "customerRequirements",
-                          );
+                          const reqEl =
+                            document.getElementById("remarks") ||
+                            document.getElementById("customerRequirements");
                           if (reqEl) {
                             reqEl.focus();
                             reqEl.select?.();
@@ -474,25 +499,24 @@ const OrderItems = ({
                       handleInputChange(e.target.value, index, "remarks")
                     }
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === "Tab") {
+                      if (e.key === "Enter") {
                         e.preventDefault();
-                        if (!row.styleItemId) {
-                          const reqEl = document.getElementById(
-                            "customerRequirements",
-                          );
-                          if (reqEl) {
-                            reqEl.focus();
-                            reqEl.select?.();
-                          }
+                        if (index === orderItems.length - 1) {
+                          addRow();
                         } else {
-                          if (index === orderItems.length - 1) {
-                            addRow();
-                          } else {
-                            const nextStyleEl = document.getElementById(
-                              `styleItemId-input-${index + 1}`,
-                            );
-                            if (nextStyleEl) nextStyleEl.focus();
-                          }
+                          const nextStyleEl = document.getElementById(
+                            `styleItemId-input-${index + 1}`,
+                          );
+                          if (nextStyleEl) nextStyleEl.focus();
+                        }
+                      } else if (e.key === "Tab" && !e.shiftKey) {
+                        e.preventDefault();
+                        const footerRemarks =
+                          document.getElementById("remarks") ||
+                          document.getElementById("customerRequirements");
+                        if (footerRemarks) {
+                          footerRemarks.focus();
+                          footerRemarks.select?.();
                         }
                       }
                     }}

@@ -379,6 +379,7 @@ const CommonFormFooter = ({
         >
           <h2 className="mb-1 text-[12px] font-bold text-slate-700">Remarks</h2>
           <textarea
+            id="remarks"
             disabled={readOnly}
             value={remarks || ""}
             onChange={(e) => setRemarks(e.target.value)}

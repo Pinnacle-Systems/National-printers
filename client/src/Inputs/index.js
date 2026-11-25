@@ -3662,10 +3662,14 @@ export function FxSelectWithAdd({
   childProps = {},
   addNewModalWidth = "w-[40%] h-[48%]",
   nextRef,
+  nextId,
+  onSelectAdvance,
   advanceOnEnter = false,
   advanceOnSelect = true,
   menuPortalTarget = typeof document !== "undefined" ? document.body : null,
   menuPlacement = "auto",
+  openMenuOnFocus = false,
+  autoFocus = false,
 }) {
   const [showAddNewModal, setShowAddNewModal] = useState(false);
   const [searchValue, setSearchValue] = useState("");
@@ -3677,6 +3681,22 @@ export function FxSelectWithAdd({
 
   // ✅ Helper function to focus next field
   const focusNextField = () => {
+    if (onSelectAdvance) {
+      onSelectAdvance();
+      return;
+    }
+    if (nextId) {
+      const el = document.getElementById(nextId);
+      if (el) {
+        el.focus();
+        el.select?.();
+        return;
+      }
+    }
+    if (nextRef?.current) {
+      nextRef.current.focus?.();
+      return;
+    }
     const current = selectRef.current?.controlRef || document.activeElement;
     if (!current) return;
 
@@ -3753,6 +3773,8 @@ export function FxSelectWithAdd({
     <>
       <Select
         ref={selectRef}
+        openMenuOnFocus={openMenuOnFocus}
+        autoFocus={autoFocus}
         styles={customStyles}
         menuPortalTarget={menuPortalTarget}
         menuPosition={menuPortalTarget ? "fixed" : "absolute"}
@@ -3803,6 +3825,7 @@ export function FxSelectWithAdd({
             // If a value is selected, focus next field
             if (value) {
               e.preventDefault();
+              selectRef.current?.blur?.();
               focusNextField();
               return;
             }
@@ -3815,9 +3838,25 @@ export function FxSelectWithAdd({
               return;
             }
 
+            if (onSelectAdvance) {
+              e.preventDefault();
+              selectRef.current?.blur?.();
+              onSelectAdvance();
+              return;
+            }
+
+            if (nextId) {
+              e.preventDefault();
+              selectRef.current?.blur?.();
+              const el = document.getElementById(nextId);
+              if (el) el.focus();
+              return;
+            }
+
             if (!value && nextRef) {
               e.preventDefault();
               nextRef?.current?.focus();
+              return;
             }
             return;
           }
@@ -3832,8 +3871,9 @@ export function FxSelectWithAdd({
           if (pendingAdvanceRef.current) {
             pendingAdvanceRef.current = false;
             window.setTimeout(() => {
+              selectRef.current?.blur?.();
               focusNextField();
-            }, 0);
+            }, 30);
           }
         }}
         onFocus={() => {

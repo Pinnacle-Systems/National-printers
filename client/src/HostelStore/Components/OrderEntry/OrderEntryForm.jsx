@@ -53,7 +53,7 @@ import {
 } from "../../../Basic/components/Reuseable/index.js";
 import { invalidateItems } from "../../../redux/Dispatch/ItemsInvalidateTags.js";
 
-const createEmptyOrderItems = (count = 14) =>
+const createEmptyOrderItems = (count = 8) =>
   Array.from({ length: count }, () => ({
     itemGroupId: "",
     styleItemId: "",
@@ -125,28 +125,28 @@ const OrderEntryForm = ({
   const [orderQty, setOrderQty] = useState("");
   const [termsId, setTermsId] = useState("");
   const [printModalOpen, setPrintModalOpen] = useState(false);
-  const [orderItems, setOrderItems] = useState(() => createEmptyOrderItems(14));
+  const [orderItems, setOrderItems] = useState(() => createEmptyOrderItems(8));
 
   const handleOrderTypeChange = (val) => {
     if (val != orderType) {
       setOrderType(val);
       setCustomerId("");
       setOrderBranchId("");
-      setOrderItems(createEmptyOrderItems(14));
+      setOrderItems(createEmptyOrderItems(8));
     }
   };
 
   const handleCustomerChange = (val) => {
     if (val != customerId) {
       setCustomerId(val);
-      setOrderItems(createEmptyOrderItems(14));
+      setOrderItems(createEmptyOrderItems(8));
     }
   };
 
   const handleOrderBranchChange = (val) => {
     if (val != orderBranchId) {
       setOrderBranchId(val);
-      setOrderItems(createEmptyOrderItems(14));
+      setOrderItems(createEmptyOrderItems(8));
     }
   };
 
@@ -240,7 +240,7 @@ const OrderEntryForm = ({
         };
       });
 
-      const emptyRowsCount = Math.max(0, 14 - initialItems.length);
+      const emptyRowsCount = Math.max(0, 8 - initialItems.length);
       const emptyRows = createEmptyOrderItems(emptyRowsCount);
 
       setOrderItems([...initialItems, ...emptyRows]);
