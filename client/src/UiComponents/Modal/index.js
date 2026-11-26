@@ -1,8 +1,9 @@
 import React from "react";
+import { createPortal } from "react-dom";
 
 const Modal = ({ isOpen, onClose, children, widthClass }) => {
   if (!isOpen) return null;
-  return (
+  const content = (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-50">
       <div className={`relative bg-white rounded-lg p-7 ${widthClass}`}>
         {onClose && (
@@ -27,6 +28,10 @@ const Modal = ({ isOpen, onClose, children, widthClass }) => {
       </div>
     </div>
   );
+
+  return typeof document !== "undefined"
+    ? createPortal(content, document.body)
+    : content;
 };
 
 export default Modal;

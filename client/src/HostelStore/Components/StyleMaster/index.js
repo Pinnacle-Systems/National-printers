@@ -3,6 +3,7 @@ import secureLocalStorage from "react-secure-storage";
 import { Check, Plus, Power } from "lucide-react";
 import Swal from "sweetalert2";
 import {
+  CheckBoxNew,
   ReusableTable,
   TextInputNew,
   TextInputNew1,
@@ -39,6 +40,7 @@ const StyleMaster = ({
   const [name, setName] = useState(defaultName || "");
   const [styleItemId, setStyleItemId] = useState(defaultStyleItemId || "");
   const [active, setActive] = useState(true);
+  const [hidePrintFormat, setHidePrintFormat] = useState(false);
 
   const countryNameRef = useRef(null);
 
@@ -91,6 +93,8 @@ const StyleMaster = ({
         data?.styleItemId ? data?.styleItemId : defaultStyleItemId || "",
       );
       setActive(id ? (data?.active ? data.active : false) : true);
+      setHidePrintFormat(data?.hidePrintFormat ? data?.hidePrintFormat : false);
+
       childRecord.current = data?.childRecord ? data?.childRecord : 0;
       countryNameRef?.current?.focus();
     },
@@ -98,13 +102,16 @@ const StyleMaster = ({
   );
 
   useEffect(() => {
-    syncFormWithDb(singleData?.data);
+    if (id && singleData?.data) {
+      syncFormWithDb(singleData?.data);
+    }
   }, [isSingleFetching, isSingleLoading, id, syncFormWithDb, singleData]);
 
   const data = {
     id,
     active,
     styleItemId,
+    hidePrintFormat,
     //  productType,
     name,
     // seoTitle, sleeve, fabricId, sizeTemplateId,
@@ -166,17 +173,28 @@ const StyleMaster = ({
       return;
     }
     let foundItem;
+    const currentName = (name || "").trim().toLowerCase();
+    const currentStyleItemId = parseInt(styleItemId);
+
     if (id) {
       foundItem = allData?.data
         ?.filter((i) => i.id != id)
-        ?.some((item) => item.name === name);
+        ?.some(
+          (item) =>
+            (item.name || "").trim().toLowerCase() === currentName &&
+            parseInt(item.styleItemId) === currentStyleItemId,
+        );
     } else {
-      foundItem = allData?.data?.some((item) => item.name === name);
+      foundItem = allData?.data?.some(
+        (item) =>
+          (item.name || "").trim().toLowerCase() === currentName &&
+          parseInt(item.styleItemId) === currentStyleItemId,
+      );
     }
 
     if (foundItem) {
       Swal.fire({
-        text: "The Style Name already exists.",
+        text: "The Style Name already exists for this Item.",
         icon: "warning",
         showConfirmButton: false,
       });
@@ -243,9 +261,12 @@ const StyleMaster = ({
 
   const onNew = () => {
     setId("");
+    setName("");
+    setStyleItemId("");
     setForm(true);
     syncFormWithDb(undefined);
     setReadOnly(false);
+    setHidePrintFormat(false);
   };
 
   function onDataClick(id) {
@@ -378,6 +399,14 @@ const StyleMaster = ({
                     />
                   </div>
                 </div>
+                <div className="my-3 flex items-center">
+                  <CheckBoxNew
+                    name="Hide in PDF"
+                    value={hidePrintFormat}
+                    setValue={setHidePrintFormat}
+                    readOnly={readOnly}
+                  />
+                </div>
                 <div className="mt-2">
                   <ToggleButton
                     name="Status"
@@ -431,7 +460,7 @@ const StyleMaster = ({
           <Modal
             isOpen={form}
             form={form}
-            widthClass={"w-[46%] h-[52%]"}
+            widthClass={"w-[46%] h-[57%]"}
             onClose={() => {
               setForm(false);
             }}
@@ -536,6 +565,14 @@ const StyleMaster = ({
                             disabled={childRecord.current > 0}
                           />
                         </div>
+                      </div>
+                      <div className="my-6 flex items-center">
+                        <CheckBoxNew
+                          name="Hide in PDF"
+                          value={hidePrintFormat}
+                          setValue={setHidePrintFormat}
+                          readOnly={readOnly}
+                        />
                       </div>
                       <div className="mt-2">
                         <ToggleButton

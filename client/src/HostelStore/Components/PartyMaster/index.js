@@ -1777,28 +1777,7 @@ export default function Form({
                 </div>
                 <div className="col-span-2">
                   <div className=" grid grid-cols-5 gap-3">
-                    <div className="col-span-4">
-                      {/* <DropdownInputNew
-                                  name="City/State Name"
-                                  options={dropDownListMergedObject(
-                                    id
-                                      ? cityList?.data
-                                      : cityList?.data?.filter(
-                                          (item) => item.active,
-                                        ),
-                                    "name",
-                                    "id",
-                                  )}
-                                  country={country}
-                                  masterName="CITY MASTER"
-                                  // lastTab={activeTab}
-                                  value={city}
-                                  setValue={setCity}
-                                  required={true}
-                                  readOnly={readOnly}
-                                  // disabled={childRecord.current > 0}
-                                  className="focus:ring-2 focus:ring-blue-100"
-                                /> */}
+                    <div className="col-span-5">
                       <DropdownWithModal
                         name="City/State Name"
                         options={dropDownListMergedObject(
@@ -1829,19 +1808,22 @@ export default function Form({
                         </span>
                       )}
                     </div>
-                    <TextInputNew
-                      name="Pincode"
-                      type="pincode"
-                      value={pincode}
-                      required={true}
-                      setValue={(val) => {
-                        setPincode(val);
-                        clearError("pincode");
-                      }}
-                      readOnly={readOnly}
-                      // disabled={childRecord.current > 0}
-                      className={`focus:ring-2 focus:ring-blue-100 w-10 ${errorClass("pincode")}`}
-                    />
+
+                    <div className="col-span-2">
+                      <TextInputNew
+                        name="Pincode"
+                        type="pincode"
+                        value={pincode}
+                        required={true}
+                        setValue={(val) => {
+                          setPincode(val);
+                          clearError("pincode");
+                        }}
+                        readOnly={readOnly}
+                        // disabled={childRecord.current > 0}
+                        className={`focus:ring-2 focus:ring-blue-100 w-10 ${errorClass("pincode")}`}
+                      />
+                    </div>
                     {/* {errors.pincode && (
                       <span className="text-red-500 text-xs ml-1">
                         {errors.pincode}

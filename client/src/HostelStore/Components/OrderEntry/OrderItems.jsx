@@ -112,10 +112,9 @@ const OrderItems = ({
       }
       const filtered = prev.filter((_, i) => i !== index);
       if (filtered.length < 8) {
-        const padding = Array.from(
-          { length: 8 - filtered.length },
-          () => ({ ...EMPTY_ROW }),
-        );
+        const padding = Array.from({ length: 8 - filtered.length }, () => ({
+          ...EMPTY_ROW,
+        }));
         return [...filtered, ...padding];
       }
       return filtered;
@@ -278,7 +277,7 @@ const OrderItems = ({
                     placeholder=""
                     addNew={true}
                     childComponent={StyleItemMaster}
-                    addNewModalWidth="w-[50%] h-[57%]"
+                    addNewModalWidth="w-[1050px] max-w-[95vw]"
                   />
                 </td>
 

@@ -416,21 +416,50 @@ const OrderEntryPrintFormat = ({
 
                     {/* New Structure: Styles & Size/Barcode Breakup */}
                     {(() => {
+                      const getStyleObj = (st) => {
+                        if (st?.Style) return st.Style;
+                        if (st?.styleId && styleMasterList) {
+                          return styleMasterList.find(
+                            (i) => String(i.id) === String(st.styleId),
+                          );
+                        }
+                        return null;
+                      };
+
+                      const getSizeObj = (sb) => {
+                        if (sb?.Size) return sb.Size;
+                        if (sb?.sizeId && sizeList) {
+                          return sizeList.find(
+                            (i) => String(i.id) === String(sb.sizeId),
+                          );
+                        }
+                        return null;
+                      };
+
                       const styleItemsList = (
                         item.orderStyleItems || []
-                      ).filter(
-                        (st) =>
+                      ).filter((st) => {
+                        const styleObj = getStyleObj(st);
+                        const hideStyleName = Boolean(styleObj?.hidePrintFormat);
+                        const hasBreakups = (st.sizeBreakup || []).some(
+                          (sb) => (Number(sb.qty) || 0) > 0,
+                        );
+
+                        if (hideStyleName && !hasBreakups) return false;
+
+                        return (
                           st.styleId ||
                           st.Style ||
-                          (st.sizeBreakup || []).some(
-                            (sb) => (Number(sb.qty) || 0) > 0,
-                          ),
-                      );
+                          hasBreakups
+                        );
+                      });
 
                       if (styleItemsList.length > 0) {
                         return (
                           <View style={{ marginTop: 2 }}>
                             {styleItemsList.map((st, sIdx) => {
+                              const styleObj = getStyleObj(st);
+                              const hideStyleName = Boolean(styleObj?.hidePrintFormat);
                               const styleName =
                                 st.Style?.name ||
                                 getName(st.styleId, styleMasterList) ||
@@ -441,6 +470,8 @@ const OrderEntryPrintFormat = ({
                               );
                               const breakupText = breakups
                                 .map((sb) => {
+                                  const sizeObj = getSizeObj(sb);
+                                  const hideSizeName = Boolean(sizeObj?.hidePrintFormat);
                                   const size =
                                     sb.Size?.name ||
                                     getName(sb.sizeId, sizeList);
@@ -448,22 +479,29 @@ const OrderEntryPrintFormat = ({
                                   const range = sb.barcodeFrom
                                     ? sb.barcodeFrom === sb.barcodeTo
                                       ? `${sb.barcodeFrom}`
-                                      : `${sb.barcodeFrom}-${sb.barcodeTo}`
+                                      : `${sb.barcodeFrom} - ${sb.barcodeTo}`
                                     : "";
 
                                   if (trackingType === "Barcode") {
-                                    return `${range}/${qty}`;
+                                    return `${range} / ${qty}`;
                                   }
                                   if (trackingType === "Size") {
-                                    return `${size}/${qty}`;
+                                    return hideSizeName ? `${qty}` : `${size}/${qty}`;
                                   }
                                   if (trackingType === "Size + Barcode") {
+                                    if (hideSizeName) {
+                                      return range ? `${range} / ${qty}` : `${qty}`;
+                                    }
                                     return `${size}${range ? ` (${range})` : ""}/${qty}`;
                                   }
-                                  return `${size}/${qty}`;
+                                  return hideSizeName ? `${qty}` : `${size}/${qty}`;
                                 })
                                 .filter(Boolean)
                                 .join("  |  ");
+
+                              const headerText = hideStyleName
+                                ? `• (${trackingType}):`
+                                : `• ${styleName} (${trackingType}):`;
 
                               return (
                                 <View
@@ -477,7 +515,7 @@ const OrderEntryPrintFormat = ({
                                       color: "#1a1a2e",
                                     }}
                                   >
-                                    • {styleName} ({trackingType}):
+                                    {headerText}
                                   </Text>
                                   {breakupText ? (
                                     <Text
@@ -507,6 +545,8 @@ const OrderEntryPrintFormat = ({
                             <Text style={{ fontSize: 7.5, color: "#555" }}>
                               {legacyBreakup
                                 .map((sb) => {
+                                  const sizeObj = getSizeObj(sb);
+                                  const hideSizeName = Boolean(sizeObj?.hidePrintFormat);
                                   const size =
                                     sb.Size?.name ||
                                     getName(sb.sizeId, sizeList);
@@ -523,14 +563,18 @@ const OrderEntryPrintFormat = ({
                                     item.trackingType === "Size Template" ||
                                     item.trackingType === "Size"
                                   )
-                                    return `${size}/${qty}`;
+                                    return hideSizeName ? `${qty}` : `${size}/${qty}`;
                                   if (
                                     item.trackingType ===
                                       "Size Template + Barcode" ||
                                     item.trackingType === "Size + Barcode"
-                                  )
+                                  ) {
+                                    if (hideSizeName) {
+                                      return range ? `${range}/${qty}` : `${qty}`;
+                                    }
                                     return `${size}${range ? ` (${range})` : ""}/${qty}`;
-                                  return `${size}/${qty}`;
+                                  }
+                                  return hideSizeName ? `${qty}` : `${size}/${qty}`;
                                 })
                                 .filter(Boolean)
                                 .join("  |  ")}

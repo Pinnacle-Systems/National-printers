@@ -12,7 +12,7 @@ async function get(req) {
     include: {
       _count: {
         select: {
-          DeliveryChallanItems: true,
+          orderStyleItems: true,
         },
       },
     },
@@ -21,13 +21,13 @@ async function get(req) {
     statusCode: 0,
     data: (data = data.map((color) => ({
       ...color,
-      childRecord: color?._count.DeliveryChallanItems > 0,
+      childRecord: color?._count.orderStyleItems > 0,
     }))),
   };
 }
 
 async function getOne(id) {
-  const childRecord = await prisma.deliveryChallanItems.count({
+  const childRecord = await prisma.orderStyleItems.count({
     where: { styleId: parseInt(id) },
   });
   const data = await prisma.style.findUnique({
@@ -95,12 +95,13 @@ export async function upload(req) {
 
 async function create(req) {
   String;
-  const { name, active, styleItemId } = await req;
+  const { name, active, styleItemId, hidePrintFormat } = await req;
   const data = await prisma.style.create({
     data: {
       name,
       active,
       styleItemId: parseInt(styleItemId),
+      hidePrintFormat: Boolean(hidePrintFormat),
     },
   });
 
@@ -108,7 +109,7 @@ async function create(req) {
 }
 
 async function update(id, body) {
-  const { name, active, styleItemId } = await body;
+  const { name, active, styleItemId, hidePrintFormat } = await body;
 
   const dataFound = await prisma.style.findUnique({
     where: { id: parseInt(id) },
@@ -122,6 +123,7 @@ async function update(id, body) {
       name,
       active,
       styleItemId: parseInt(styleItemId),
+      hidePrintFormat: Boolean(hidePrintFormat),
     },
   });
 

@@ -3,10 +3,23 @@ import secureLocalStorage from "react-secure-storage";
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 import { Check, Power } from "lucide-react";
-import { ReusableTable, TextInputNew, TextInputNew1, ToggleButton } from "../../../Inputs";
+import {
+  CheckBoxNew,
+  ReusableTable,
+  TextInputNew,
+  TextInputNew1,
+  ToggleButton,
+} from "../../../Inputs";
 import Modal from "../../../UiComponents/Modal";
 import { statusDropdown } from "../../../Utils/DropdownData";
-import { useAddSizeMasterMutation, useDeleteSizeMasterMutation, useGetSizeMasterByIdQuery, useGetSizeMasterQuery, useLazyGetSizeMasterByIdQuery, useUpdateSizeMasterMutation } from "../../../redux/services/SizemasterService";
+import {
+  useAddSizeMasterMutation,
+  useDeleteSizeMasterMutation,
+  useGetSizeMasterByIdQuery,
+  useGetSizeMasterQuery,
+  useLazyGetSizeMasterByIdQuery,
+  useUpdateSizeMasterMutation,
+} from "../../../redux/services/SizemasterService";
 import { useFormKeyboardNavigation } from "../../../CustomHooks/useFormKeyboardNavigation";
 import useInvalidateTags from "../../../CustomHooks/useInvalidateTags";
 
@@ -18,6 +31,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
   const [name, setName] = useState(defaultName || "");
   const [isPoWise, setIsPowise] = useState(false);
   const [active, setActive] = useState(true);
+  const [hidePrintFormat, setHidePrintFormat] = useState(false);
   const { refs, handlers, focusFirstInput } = useFormKeyboardNavigation();
 
   const [searchValue, setSearchValue] = useState("");
@@ -50,6 +64,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
       setName(data?.name ? data.name : defaultName || "");
       setIsPowise(id ? (data?.isPoWise ? data.isPoWise : false) : false);
       setActive(id ? (data?.active ? data.active : false) : true);
+      setHidePrintFormat(data?.hidePrintFormat ? data?.hidePrintFormat : false);
       childRecord.current = data?.childRecord ? data?.childRecord : 0;
     },
     [id],
@@ -63,6 +78,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
     id,
     name,
     active,
+    hidePrintFormat,
     companyId: secureLocalStorage.getItem(
       sessionStorage.getItem("sessionId") + "userCompanyId",
     ),
@@ -89,12 +105,10 @@ export default function Form({ onSuccess, defaultName = "" }) {
       if (nextProcess == "new") {
         syncFormWithDb(undefined);
         onNew();
-        countryNameRef?.current?.focus()
-
+        countryNameRef?.current?.focus();
       } else {
         setForm(false);
         syncFormWithDb(undefined);
-
       }
       Swal.fire({
         title: text + "  " + "Successfully",
@@ -107,7 +121,6 @@ export default function Form({ onSuccess, defaultName = "" }) {
         // }
       });
       dispatchInvalidate();
-
     } catch (error) {
       console.log("handle");
     }
@@ -115,13 +128,12 @@ export default function Form({ onSuccess, defaultName = "" }) {
 
   const saveData = (nextProcess) => {
     if (!validateData(data)) {
-
       Swal.fire({
         title: "Please fill all required fields...!",
         icon: "error",
         didClose: () => {
           countryNameRef?.current?.focus();
-        }
+        },
         // draggable: true,
         // timer: 1000,
         // showConfirmButton: false,
@@ -146,12 +158,11 @@ export default function Form({ onSuccess, defaultName = "" }) {
         icon: "warning",
         didClose: () => {
           countryNameRef?.current?.focus();
-        }
+        },
       });
       return false;
     }
     if (id) {
-
       if (!window.confirm("Are you sure update the details ...?")) {
         return;
       }
@@ -191,7 +202,6 @@ export default function Form({ onSuccess, defaultName = "" }) {
             // }
           });
           syncFormWithDb(undefined);
-
         } catch (error) {
           toast.error("something went wrong");
         }
@@ -213,6 +223,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
     setSearchValue("");
     setReadOnly(false);
     syncFormWithDb(undefined);
+    setHidePrintFormat(false);
   };
 
   const ACTIVE = (
@@ -274,7 +285,6 @@ export default function Form({ onSuccess, defaultName = "" }) {
     }
   }, [form, onSuccess]);
 
-
   useEffect(() => {
     if (onSuccess) {
       setTimeout(() => {
@@ -296,7 +306,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
           <div className="bg-white p-3 rounded-md border border-gray-200 h-full">
             <div className="space-y-4 ">
               <fieldset className=" rounded mt-2">
-                <div className="grid grid-cols-2 my-2">
+                <div className="grid grid-cols-2 my-2 gap-x-6">
                   <div className="w-[50%">
                     <TextInputNew1
                       ref={countryNameRef}
@@ -309,8 +319,16 @@ export default function Form({ onSuccess, defaultName = "" }) {
                       disabled={childRecord.current > 0}
                     />
                   </div>
-                  {/* <CheckBox name="Po wise" readOnly={readOnly} value={isPoWise} setValue={setIsPowise} /> */}
+                  <div className="my-6 flex items-center">
+                    <CheckBoxNew
+                      name="Hide in PDF"
+                      value={hidePrintFormat}
+                      setValue={setHidePrintFormat}
+                      readOnly={readOnly}
+                    />
+                  </div>
                 </div>
+
                 <ToggleButton
                   name="Status"
                   options={statusDropdown}
@@ -327,7 +345,7 @@ export default function Form({ onSuccess, defaultName = "" }) {
         </div>
       </div>
     </div>
-  )
+  );
 
   if (onSuccess) {
     return (

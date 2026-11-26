@@ -1441,24 +1441,41 @@ export const TextInputNew = forwardRef(
             }
           }}
           onKeyDown={(e) => {
-            // if (e.key === " ") {
-            //   e.preventDefault();
-            // }
             if (
-              (type === "aadhar" || type === "pincode" || type === "mobile") &&
-              !/[\d]/.test(e.key) &&
+              ["aadhar", "pincode", "mobile"].includes(type) &&
+              !/^\d$/.test(e.key) &&
               ![
                 "Backspace",
                 "Delete",
                 "ArrowLeft",
                 "ArrowRight",
+                "ArrowUp",
+                "ArrowDown",
                 "Tab",
-              ].includes(e.key)
+                "Home",
+                "End",
+              ].includes(e.key) &&
+              !(e.ctrlKey || e.metaKey)
             ) {
               e.preventDefault();
             }
+
             if (e.key === "Enter" && nextRef?.current) {
               nextRef.current?.showPicker();
+            }
+          }}
+          onPaste={(e) => {
+            if (["aadhar", "pincode", "mobile"].includes(type)) {
+              e.preventDefault();
+
+              const pastedValue = e.clipboardData
+                .getData("text")
+                .replace(/\D/g, "");
+
+              const maxLength =
+                type === "aadhar" ? 12 : type === "pincode" ? 6 : 10;
+
+              setValue(pastedValue.slice(0, maxLength));
             }
           }}
           onBlur={onBlur}
