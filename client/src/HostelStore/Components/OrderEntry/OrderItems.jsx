@@ -127,20 +127,6 @@ const OrderItems = ({
 
     // Auto-fill Item Group, UOM, GSM, and HSN when item is chosen
     if (field === "styleItemId" && value) {
-      const isDuplicate = orderItems.some(
-        (row, idx) => idx !== index && row.styleItemId === value,
-      );
-
-      if (isDuplicate) {
-        Swal.fire({
-          icon: "warning",
-          title: "Duplicate Item",
-          text: "This item is already added to the order. Each style item must be unique.",
-          timer: 2500,
-        });
-        return;
-      }
-
       const selectedItem = styleItemList?.data?.find(
         (item) => item.id === value,
       );
@@ -600,6 +586,8 @@ const OrderItems = ({
           styleItemList={styleItemList}
           uomList={uomList}
           id={id}
+          allOrderItems={orderItems}
+          currentRowIndex={activeRowIndex}
         />
       )}
 

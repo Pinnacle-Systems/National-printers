@@ -499,33 +499,43 @@ const OrderEntryPrintFormat = ({
                                 .filter(Boolean)
                                 .join("  |  ");
 
+                              const isNoneType =
+                                trackingType === "None" ||
+                                trackingType === "NONE";
+
                               const headerText = hideStyleName
-                                ? `• (${trackingType}):`
-                                : `• ${styleName} (${trackingType}):`;
+                                ? isNoneType
+                                  ? ""
+                                  : `• (${trackingType}):`
+                                : isNoneType
+                                  ? `• ${styleName}:`
+                                  : `• ${styleName} (${trackingType}):`;
 
                               return (
                                 <View
                                   key={sIdx}
                                   style={{ marginTop: sIdx > 0 ? 2 : 1 }}
                                 >
-                                  <Text
-                                    style={{
-                                      fontSize: 7.5,
-                                      fontWeight: "bold",
-                                      color: "#1a1a2e",
-                                    }}
-                                  >
-                                    {headerText}
-                                  </Text>
+                                  {headerText ? (
+                                    <Text
+                                      style={{
+                                        fontSize: 7.5,
+                                        fontWeight: "bold",
+                                        color: "#1a1a2e",
+                                      }}
+                                    >
+                                      {headerText}
+                                    </Text>
+                                  ) : null}
                                   {breakupText ? (
                                     <Text
                                       style={{
                                         fontSize: 7.5,
                                         color: "#555",
-                                        paddingLeft: 6,
+                                        paddingLeft: headerText ? 6 : 2,
                                       }}
                                     >
-                                      {breakupText}
+                                      {headerText ? breakupText : `• ${breakupText}`}
                                     </Text>
                                   ) : null}
                                 </View>

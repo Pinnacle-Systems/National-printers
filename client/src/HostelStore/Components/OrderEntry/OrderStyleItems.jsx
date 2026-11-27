@@ -35,6 +35,8 @@ const OrderStyleItems = ({
   styleItemList,
   uomList,
   id,
+  allOrderItems = [],
+  currentRowIndex = null,
 }) => {
   const { companyId } = getCommonParams();
 
@@ -124,7 +126,7 @@ const OrderStyleItems = ({
   const focusChildBreakupFirstField = (styleIndex = activeStyleIndex) => {
     const trackingType = styleRows[styleIndex]?.trackingType || "Size";
     let targetId = "";
-    if (trackingType === "Size") {
+    if (trackingType === "Size" || trackingType === "None") {
       targetId = "sizeId-input-0";
     } else if (trackingType === "Barcode") {
       targetId = "barcodeFrom-0";
@@ -145,7 +147,7 @@ const OrderStyleItems = ({
   // Focus child breakup row's first field after adding a row
   const focusBreakupRowFirstField = (rowIndex, trackingType = currentTrackingType) => {
     let targetId = "";
-    if (trackingType === "Size") {
+    if (trackingType === "Size" || trackingType === "None") {
       targetId = `sizeId-input-${rowIndex}`;
     } else if (trackingType === "Barcode") {
       targetId = `barcodeFrom-${rowIndex}`;
@@ -277,7 +279,8 @@ const OrderStyleItems = ({
     if (
       field === "sizeId" &&
       value &&
-      (currentRow.trackingType || "Size") === "Size"
+      ((currentRow.trackingType || "Size") === "Size" ||
+        (currentRow.trackingType || "Size") === "None")
     ) {
       const isDuplicateSize = breakup.some(
         (item, i) => i !== sizeIndex && String(item.sizeId) === String(value),
@@ -355,6 +358,7 @@ const OrderStyleItems = ({
 
   // Add a row to the breakup table on the right side
   const addModalRow = () => {
+    if (currentTrackingType === "None") return;
     setStyleRows((prev) => {
       const updated = [...prev];
       const currentRow = { ...updated[activeStyleIndex] };
@@ -423,9 +427,62 @@ const OrderStyleItems = ({
 
   // Save and close
   const handleDone = () => {
-    const validStyles = styleRows.filter(
-      (r) => r.styleId || Number(r.orderQty) > 0,
-    );
+    const validStyles = styleRows
+      .map((r) => {
+        if (r.trackingType === "None") {
+          const firstRow = (r.sizeBreakup || [])[0] || createEmptyBreakupRow();
+          const singleBreakup = [firstRow];
+          return {
+            ...r,
+            sizeBreakup: singleBreakup,
+            orderQty: Number(firstRow.qty) || 0,
+          };
+        }
+        return r;
+      })
+      .filter((r) => r.styleId || Number(r.orderQty) > 0);
+
+    // Validate: all configured styles must have orderQty > 0
+    for (let i = 0; i < validStyles.length; i++) {
+      const st = validStyles[i];
+      if (st.styleId && (!st.orderQty || Number(st.orderQty) <= 0)) {
+        const styleName =
+          findFromList(st.styleId, styleMasterList?.data, "name") ||
+          `Style #${i + 1}`;
+        Swal.fire({
+          icon: "warning",
+          title: "Invalid Quantity",
+          text: `${styleName}: Style Quantity must be greater than 0.`,
+        });
+        return;
+      }
+    }
+
+    // Validate: each breakup row with size or barcode must have qty > 0
+    for (let i = 0; i < validStyles.length; i++) {
+      const st = validStyles[i];
+      if (!st.styleId) continue;
+      const breakups = st.sizeBreakup || [];
+      for (let bIdx = 0; bIdx < breakups.length; bIdx++) {
+        const b = breakups[bIdx];
+        const hasSize =
+          b.sizeId !== null && b.sizeId !== undefined && b.sizeId !== "";
+        const hasBarcode = Boolean(b.barcodeFrom || b.barcodeTo);
+        if (hasSize || hasBarcode) {
+          if (!b.qty || Number(b.qty) <= 0) {
+            const styleName =
+              findFromList(st.styleId, styleMasterList?.data, "name") ||
+              `Style #${i + 1}`;
+            Swal.fire({
+              icon: "warning",
+              title: "Invalid Quantity",
+              text: `${styleName}, Breakup Row ${bIdx + 1}: Quantity must be greater than 0.`,
+            });
+            return;
+          }
+        }
+      }
+    }
 
     // Validate: Same style cannot have the same tracking type
     const seenCombos = new Set();
@@ -451,7 +508,11 @@ const OrderStyleItems = ({
     // Validate: in Size Wise Breakup, no duplicate sizes allowed
     for (let i = 0; i < validStyles.length; i++) {
       const st = validStyles[i];
-      if ((st.trackingType || "Size") === "Size") {
+      if (
+        (st.trackingType || "Size") === "Size" ||
+        (st.trackingType || "Size") === "Size + Barcode" ||
+        (st.trackingType || "Size") === "None"
+      ) {
         const selectedSizes = (st.sizeBreakup || [])
           .map((b) => b.sizeId)
           .filter(
@@ -470,6 +531,81 @@ const OrderStyleItems = ({
               text: `Duplicate sizes selected under ${styleName}. Each size must be unique.`,
             });
             return;
+          }
+        }
+      }
+    }
+
+    // Validate: Cross-row duplicate rules for the same Description of Goods
+    if (allOrderItems && allOrderItems.length > 0 && parentItem?.styleItemId) {
+      for (let oIdx = 0; oIdx < allOrderItems.length; oIdx++) {
+        if (oIdx === currentRowIndex) continue;
+        const otherItem = allOrderItems[oIdx];
+        if (String(otherItem.styleItemId) === String(parentItem.styleItemId)) {
+          const otherStyles =
+            otherItem.orderStyleItems || otherItem.styleItems || [];
+
+          for (let i = 0; i < validStyles.length; i++) {
+            const stCurrent = validStyles[i];
+            if (!stCurrent.styleId) continue;
+            const currentStyleId = String(stCurrent.styleId);
+            const currentType = stCurrent.trackingType || "Size";
+            const styleName =
+              findFromList(stCurrent.styleId, styleMasterList?.data, "name") ||
+              `Style #${i + 1}`;
+
+            for (let j = 0; j < otherStyles.length; j++) {
+              const stOther = otherStyles[j];
+              if (!stOther.styleId) continue;
+              if (String(stOther.styleId) === currentStyleId) {
+                const otherType = stOther.trackingType || "Size";
+
+                // Check 1: Mixed Tracking Types for same style (Option A)
+                if (currentType !== otherType) {
+                  Swal.fire({
+                    icon: "warning",
+                    title: "Mixed Tracking Type",
+                    text: `Style '${styleName}' is already configured with tracking type '${otherType}' in Row ${oIdx + 1}. A style cannot have mixed tracking types.`,
+                  });
+                  return;
+                }
+
+                // Check 2: Barcode or None cannot repeat the same style across rows
+                if (currentType === "Barcode" || currentType === "None") {
+                  Swal.fire({
+                    icon: "warning",
+                    title: "Duplicate Style",
+                    text: `Style '${styleName}' (Type: ${currentType}) is already used in Row ${oIdx + 1}. When Type is ${currentType}, each row must have a different Style.`,
+                  });
+                  return;
+                }
+
+                // Check 3: Size and Size + Barcode: Sizes must be unique across rows for the same style
+                if (currentType === "Size" || currentType === "Size + Barcode") {
+                  const otherSizes = new Set(
+                    (stOther.sizeBreakup || [])
+                      .map((b) => String(b.sizeId))
+                      .filter((s) => s && s !== "null" && s !== "undefined"),
+                  );
+
+                  const currentBreakup = stCurrent.sizeBreakup || [];
+                  for (let k = 0; k < currentBreakup.length; k++) {
+                    const bCur = currentBreakup[k];
+                    if (bCur.sizeId && otherSizes.has(String(bCur.sizeId))) {
+                      const sizeName =
+                        findFromList(bCur.sizeId, sizeList?.data, "name") ||
+                        `Size #${bCur.sizeId}`;
+                      Swal.fire({
+                        icon: "warning",
+                        title: "Duplicate Size",
+                        text: `Style '${styleName}' already has Size '${sizeName}' in Row ${oIdx + 1}. Under the same Style, sizes must be unique across rows.`,
+                      });
+                      return;
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -706,6 +842,7 @@ const OrderStyleItems = ({
                             <option value="Size + Barcode">
                               Size + Barcode
                             </option>
+                            <option value="None">None</option>
                           </select>
                         </td>
 
@@ -771,7 +908,9 @@ const OrderStyleItems = ({
                     ? "Barcode Wise Breakup"
                     : currentTrackingType === "Size + Barcode"
                       ? "Size + Barcode Wise Breakup"
-                      : "Size Wise Breakup"}
+                      : currentTrackingType === "None"
+                        ? "Breakup"
+                        : "Size Wise Breakup"}
                 </h3>
                 <span className="text-[11px] text-indigo-600 font-medium">
                   (
@@ -791,8 +930,12 @@ const OrderStyleItems = ({
                 <button
                   type="button"
                   onClick={addModalRow}
-                  disabled={readOnly}
-                  className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-300 px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 transition"
+                  disabled={readOnly || currentTrackingType === "None"}
+                  className={`${
+                    readOnly || currentTrackingType === "None"
+                      ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50"
+                      : "bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-300"
+                  } border px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 transition`}
                 >
                   <Plus size={13} /> Add Row
                 </button>
@@ -948,7 +1091,8 @@ const OrderStyleItems = ({
                 )}
 
                 {/* --- SIZE TYPE TABLE --- */}
-                {currentTrackingType === "Size" && (
+                {(currentTrackingType === "Size" ||
+                  currentTrackingType === "None") && (
                   <table className="w-full border-separate border-spacing-0 table-fixed text-[11px]">
                     <thead className="sticky top-0 z-20 bg-gray-100 text-gray-700 text-[11px] shadow-[0_-2px_0_0_#f3f4f6]">
                       <tr className="sticky top-0 z-20 bg-gray-100">
@@ -964,122 +1108,173 @@ const OrderStyleItems = ({
                       </tr>
                     </thead>
                     <tbody>
-                      {activeStyle.sizeBreakup?.map((item, idx) => (
-                        <tr
-                          key={idx}
-                          className={`h-8 border-b border-slate-200 transition-colors ${
-                            idx % 2 === 0
-                              ? "bg-white hover:bg-slate-50"
-                              : "bg-gray-50 hover:bg-slate-50"
-                          }`}
-                          onContextMenu={(e) =>
-                            !readOnly && handleRightClick(e, idx, "BREAKUP")
-                          }
-                        >
-                          <td className="text-center border-r border-b border-slate-200 text-slate-500 font-medium">
-                            {idx + 1}
-                          </td>
-                          <td
-                            data-grid-row={idx}
-                            data-grid-col={1}
-                            data-grid-editable="true"
-                            className="border-r border-b border-slate-200 grid-editable-cell text-[11px]"
+                      {activeStyle.sizeBreakup?.map((item, idx) => {
+                        const isRowDisabled =
+                          readOnly ||
+                          (currentTrackingType === "None" && idx > 0);
+                        return (
+                          <tr
+                            key={idx}
+                            className={`h-8 border-b border-slate-200 transition-colors ${
+                              isRowDisabled
+                                ? "bg-gray-100/70 opacity-60 cursor-not-allowed"
+                                : idx % 2 === 0
+                                  ? "bg-white hover:bg-slate-50"
+                                  : "bg-gray-50 hover:bg-slate-50"
+                            }`}
+                            onContextMenu={(e) =>
+                              !readOnly &&
+                              !isRowDisabled &&
+                              handleRightClick(e, idx, "BREAKUP")
+                            }
                           >
-                            <FxSelectWithAdd
-                              inputId={`sizeId-input-${idx}`}
-                              openMenuOnFocus={true}
-                              nextId={`sizeQty-${idx}`}
-                              value={item.sizeId || ""}
-                              onChange={(val) => {
-                                handleSizeBreakupChange(idx, "sizeId", val);
-                                setTimeout(() => {
-                                  const qtyInput = document.getElementById(`sizeQty-${idx}`);
-                                  if (qtyInput) {
-                                    qtyInput.focus();
-                                    qtyInput.select?.();
-                                  }
-                                }, 50);
-                              }}
-                              disabled={readOnly}
-                              options={(sizeList?.data || [])
-                                .filter((item) => (id ? true : item.active))
-                                .map((item) => ({
-                                  label: item.name,
-                                  value: item.id,
-                                }))}
-                              readOnly={readOnly}
-                              placeholder=""
-                              onKeyDown={(event) => {
-                                if (event.key === "Delete") {
-                                  handleSizeBreakupChange(idx, "sizeId", "");
-                                } else if ((event.key === "Enter" || event.key === "Tab") && item.sizeId) {
-                                  event.preventDefault();
-                                  const qtyInput = document.getElementById(`sizeQty-${idx}`);
-                                  if (qtyInput) {
-                                    qtyInput.focus();
-                                    qtyInput.select?.();
-                                  }
-                                }
-                              }}
-                              addNew={true}
-                              childComponent={Size}
-                              addNewModalWidth="w-[30%] h-[45%]"
-                              advanceOnEnter
-                              advanceOnSelect
-                              menuPortalTarget={document.body}
-                            />
-                          </td>
-                          <td className="text-right border-b border-slate-200 grid-editable-cell">
-                            <input
-                              id={`sizeQty-${idx}`}
-                              type="number"
-                              className="w-full h-8 border-none text-right pr-2 bg-transparent text-[11px] font-bold text-indigo-700 outline-none"
-                              value={
-                                item.qty !== undefined &&
-                                item.qty !== null &&
-                                item.qty !== ""
-                                  ? Number(item.qty)
-                                  : ""
-                              }
-                              onChange={(e) =>
-                                handleSizeBreakupChange(
-                                  idx,
-                                  "qty",
-                                  e.target.value,
-                                )
-                              }
-                              onKeyDown={(e) => {
-                                const breakupLength = activeStyle.sizeBreakup?.length || 0;
-                                if (e.key === "Enter" && !readOnly) {
-                                  e.preventDefault();
-                                  if (idx === breakupLength - 1) {
-                                    addModalRow();
-                                  } else {
-                                    const next = document.getElementById(`sizeId-input-${idx + 1}`);
-                                    if (next) {
-                                      next.focus();
+                            <td className="text-center border-r border-b border-slate-200 text-slate-500 font-medium">
+                              {idx + 1}
+                            </td>
+                            <td
+                              data-grid-row={idx}
+                              data-grid-col={1}
+                              data-grid-editable={!isRowDisabled}
+                              className={`border-r border-b border-slate-200 grid-editable-cell text-[11px] ${
+                                isRowDisabled ? "pointer-events-none" : ""
+                              }`}
+                            >
+                              <FxSelectWithAdd
+                                inputId={`sizeId-input-${idx}`}
+                                openMenuOnFocus={true}
+                                nextId={`sizeQty-${idx}`}
+                                value={item.sizeId || ""}
+                                onChange={(val) => {
+                                  if (isRowDisabled) return;
+                                  handleSizeBreakupChange(idx, "sizeId", val);
+                                  setTimeout(() => {
+                                    const qtyInput = document.getElementById(
+                                      `sizeQty-${idx}`,
+                                    );
+                                    if (qtyInput) {
+                                      qtyInput.focus();
+                                      qtyInput.select?.();
+                                    }
+                                  }, 50);
+                                }}
+                                disabled={isRowDisabled}
+                                options={(sizeList?.data || [])
+                                  .filter((item) => (id ? true : item.active))
+                                  .map((item) => ({
+                                    label: item.name,
+                                    value: item.id,
+                                  }))}
+                                readOnly={isRowDisabled}
+                                placeholder=""
+                                onKeyDown={(event) => {
+                                  if (isRowDisabled) return;
+                                  if (event.key === "Delete") {
+                                    handleSizeBreakupChange(idx, "sizeId", "");
+                                  } else if (
+                                    (event.key === "Enter" ||
+                                      event.key === "Tab") &&
+                                    item.sizeId
+                                  ) {
+                                    event.preventDefault();
+                                    const qtyInput = document.getElementById(
+                                      `sizeQty-${idx}`,
+                                    );
+                                    if (qtyInput) {
+                                      qtyInput.focus();
+                                      qtyInput.select?.();
                                     }
                                   }
-                                } else if (e.key === "Tab" && !e.shiftKey) {
-                                  if (idx < breakupLength - 1) {
-                                    e.preventDefault();
-                                    const next = document.getElementById(`sizeId-input-${idx + 1}`);
-                                    if (next) {
-                                      next.focus();
-                                    }
-                                  } else {
-                                    e.preventDefault();
-                                    const desc = document.getElementById("style-description-input");
-                                    if (desc) desc.focus();
-                                  }
+                                }}
+                                addNew={!isRowDisabled}
+                                childComponent={Size}
+                                addNewModalWidth="w-[30%] h-[45%]"
+                                advanceOnEnter
+                                advanceOnSelect
+                                menuPortalTarget={document.body}
+                              />
+                            </td>
+                            <td
+                              className={`text-right border-b border-slate-200 grid-editable-cell ${
+                                isRowDisabled ? "bg-gray-50" : ""
+                              }`}
+                            >
+                              <input
+                                id={`sizeQty-${idx}`}
+                                type="number"
+                                className={`w-full h-8 border-none text-right pr-2 bg-transparent text-[11px] font-bold ${
+                                  isRowDisabled
+                                    ? "text-gray-400 cursor-not-allowed"
+                                    : "text-indigo-700"
+                                } outline-none`}
+                                value={
+                                  item.qty !== undefined &&
+                                  item.qty !== null &&
+                                  item.qty !== ""
+                                    ? Number(item.qty)
+                                    : ""
                                 }
-                              }}
-                              disabled={readOnly}
-                              placeholder="0"
-                            />
-                          </td>
-                        </tr>
-                      ))}
+                                onChange={(e) => {
+                                  if (isRowDisabled) return;
+                                  handleSizeBreakupChange(
+                                    idx,
+                                    "qty",
+                                    e.target.value,
+                                  );
+                                }}
+                                onKeyDown={(e) => {
+                                  if (isRowDisabled) return;
+                                  const breakupLength =
+                                    activeStyle.sizeBreakup?.length || 0;
+                                  if (currentTrackingType === "None") {
+                                    if (
+                                      e.key === "Enter" ||
+                                      (e.key === "Tab" && !e.shiftKey)
+                                    ) {
+                                      e.preventDefault();
+                                      const desc = document.getElementById(
+                                        "style-description-input",
+                                      );
+                                      if (desc) desc.focus();
+                                    }
+                                    return;
+                                  }
+                                  if (e.key === "Enter" && !readOnly) {
+                                    e.preventDefault();
+                                    if (idx === breakupLength - 1) {
+                                      addModalRow();
+                                    } else {
+                                      const next = document.getElementById(
+                                        `sizeId-input-${idx + 1}`,
+                                      );
+                                      if (next) {
+                                        next.focus();
+                                      }
+                                    }
+                                  } else if (e.key === "Tab" && !e.shiftKey) {
+                                    if (idx < breakupLength - 1) {
+                                      e.preventDefault();
+                                      const next = document.getElementById(
+                                        `sizeId-input-${idx + 1}`,
+                                      );
+                                      if (next) {
+                                        next.focus();
+                                      }
+                                    } else {
+                                      e.preventDefault();
+                                      const desc = document.getElementById(
+                                        "style-description-input",
+                                      );
+                                      if (desc) desc.focus();
+                                    }
+                                  }
+                                }}
+                                disabled={isRowDisabled}
+                                placeholder="0"
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}
