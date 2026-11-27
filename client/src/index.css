@@ -192,8 +192,25 @@ label {
 }
 
 .grid-editable-cell:focus-within {
-  background-color: rgba(219, 234, 254, 0.65);
-  box-shadow: inset 0 0 0 1px #2563eb;
+  background-color: rgba(219, 234, 254, 0.65) !important;
+  box-shadow: inset 0 0 0 1px #2563eb !important;
+}
+
+.grid-editable-cell input:not(.fixed *),
+.grid-editable-cell select:not(.fixed *),
+.grid-editable-cell textarea:not(.fixed *) {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+}
+
+.grid-editable-cell input:not(.fixed *):focus,
+.grid-editable-cell select:not(.fixed *):focus,
+.grid-editable-cell textarea:not(.fixed *):focus {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 @media print {

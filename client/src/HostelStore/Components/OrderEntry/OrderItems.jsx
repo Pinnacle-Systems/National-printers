@@ -59,11 +59,14 @@ const OrderItems = ({
 
   useEffect(() => {
     if (!styleModalOpen && pendingFocus !== null) {
-      const element = document.getElementById(`remarks-input-${pendingFocus}`);
-      if (element) {
-        element.focus();
-        element.select?.();
-      }
+      const targetIndex = pendingFocus;
+      setTimeout(() => {
+        const element = document.getElementById(`price-input-${targetIndex}`);
+        if (element) {
+          element.focus();
+          element.select?.();
+        }
+      }, 100);
       setPendingFocus(null);
     }
   }, [styleModalOpen, pendingFocus]);
@@ -80,6 +83,7 @@ const OrderItems = ({
 
   const handleSaveStyles = (validStyles, totalQty) => {
     if (activeRowIndex === null) return;
+    setPendingFocus(activeRowIndex);
     setOrderItems((prev) => {
       const newRows = [...prev];
       const currentRow = { ...newRows[activeRowIndex] };
@@ -91,11 +95,30 @@ const OrderItems = ({
   };
 
   const addRow = () => {
-    setOrderItems([...orderItems, EMPTY_ROW]);
+    const newIndex = orderItems?.length || 0;
+    setOrderItems([...(orderItems || []), EMPTY_ROW]);
+    setTimeout(() => {
+      const nextEl = document.getElementById(`styleItemId-input-${newIndex}`);
+      if (nextEl) nextEl.focus();
+    }, 50);
   };
 
   const deleteRow = (index) => {
-    setOrderItems(orderItems.filter((_, i) => i !== index));
+    setOrderItems((prev) => {
+      if (!prev || prev.length <= 8) {
+        return (prev || []).map((item, i) =>
+          i === index ? { ...EMPTY_ROW } : item,
+        );
+      }
+      const filtered = prev.filter((_, i) => i !== index);
+      if (filtered.length < 8) {
+        const padding = Array.from({ length: 8 - filtered.length }, () => ({
+          ...EMPTY_ROW,
+        }));
+        return [...filtered, ...padding];
+      }
+      return filtered;
+    });
   };
 
   const handleInputChange = (value, index, field) => {
@@ -104,20 +127,6 @@ const OrderItems = ({
 
     // Auto-fill Item Group, UOM, GSM, and HSN when item is chosen
     if (field === "styleItemId" && value) {
-      const isDuplicate = orderItems.some(
-        (row, idx) => idx !== index && row.styleItemId === value,
-      );
-
-      if (isDuplicate) {
-        Swal.fire({
-          icon: "warning",
-          title: "Duplicate Item",
-          text: "This item is already added to the order. Each style item must be unique.",
-          timer: 2500,
-        });
-        return;
-      }
-
       const selectedItem = styleItemList?.data?.find(
         (item) => item.id === value,
       );
@@ -160,43 +169,43 @@ const OrderItems = ({
   };
 
   const handleDeleteAllRows = () => {
-    setOrderItems(Array.from({ length: 14 }, () => ({ ...EMPTY_ROW })));
+    setOrderItems(Array.from({ length: 8 }, () => ({ ...EMPTY_ROW })));
   };
 
   return (
     <>
       <div className="w-full h-full overflow-y-auto mb-2 bg-white border border-slate-200 rounded-md">
-        <table className="w-[98vw] border-separate border-spacing-0 table-fixed border-t border-l border-gray-300">
-          <thead className="text-gray-800 text-[12px]">
-            <tr>
-              <th className="sticky top-0 z-20 bg-gray-200 w-6 px-1 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
+        <table className="w-[98vw] border-separate border-spacing-0 table-fixed border-l border-gray-300">
+          <thead className="sticky top-0 z-20 bg-gray-200 text-gray-800 text-[12px] shadow-[0_-2px_0_0_#e5e7eb]">
+            <tr className="sticky top-0 z-20 bg-gray-200">
+              <th className="sticky top-0 z-20 bg-gray-200 w-6 px-1 py-1 text-center font-medium border-t border-b border-r border-gray-300 text-[11px]">
                 S.No
               </th>
-              <th className="sticky top-0 z-20 bg-gray-200 w-[400px] px-2 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-[400px] px-2 py-1 text-center font-medium border-t border-b border-r border-gray-300 text-[11px]">
                 Description of Goods
               </th>
-              <th className="sticky top-0 z-20 bg-gray-200 w-44 px-2 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-44 px-2 py-1 text-center font-medium border-t border-b border-r border-gray-300 text-[11px]">
                 Item Group
               </th>
-              <th className="sticky top-0 z-20 bg-gray-200 w-24 px-2 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-24 px-2 py-1 text-center font-medium border-t border-b border-r border-gray-300 text-[11px]">
                 HSN
               </th>
-              <th className="sticky top-0 z-20 bg-gray-200 w-20 px-1 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-20 px-1 py-1 text-center font-medium border-t border-b border-r border-gray-300 text-[11px]">
                 Style
               </th>
-              <th className="sticky top-0 z-20 bg-gray-200 w-24 px-1 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-24 px-1 py-1 text-center font-medium border-t border-b border-r border-gray-300 text-[11px]">
                 UOM
               </th>
-              <th className="sticky top-0 z-20 bg-gray-200 w-24 px-1 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-24 px-1 py-1 text-center font-medium border-t border-b border-r border-gray-300 text-[11px]">
                 Qty
               </th>
-              <th className="sticky top-0 z-20 bg-gray-200 w-24 px-1 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-24 px-1 py-1 text-center font-medium border-t border-b border-r border-gray-300 text-[11px]">
                 Price
               </th>
-              <th className="sticky top-0 z-20 bg-gray-200 w-16 px-1 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-16 px-1 py-1 text-center font-medium border-t border-b border-r border-gray-300 text-[11px]">
                 Image
               </th>
-              <th className="sticky top-0 z-20 bg-gray-200 w-full px-2 py-1 text-center font-medium border-b border-r border-gray-300 text-[11px]">
+              <th className="sticky top-0 z-20 bg-gray-200 w-full px-2 py-1 text-center font-medium border-t border-b border-r border-gray-300 text-[11px]">
                 Remarks
               </th>
             </tr>
@@ -231,9 +240,9 @@ const OrderItems = ({
                       if (e.key === "Enter" || e.key === "Tab") {
                         if (!row.styleItemId) {
                           e.preventDefault();
-                          const reqEl = document.getElementById(
-                            "customerRequirements",
-                          );
+                          const reqEl =
+                            document.getElementById("remarks") ||
+                            document.getElementById("customerRequirements");
                           if (reqEl) {
                             reqEl.focus();
                             reqEl.select?.();
@@ -254,7 +263,7 @@ const OrderItems = ({
                     placeholder=""
                     addNew={true}
                     childComponent={StyleItemMaster}
-                    addNewModalWidth="w-[50%] h-[57%]"
+                    addNewModalWidth="w-[1050px] max-w-[95vw]"
                   />
                 </td>
 
@@ -328,9 +337,9 @@ const OrderItems = ({
                       if (e.key === "Enter" || e.key === "Tab") {
                         if (!row.styleItemId) {
                           e.preventDefault();
-                          const reqEl = document.getElementById(
-                            "customerRequirements",
-                          );
+                          const reqEl =
+                            document.getElementById("remarks") ||
+                            document.getElementById("customerRequirements");
                           if (reqEl) {
                             reqEl.focus();
                             reqEl.select?.();
@@ -370,6 +379,7 @@ const OrderItems = ({
                 {/* Price Column */}
                 <td className="border-b border-r border-gray-300 grid-editable-cell">
                   <input
+                    id={`price-input-${index}`}
                     value={row?.price || ""}
                     className="w-full text-[11px] text-right pr-1 outline-none bg-transparent"
                     onChange={(e) =>
@@ -379,9 +389,9 @@ const OrderItems = ({
                       if (e.key === "Enter" || e.key === "Tab") {
                         if (!row.styleItemId) {
                           e.preventDefault();
-                          const reqEl = document.getElementById(
-                            "customerRequirements",
-                          );
+                          const reqEl =
+                            document.getElementById("remarks") ||
+                            document.getElementById("customerRequirements");
                           if (reqEl) {
                             reqEl.focus();
                             reqEl.select?.();
@@ -474,25 +484,24 @@ const OrderItems = ({
                       handleInputChange(e.target.value, index, "remarks")
                     }
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === "Tab") {
+                      if (e.key === "Enter") {
                         e.preventDefault();
-                        if (!row.styleItemId) {
-                          const reqEl = document.getElementById(
-                            "customerRequirements",
-                          );
-                          if (reqEl) {
-                            reqEl.focus();
-                            reqEl.select?.();
-                          }
+                        if (index === orderItems.length - 1) {
+                          addRow();
                         } else {
-                          if (index === orderItems.length - 1) {
-                            addRow();
-                          } else {
-                            const nextStyleEl = document.getElementById(
-                              `styleItemId-input-${index + 1}`,
-                            );
-                            if (nextStyleEl) nextStyleEl.focus();
-                          }
+                          const nextStyleEl = document.getElementById(
+                            `styleItemId-input-${index + 1}`,
+                          );
+                          if (nextStyleEl) nextStyleEl.focus();
+                        }
+                      } else if (e.key === "Tab" && !e.shiftKey) {
+                        e.preventDefault();
+                        const footerRemarks =
+                          document.getElementById("remarks") ||
+                          document.getElementById("customerRequirements");
+                        if (footerRemarks) {
+                          footerRemarks.focus();
+                          footerRemarks.select?.();
                         }
                       }
                     }}
@@ -577,6 +586,8 @@ const OrderItems = ({
           styleItemList={styleItemList}
           uomList={uomList}
           id={id}
+          allOrderItems={orderItems}
+          currentRowIndex={activeRowIndex}
         />
       )}
 

@@ -959,14 +959,17 @@ model Payment {
 
 model Style {
   id                   Int                    @id @default(autoincrement())
-  name                 String?
-  styleItemId          Int?
-  StyleItem            StyleItem?             @relation(fields: [styleItemId], references: [id])
+  name                 String
+  styleItemId          Int
+  StyleItem            StyleItem              @relation(fields: [styleItemId], references: [id])
   active               Boolean?               @default(false)
+  hidePrintFormat      Boolean?               @default(false)
   DeliveryChallanItems DeliveryChallanItems[]
   DeliveryInvoiceItems DeliveryInvoiceItems[]
   stocks               Stock[]
   orderStyleItems      OrderStyleItems[]
+
+  @@unique([name, styleItemId])
 }
 
 model StyleItem {
@@ -1664,6 +1667,7 @@ model Size {
   active                 Boolean                  @default(true)
   Company                Company?                 @relation(fields: [companyId], references: [id])
   companyId              Int?
+  hidePrintFormat        Boolean?                 @default(false)
   sizeTemplateLists      SizeTemplateList[]
   poItems                PoItems[]
   purchaseCancelItems    PurchaseCancelItems[]

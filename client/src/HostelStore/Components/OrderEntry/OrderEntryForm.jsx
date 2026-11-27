@@ -53,7 +53,7 @@ import {
 } from "../../../Basic/components/Reuseable/index.js";
 import { invalidateItems } from "../../../redux/Dispatch/ItemsInvalidateTags.js";
 
-const createEmptyOrderItems = (count = 14) =>
+const createEmptyOrderItems = (count = 8) =>
   Array.from({ length: count }, () => ({
     itemGroupId: "",
     styleItemId: "",
@@ -125,28 +125,28 @@ const OrderEntryForm = ({
   const [orderQty, setOrderQty] = useState("");
   const [termsId, setTermsId] = useState("");
   const [printModalOpen, setPrintModalOpen] = useState(false);
-  const [orderItems, setOrderItems] = useState(() => createEmptyOrderItems(14));
+  const [orderItems, setOrderItems] = useState(() => createEmptyOrderItems(8));
 
   const handleOrderTypeChange = (val) => {
     if (val != orderType) {
       setOrderType(val);
       setCustomerId("");
       setOrderBranchId("");
-      setOrderItems(createEmptyOrderItems(14));
+      setOrderItems(createEmptyOrderItems(8));
     }
   };
 
   const handleCustomerChange = (val) => {
     if (val != customerId) {
       setCustomerId(val);
-      setOrderItems(createEmptyOrderItems(14));
+      setOrderItems(createEmptyOrderItems(8));
     }
   };
 
   const handleOrderBranchChange = (val) => {
     if (val != orderBranchId) {
       setOrderBranchId(val);
-      setOrderItems(createEmptyOrderItems(14));
+      setOrderItems(createEmptyOrderItems(8));
     }
   };
 
@@ -207,7 +207,18 @@ const OrderEntryForm = ({
       // ── Smart childRecord tracking (File 2) ─────────────────────────────
       childRecord.current = data?.childRecord ? data?.childRecord : 0;
       const initialItems = (data?.orderItems || []).map((item) => {
-        let styles = item.orderStyleItems || [];
+        let styles = (item.orderStyleItems || []).map((st) => ({
+          ...st,
+          orderQty:
+            st.orderQty !== undefined &&
+            st.orderQty !== null &&
+            st.orderQty !== ""
+              ? Number(st.orderQty)
+              : (st.sizeBreakup || []).reduce(
+                  (sum, b) => sum + (Number(b.qty) || 0),
+                  0,
+                ),
+        }));
         if (
           styles.length === 0 &&
           (item.sizeBreakup?.length > 0 || item.styleId)
@@ -216,7 +227,7 @@ const OrderEntryForm = ({
             {
               styleId: item.styleId || "",
               trackingType: item.trackingType || "Size",
-
+              orderQty: Number(item.orderQty) || 0,
               description: item.description || "",
               sizeBreakup: item.sizeBreakup || [],
             },
@@ -240,7 +251,7 @@ const OrderEntryForm = ({
         };
       });
 
-      const emptyRowsCount = Math.max(0, 14 - initialItems.length);
+      const emptyRowsCount = Math.max(0, 8 - initialItems.length);
       const emptyRows = createEmptyOrderItems(emptyRowsCount);
 
       setOrderItems([...initialItems, ...emptyRows]);
@@ -284,7 +295,6 @@ const OrderEntryForm = ({
           StyleItem,
           sizeBreakup,
           rawSizeBreakup,
-          uiIndex,
           barcodeFrom,
           barcodeTo,
           sizeId,
@@ -294,15 +304,28 @@ const OrderEntryForm = ({
         } = item;
         return {
           ...rest,
+          uiIndex: item.uiIndex || idx + 1,
           itemOrder: idx,
           orderStyleItems: (item.orderStyleItems || item.styleItems || []).map(
-            (st) => ({
-              ...st,
-              sizeBreakup: (st.sizeBreakup || []).filter(
-                (size) =>
-                  Number(size.qty) > 0 || size.barcodeFrom || size.barcodeTo,
-              ),
-            }),
+            (st) => {
+              const calcQty =
+                st.orderQty !== undefined &&
+                st.orderQty !== null &&
+                st.orderQty !== ""
+                  ? Number(st.orderQty)
+                  : (st.sizeBreakup || []).reduce(
+                      (sum, b) => sum + (Number(b.qty) || 0),
+                      0,
+                    );
+              return {
+                ...st,
+                orderQty: calcQty,
+                sizeBreakup: (st.sizeBreakup || []).filter(
+                  (size) =>
+                    Number(size.qty) > 0 || size.barcodeFrom || size.barcodeTo,
+                ),
+              };
+            },
           ),
         };
       }),
@@ -385,23 +408,77 @@ const OrderEntryForm = ({
     }
   };
 
-  // ── Full duplicate detection (File 2) ────────────────────────────────────
+  // ── Full duplicate detection (Cross-row Style & Size validation) ──────────
   const findDuplicates = (items) => {
-    const seen = new Map();
     const duplicates = [];
 
-    items.forEach((item, index) => {
-      // Key is Description of Goods (styleItemId)
-      const key = `${item.styleItemId}`;
-      if (seen.has(key)) {
-        duplicates.push({
-          firstIndex: seen.get(key).uiIndex,
-          duplicateIndex: item.uiIndex,
-        });
-      } else {
-        seen.set(key, { index, uiIndex: item.uiIndex });
+    for (let i = 0; i < items.length; i++) {
+      const itemA = items[i];
+      const rowA = itemA.uiIndex;
+      const stylesA = itemA.orderStyleItems || itemA.styleItems || [];
+
+      for (let j = i + 1; j < items.length; j++) {
+        const itemB = items[j];
+        const rowB = itemB.uiIndex;
+        const stylesB = itemB.orderStyleItems || itemB.styleItems || [];
+
+        // Only compare rows that share the SAME Description of Goods (styleItemId)
+        if (String(itemA.styleItemId) === String(itemB.styleItemId)) {
+          const itemName =
+            findFromList(itemA.styleItemId, styleItemList?.data, "name") ||
+            `Item #${itemA.styleItemId}`;
+
+          stylesA.forEach((stA) => {
+            if (!stA.styleId) return;
+            const styleName =
+              findFromList(stA.styleId, styleMasterList?.data, "name") ||
+              `Style #${stA.styleId}`;
+            const typeA = stA.trackingType || "Size";
+
+            stylesB.forEach((stB) => {
+              if (!stB.styleId) return;
+              if (String(stA.styleId) === String(stB.styleId)) {
+                const typeB = stB.trackingType || "Size";
+
+                // Check 1: Barcode or None cannot repeat the same style across rows if both use that type
+                if (
+                  typeA === typeB &&
+                  (typeA === "Barcode" || typeA === "None")
+                ) {
+                  duplicates.push(
+                    `Row ${rowB} has duplicate Style "${styleName}" (Type: ${typeA}) under "${itemName}". Style is already used in Row ${rowA}. When Type is ${typeA}, each row must have a different Style.`,
+                  );
+                  return;
+                }
+
+                // Check 2: Size and Size + Barcode: Sizes must be unique across rows for the same style
+                if (
+                  (typeA === "Size" || typeA === "Size + Barcode") &&
+                  (typeB === "Size" || typeB === "Size + Barcode")
+                ) {
+                  const sizesA = new Set(
+                    (stA.sizeBreakup || [])
+                      .map((b) => String(b.sizeId))
+                      .filter((s) => s && s !== "null" && s !== "undefined"),
+                  );
+
+                  (stB.sizeBreakup || []).forEach((bB) => {
+                    if (bB.sizeId && sizesA.has(String(bB.sizeId))) {
+                      const sizeName =
+                        findFromList(bB.sizeId, sizeList?.data, "name") ||
+                        `Size #${bB.sizeId}`;
+                      duplicates.push(
+                        `Row ${rowB} has duplicate Size "${sizeName}" for Style "${styleName}" under "${itemName}". This Size is already used in Row ${rowA}. Under the same Style, sizes must be unique across rows.`,
+                      );
+                    }
+                  });
+                }
+              }
+            });
+          });
+        }
       }
-    });
+    }
 
     return duplicates;
   };
@@ -410,8 +487,13 @@ const OrderEntryForm = ({
   const validateRows = (items) => {
     const errors = [];
 
-    items.forEach((item) => {
-      const rowIndex = item.uiIndex;
+    items.forEach((item, index) => {
+      const rowIndex =
+        item.uiIndex !== undefined && item.uiIndex !== null
+          ? item.uiIndex
+          : item.itemOrder !== undefined
+            ? item.itemOrder + 1
+            : index + 1;
       const rawBreakup = item.rawSizeBreakup || item.sizeBreakup || [];
 
       if (!item.orderQty || Number(item.orderQty) <= 0) {
@@ -440,13 +522,52 @@ const OrderEntryForm = ({
             seenStyleCombos.add(comboKey);
           }
 
+          const styleQty =
+            st.orderQty !== undefined &&
+            st.orderQty !== null &&
+            st.orderQty !== ""
+              ? Number(st.orderQty)
+              : (st.sizeBreakup || []).reduce(
+                  (sum, b) => sum + (Number(b.qty) || 0),
+                  0,
+                );
+
+          if (st.styleId && (!styleQty || styleQty <= 0)) {
+            const styleName =
+              findFromList(st.styleId, styleMasterList?.data, "name") ||
+              `Style #${sIdx + 1}`;
+            errors.push(
+              `Row ${rowIndex}, ${styleName}: Style Quantity must be greater than 0.`,
+            );
+          }
+
           if (!st.styleId && Number(st.orderQty) > 0) {
             errors.push(
               `Row ${rowIndex}, Style ${sIdx + 1}: Style selection is required.`,
             );
           }
           const sBreakup = st.sizeBreakup || [];
-          if (st.trackingType === "Size") {
+          sBreakup.forEach((b, bIdx) => {
+            const hasSize =
+              b.sizeId !== null && b.sizeId !== undefined && b.sizeId !== "";
+            const hasBarcode = Boolean(b.barcodeFrom || b.barcodeTo);
+            if (hasSize || hasBarcode) {
+              if (!b.qty || Number(b.qty) <= 0) {
+                const styleName =
+                  findFromList(st.styleId, styleMasterList?.data, "name") ||
+                  `Style #${sIdx + 1}`;
+                errors.push(
+                  `Row ${rowIndex}, ${styleName}: Breakup row ${bIdx + 1} has quantity 0. Quantity must be greater than 0.`,
+                );
+              }
+            }
+          });
+
+          if (
+            st.trackingType === "Size" ||
+            st.trackingType === "Size + Barcode" ||
+            st.trackingType === "None"
+          ) {
             const selectedSizes = sBreakup
               ?.map((s) => s.sizeId)
               ?.filter(
@@ -456,8 +577,11 @@ const OrderEntryForm = ({
             if (selectedSizes && selectedSizes.length > 0) {
               const uniqueSizes = new Set(selectedSizes);
               if (selectedSizes.length !== uniqueSizes.size) {
+                const styleName =
+                  findFromList(st.styleId, styleMasterList?.data, "name") ||
+                  `Style #${sIdx + 1}`;
                 errors.push(
-                  `Row ${rowIndex}, Style ${sIdx + 1}: Duplicate sizes selected.`,
+                  `Row ${rowIndex}, ${styleName}: Duplicate sizes selected.`,
                 );
               }
             }
@@ -662,16 +786,10 @@ const OrderEntryForm = ({
 
     const duplicates = findDuplicates(items);
     if (duplicates.length > 0) {
-      const message = duplicates
-        .map(
-          (d) => `Row ${d.duplicateIndex} is duplicate of Row ${d.firstIndex}`,
-        )
-        .join("<br/>");
-
       Swal.fire({
         icon: "warning",
         title: "Duplicate Items Found",
-        html: `<div style="text-align:left">${message}</div>`,
+        html: `<div style="text-align:left">${duplicates.join("<br/>")}</div>`,
       });
       return false;
     }
