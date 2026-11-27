@@ -14,8 +14,16 @@ function extractStyleImage(raw) {
   if (Buffer.isBuffer(raw)) {
     buf = raw;
   } else if (raw instanceof Uint8Array || (raw && raw.buffer)) {
-    buf = Buffer.from(raw.buffer, raw.byteOffset || 0, raw.byteLength || raw.length);
-  } else if (typeof raw === "object" && raw?.type === "Buffer" && Array.isArray(raw?.data)) {
+    buf = Buffer.from(
+      raw.buffer,
+      raw.byteOffset || 0,
+      raw.byteLength || raw.length,
+    );
+  } else if (
+    typeof raw === "object" &&
+    raw?.type === "Buffer" &&
+    Array.isArray(raw?.data)
+  ) {
     buf = Buffer.from(raw.data);
   } else if (Array.isArray(raw)) {
     buf = Buffer.from(raw);
@@ -30,12 +38,29 @@ function extractStyleImage(raw) {
   if (!buf || buf.length === 0) return null;
 
   // Check if buffer is raw image binary (JPEG, PNG, GIF, WebP, BMP, PDF)
-  const isJpeg = buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
-  const isPng = buf.length > 4 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47;
-  const isGif = buf.length > 3 && buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46;
-  const isWebp = buf.length > 12 && buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50;
+  const isJpeg =
+    buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+  const isPng =
+    buf.length > 4 &&
+    buf[0] === 0x89 &&
+    buf[1] === 0x50 &&
+    buf[2] === 0x4e &&
+    buf[3] === 0x47;
+  const isGif =
+    buf.length > 3 && buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46;
+  const isWebp =
+    buf.length > 12 &&
+    buf[8] === 0x57 &&
+    buf[9] === 0x45 &&
+    buf[10] === 0x42 &&
+    buf[11] === 0x50;
   const isBmp = buf.length > 2 && buf[0] === 0x42 && buf[1] === 0x4d;
-  const isPdf = buf.length > 4 && buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46;
+  const isPdf =
+    buf.length > 4 &&
+    buf[0] === 0x25 &&
+    buf[1] === 0x50 &&
+    buf[2] === 0x44 &&
+    buf[3] === 0x46;
 
   if (isJpeg) return `data:image/jpeg;base64,${buf.toString("base64")}`;
   if (isPng) return `data:image/png;base64,${buf.toString("base64")}`;
@@ -89,6 +114,7 @@ async function get(req) {
           poItems: true,
           orderItems: true,
           inwardItems: true,
+          styles: true,
         },
       },
       SizeTemplate: {
@@ -114,7 +140,8 @@ async function get(req) {
         childRecord:
           color?._count.poItems +
           color?._count.inwardItems +
-          color?._count.orderItems,
+          color?._count.orderItems +
+          color?._count.styles,
       }),
     )),
   };
@@ -128,6 +155,9 @@ async function getOne(id) {
     where: { styleItemId: parseInt(id) },
   });
   const childRecodOrderEntry = await prisma.orderItems.count({
+    where: { styleItemId: parseInt(id) },
+  });
+  const childRecodStyle = await prisma.style.count({
     where: { styleItemId: parseInt(id) },
   });
   const data = await prisma.styleItem.findUnique({
@@ -144,7 +174,11 @@ async function getOne(id) {
     data: formatStyleItem({
       ...data,
       ...{
-        childRecord: childRecordPo + childRecordInward + childRecodOrderEntry,
+        childRecord:
+          childRecordPo +
+          childRecordInward +
+          childRecodOrderEntry +
+          childRecodStyle,
       },
     }),
   };
@@ -195,7 +229,11 @@ async function create(body, files) {
   let styleImagePath = null;
   if (matchedFile) {
     styleImagePath = `uploads/${matchedFile.filename}`;
-  } else if (styleImage && typeof styleImage === "string" && styleImage.trim()) {
+  } else if (
+    styleImage &&
+    typeof styleImage === "string" &&
+    styleImage.trim()
+  ) {
     styleImagePath = styleImage.trim();
   }
 

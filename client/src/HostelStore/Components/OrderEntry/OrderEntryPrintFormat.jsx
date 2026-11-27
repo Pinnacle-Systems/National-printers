@@ -28,35 +28,68 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    paddingBottom: 8,
-    borderBottom: "1.5 solid #1a1a2e",
+    alignItems: "flex-end",
+    paddingBottom: 6,
+    borderBottom: "3.5 solid #1b365d",
     marginBottom: 8,
   },
-  logoContainer: { width: 130, alignItems: "flex-start" },
-  logo: { height: 60, width: 130 },
-  companyCenter: { flex: 2, alignItems: "center", paddingHorizontal: 10 },
-  companyName: {
-    fontSize: 17,
-    fontWeight: "bold",
-    color: "#1a1a2e",
-    marginBottom: 4,
-  },
-  companyAddr: {
-    fontSize: 7.5,
-    color: "#444",
-    textAlign: "center",
-    lineHeight: 1.3,
-    maxWidth: 250,
-  },
-  companyRight: { width: 130, alignItems: "flex-end" },
-  companyRightRow: {
-    flexDirection: "row",
+  logoContainer: {
+    width: 175,
+    alignItems: "flex-start",
     justifyContent: "flex-end",
-    marginBottom: 3,
   },
-  companyLabel: { fontSize: 7, color: "#888", marginRight: 4 },
-  companyValue: { fontSize: 7, color: "#1a1a2e", fontWeight: "bold" },
+  logo: { height: 72, width: 165 },
+  headerRight: {
+    flex: 1,
+    alignItems: "flex-start",
+    paddingLeft: 10,
+  },
+  headerWebsite: {
+    fontSize: 9.5,
+    fontWeight: "bold",
+    color: "#d05a28",
+    marginBottom: 3,
+    paddingLeft: 4,
+  },
+  addressBox: {
+    width: "100%",
+    borderTop: "1 solid #c49a6c",
+    borderLeft: "1 solid #c49a6c",
+    paddingTop: 3,
+    paddingLeft: 6,
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  officeCol: {
+    flex: 1,
+    paddingRight: 4,
+  },
+  headOfficeCol: {
+    flex: 1.15,
+    paddingLeft: 4,
+  },
+  officeTitle: {
+    fontSize: 6.5,
+    fontWeight: "bold",
+    color: "#1a2b49",
+    marginBottom: 2,
+  },
+  officeText: {
+    fontSize: 5.8,
+    color: "#333",
+    lineHeight: 1.25,
+  },
+  emailRow: {
+    flexDirection: "row",
+    marginTop: 1,
+  },
+  emailLabel: {
+    fontSize: 5.8,
+    color: "#333",
+  },
+  emailList: {
+    flexDirection: "column",
+  },
 
   titleBand: {
     backgroundColor: "#1a1a2e",
@@ -284,34 +317,54 @@ const OrderEntryPrintFormat = ({
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        <View style={styles.topBar} fixed />
         <View style={styles.header} fixed>
           <View style={styles.logoContainer}>
             <Image src={Logo} style={styles.logo} />
           </View>
-          <View style={styles.companyCenter}>
-            <Text style={styles.companyName}>NATIONAL ENTERPRISES</Text>
-            <Text style={styles.companyAddr}>
-              {branchData?.address || (
-                <Text>
-                  9(1)-MAARIYAMMAN LAYOUT 2ND STREET,{"\n"}KUMARANATHA
-                  PURAM,TIRUPUR : 641602
-                </Text>
-              )}
+          <View style={styles.headerRight}>
+            <Text style={styles.headerWebsite}>
+              www.nationalprintingpress.net
             </Text>
-          </View>
-          <View style={styles.companyRight}>
-            <View style={styles.companyRightRow}>
-              <Text style={styles.companyLabel}>GSTIN :</Text>
-              <Text style={styles.companyValue}>
-                {branchData?.gstNo || "33BHEPC9190H1ZE"}
-              </Text>
-            </View>
-            <View style={styles.companyRightRow}>
-              <Text style={styles.companyLabel}>Mobile :</Text>
-              <Text style={styles.companyValue}>
-                {branchData?.contactMobile || "9952138129"}
-              </Text>
+            <View style={styles.addressBox}>
+              <View style={styles.officeCol}>
+                <Text style={styles.officeTitle}>OFFICE:</Text>
+                <Text style={styles.officeText}>
+                  9(1), Mariyamman Layout, 2nd Street,{"\n"}
+                  Near Sivan Theatre, Kumarananthapuram,{"\n"}
+                  Tirpur - 641602, Tamil Nadu, INDIA{"\n"}
+                  Tel.: (+91-421) 497 9129
+                </Text>
+                <View style={styles.emailRow}>
+                  <Text style={styles.emailLabel}>e-mail: </Text>
+                  <View style={styles.emailList}>
+                    <Text style={styles.officeText}>
+                      tirupur@nationalprintingpress.net
+                    </Text>
+                    <Text style={styles.officeText}>
+                      nationalent25@gmail.com
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.headOfficeCol}>
+                <Text style={styles.officeTitle}>HEAD OFFICE:</Text>
+                <Text style={styles.officeText}>
+                  25/B, Satyam Industrial Estate,{"\n"}
+                  Subhash Road, Jogeshwari (East),{"\n"}
+                  Mumbai - 400 060, Maharashtra, INDIA{"\n"}
+                  Tel. : (+91-22) 2824 0340 / 2839 3746
+                </Text>
+                <View style={styles.emailRow}>
+                  <Text style={styles.emailLabel}>e-mail: </Text>
+                  <View style={styles.emailList}>
+                    <Text style={styles.officeText}>
+                      admin@nationalprintingpress.net
+                    </Text>
+                    <Text style={styles.officeText}>natprnt@gmail.com</Text>
+                  </View>
+                </View>
+              </View>
             </View>
           </View>
         </View>
@@ -357,21 +410,33 @@ const OrderEntryPrintFormat = ({
             <Text style={styles.sectionHeader}>CUSTOMER DETAILS</Text>
             <View style={styles.sectionBody}>
               <Text style={styles.partyName}>
-                {customerDetails?.name || "N/A"}
+                {customerDetails?.name || ""}
               </Text>
               <Text style={styles.partyAddr}>
                 {customerDetails?.address || ""}
               </Text>
               <View style={styles.labelValueRow}>
+                <Text style={styles.label}>GST</Text>
+                <Text style={styles.value}>
+                  : {customerDetails?.gstNo || ""}
+                </Text>
+              </View>
+              <View style={styles.labelValueRow}>
                 <Text style={styles.label}>Contact Person</Text>
                 <Text style={styles.value}>
-                  : {customerDetails?.contactPersonName || "N/A"}
+                  : {customerDetails?.contactPersonName || ""}
                 </Text>
               </View>
               <View style={styles.labelValueRow}>
                 <Text style={styles.label}>Mobile No</Text>
                 <Text style={styles.value}>
-                  : {customerDetails?.contactNumber || "N/A"}
+                  : {customerDetails?.contactNumber || ""}
+                </Text>
+              </View>
+              <View style={styles.labelValueRow}>
+                <Text style={styles.label}>Email</Text>
+                <Text style={styles.value}>
+                  : {customerDetails?.contactPersonEmail || ""}
                 </Text>
               </View>
             </View>
@@ -440,18 +505,16 @@ const OrderEntryPrintFormat = ({
                         item.orderStyleItems || []
                       ).filter((st) => {
                         const styleObj = getStyleObj(st);
-                        const hideStyleName = Boolean(styleObj?.hidePrintFormat);
+                        const hideStyleName = Boolean(
+                          styleObj?.hidePrintFormat,
+                        );
                         const hasBreakups = (st.sizeBreakup || []).some(
                           (sb) => (Number(sb.qty) || 0) > 0,
                         );
 
                         if (hideStyleName && !hasBreakups) return false;
 
-                        return (
-                          st.styleId ||
-                          st.Style ||
-                          hasBreakups
-                        );
+                        return st.styleId || st.Style || hasBreakups;
                       });
 
                       if (styleItemsList.length > 0) {
@@ -459,7 +522,9 @@ const OrderEntryPrintFormat = ({
                           <View style={{ marginTop: 2 }}>
                             {styleItemsList.map((st, sIdx) => {
                               const styleObj = getStyleObj(st);
-                              const hideStyleName = Boolean(styleObj?.hidePrintFormat);
+                              const hideStyleName = Boolean(
+                                styleObj?.hidePrintFormat,
+                              );
                               const styleName =
                                 st.Style?.name ||
                                 getName(st.styleId, styleMasterList) ||
@@ -471,7 +536,9 @@ const OrderEntryPrintFormat = ({
                               const breakupText = breakups
                                 .map((sb) => {
                                   const sizeObj = getSizeObj(sb);
-                                  const hideSizeName = Boolean(sizeObj?.hidePrintFormat);
+                                  const hideSizeName = Boolean(
+                                    sizeObj?.hidePrintFormat,
+                                  );
                                   const size =
                                     sb.Size?.name ||
                                     getName(sb.sizeId, sizeList);
@@ -486,15 +553,21 @@ const OrderEntryPrintFormat = ({
                                     return `${range} / ${qty}`;
                                   }
                                   if (trackingType === "Size") {
-                                    return hideSizeName ? `${qty}` : `${size}/${qty}`;
+                                    return hideSizeName
+                                      ? `${qty}`
+                                      : `${size}/${qty}`;
                                   }
                                   if (trackingType === "Size + Barcode") {
                                     if (hideSizeName) {
-                                      return range ? `${range} / ${qty}` : `${qty}`;
+                                      return range
+                                        ? `${range} / ${qty}`
+                                        : `${qty}`;
                                     }
                                     return `${size}${range ? ` (${range})` : ""}/${qty}`;
                                   }
-                                  return hideSizeName ? `${qty}` : `${size}/${qty}`;
+                                  return hideSizeName
+                                    ? `${qty}`
+                                    : `${size}/${qty}`;
                                 })
                                 .filter(Boolean)
                                 .join("  |  ");
@@ -535,7 +608,9 @@ const OrderEntryPrintFormat = ({
                                         paddingLeft: headerText ? 6 : 2,
                                       }}
                                     >
-                                      {headerText ? breakupText : `• ${breakupText}`}
+                                      {headerText
+                                        ? breakupText
+                                        : `• ${breakupText}`}
                                     </Text>
                                   ) : null}
                                 </View>
@@ -556,7 +631,9 @@ const OrderEntryPrintFormat = ({
                               {legacyBreakup
                                 .map((sb) => {
                                   const sizeObj = getSizeObj(sb);
-                                  const hideSizeName = Boolean(sizeObj?.hidePrintFormat);
+                                  const hideSizeName = Boolean(
+                                    sizeObj?.hidePrintFormat,
+                                  );
                                   const size =
                                     sb.Size?.name ||
                                     getName(sb.sizeId, sizeList);
@@ -573,18 +650,24 @@ const OrderEntryPrintFormat = ({
                                     item.trackingType === "Size Template" ||
                                     item.trackingType === "Size"
                                   )
-                                    return hideSizeName ? `${qty}` : `${size}/${qty}`;
+                                    return hideSizeName
+                                      ? `${qty}`
+                                      : `${size}/${qty}`;
                                   if (
                                     item.trackingType ===
                                       "Size Template + Barcode" ||
                                     item.trackingType === "Size + Barcode"
                                   ) {
                                     if (hideSizeName) {
-                                      return range ? `${range}/${qty}` : `${qty}`;
+                                      return range
+                                        ? `${range}/${qty}`
+                                        : `${qty}`;
                                     }
                                     return `${size}${range ? ` (${range})` : ""}/${qty}`;
                                   }
-                                  return hideSizeName ? `${qty}` : `${size}/${qty}`;
+                                  return hideSizeName
+                                    ? `${qty}`
+                                    : `${size}/${qty}`;
                                 })
                                 .filter(Boolean)
                                 .join("  |  ")}

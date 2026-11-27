@@ -440,24 +440,22 @@ const OrderEntryForm = ({
               if (String(stA.styleId) === String(stB.styleId)) {
                 const typeB = stB.trackingType || "Size";
 
-                // Check 1: Mixed tracking types for same style (Option A)
-                if (typeA !== typeB) {
-                  duplicates.push(
-                    `Row ${rowB} has Style "${styleName}" with Type "${typeB}", but Row ${rowA} uses Type "${typeA}". A style cannot have mixed tracking types.`,
-                  );
-                  return;
-                }
-
-                // Check 2: Barcode or None cannot repeat the same style across rows
-                if (typeA === "Barcode" || typeA === "None") {
+                // Check 1: Barcode or None cannot repeat the same style across rows if both use that type
+                if (
+                  typeA === typeB &&
+                  (typeA === "Barcode" || typeA === "None")
+                ) {
                   duplicates.push(
                     `Row ${rowB} has duplicate Style "${styleName}" (Type: ${typeA}) under "${itemName}". Style is already used in Row ${rowA}. When Type is ${typeA}, each row must have a different Style.`,
                   );
                   return;
                 }
 
-                // Check 3: Size and Size + Barcode: Sizes must be unique across rows for the same style
-                if (typeA === "Size" || typeA === "Size + Barcode") {
+                // Check 2: Size and Size + Barcode: Sizes must be unique across rows for the same style
+                if (
+                  (typeA === "Size" || typeA === "Size + Barcode") &&
+                  (typeB === "Size" || typeB === "Size + Barcode")
+                ) {
                   const sizesA = new Set(
                     (stA.sizeBreakup || [])
                       .map((b) => String(b.sizeId))

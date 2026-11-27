@@ -560,18 +560,11 @@ const OrderStyleItems = ({
               if (String(stOther.styleId) === currentStyleId) {
                 const otherType = stOther.trackingType || "Size";
 
-                // Check 1: Mixed Tracking Types for same style (Option A)
-                if (currentType !== otherType) {
-                  Swal.fire({
-                    icon: "warning",
-                    title: "Mixed Tracking Type",
-                    text: `Style '${styleName}' is already configured with tracking type '${otherType}' in Row ${oIdx + 1}. A style cannot have mixed tracking types.`,
-                  });
-                  return;
-                }
-
-                // Check 2: Barcode or None cannot repeat the same style across rows
-                if (currentType === "Barcode" || currentType === "None") {
+                // Check 1: Barcode or None cannot repeat the same style across rows if both use that type
+                if (
+                  currentType === otherType &&
+                  (currentType === "Barcode" || currentType === "None")
+                ) {
                   Swal.fire({
                     icon: "warning",
                     title: "Duplicate Style",
@@ -580,8 +573,11 @@ const OrderStyleItems = ({
                   return;
                 }
 
-                // Check 3: Size and Size + Barcode: Sizes must be unique across rows for the same style
-                if (currentType === "Size" || currentType === "Size + Barcode") {
+                // Check 2: Size and Size + Barcode: Sizes must be unique across rows for the same style
+                if (
+                  (currentType === "Size" || currentType === "Size + Barcode") &&
+                  (otherType === "Size" || otherType === "Size + Barcode")
+                ) {
                   const otherSizes = new Set(
                     (stOther.sizeBreakup || [])
                       .map((b) => String(b.sizeId))
